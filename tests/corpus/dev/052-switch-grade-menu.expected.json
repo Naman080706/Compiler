@@ -1,0 +1,15 @@
+{
+  "description": "main picks a message for a grade band with a switch statement (not in the subset), with two case labels, a default and two breaks.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: 'switch' statement is not supported"
+  ],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Expected under plan 004: raw 6. SYN-UNSUPPORTED-FEATURE 6 (caused_by: none), SYN-UNSUPPORTED-FEATURE 7 (caused_by: R2), SYN-UNSUPPORTED-FEATURE 10 (caused_by: R9), SYN-UNSUPPORTED-FEATURE 13 (caused_by: R9), SEM-BREAK-OUTSIDE-LOOP 9 (caused_by: R7), SEM-BREAK-OUTSIDE-LOOP 12 (caused_by: R7). Displayed 1. Trace as in T8: 'switch' gives an ErrorStmt (kind_hint unsupported) whose panic stops before '{', so the body is an orphan block. The first 'case' (line 7) is linked by R2; its panic consumes the ';' at the end of line 8 and closes the region. The second 'case' (line 10) and 'default' (line 13) are linked by R9. The two breaks parse as real Break nodes inside the orphan block and are linked by R7. 'band' and 'points' are read in the printf on line 16 (outside the switch), so there is no WRN-UNUSED-VAR. Rewriting a switch as if/else is more than 3 lines, so fixable is false. gcc accepts the file (switch is valid C), so gcc_rejects is false."
+}
