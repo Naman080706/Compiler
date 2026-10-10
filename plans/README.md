@@ -33,12 +33,14 @@ Contract: `plans/m2-architecture.md`. Owner decisions: Gemini primary with an Ol
 
 | Plan | Title | Depends on | Status |
 |------|-------|------------|--------|
-| 008 | Fix stray-closer message | — | DRAFTING |
-| 009 | F2 clustering + exact-root test + metrics | 008 | DRAFTING |
+| 008 | Fix stray-closer message | — | TODO (reviewed) |
+| 009 | F2 clustering + exact-root test + metrics | 008 | TODO (reviewed) |
 | 010 | LLM layer (client, fallback, cache, fake) | — | DRAFTING |
 | 011 | F3 agent + rule lookup + CLI --explain | 009, 010 | DRAFTING |
 | 012 | FastAPI backend | 011 | DRAFTING |
 | 013 | React UI | 012 | DRAFTING |
+
+**F2 metric decision (advisor, 2026-10-10):** the PRD's ≥70% target is measured on *single-fault* cascading dev files (dev: 72.5%), and the all-cascade figure (dev: 60.0%) is reported alongside. Warning roots count as displayed. The PRD wording must be updated by the owner.
 
 ## Milestone 1
 

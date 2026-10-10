@@ -24,7 +24,7 @@ Runtime dependencies go in a NEW `requirements.txt` (plan 010 creates it; 012 ad
 
 ```python
 # cluster.py (plan 009)
-def assign_roots(records: list[ErrorRecord]) -> None: ...
+def assign_roots(records: list[ErrorRecord], *, program: "A.Program | None" = None) -> None: ...   # program gives function boundaries for rule 2 (amended in review of 009)
     # sets r.root_id in place, in id order:
     #   1. caused_by set          -> root_id = root_id of caused_by
     #   2. SEM-UNDECLARED-VAR/FUNC whose name matches an earlier record with the same code in the
