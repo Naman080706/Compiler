@@ -405,9 +405,30 @@ class Parser:
         return self.error_stmt(e, start, kind, stopped, self.declared_names(start, self.pos, e.code))
 
     def declared_names(self, start: int, end: int, code: str) -> list[tuple[str, str]]:
-        return []
+        """ErrorStmt.declared_names: consumed `type_spec IDENT` pairs, plus (plan 004) the
+        declarator-like names of an unsupported-feature error, in source order, no duplicates."""
+        found = [(i, n, t) for (i, n, t) in self.decl_log if start <= i < end]
+        if code == "SYN-UNSUPPORTED-FEATURE":
+            for i in range(max(start, 1), end):
+                tok, before, after = self.toks[i], self.toks[i - 1], self.toks[i + 1]
+                if (tok.kind is K.IDENT
+                        and (is_type_kw(before) or self.is_(before, "*") or before.kind is K.IDENT)
+                        and after.kind in SYMBOLIC and after.text in ("=", ";", ",", "[")):
+                    found.append((i, tok.text, "<unsupported>"))
+        out: list[tuple[str, str]] = []
+        for _, name, typ in sorted(found):
+            if name not in [n for n, _ in out]:
+                out.append((name, typ))
+        return out
 
     def broken_decl(self, stmt: A.VarDeclStmt, e: ParseError, start: int) -> A.VarDeclStmt:
+        """Section 5: keep the declaration; the last declarator gets error_id and idents_in_span."""
+        last = stmt.decls[-1]
+        name_i = self.name_index[id(last)]
+        last.error_id = e.error_id
+        last.idents_in_span = self.idents(name_i, self.pos)
+        last.span = self.span_from(name_i)
+        stmt.span = self.span_from(start)
         return stmt
 
     def guard(self, before: int) -> None:
