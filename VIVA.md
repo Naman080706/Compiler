@@ -51,13 +51,38 @@ It gives full control over where errors are detected and how the parser recovers
 
 ### 1.6 Why a fixed error catalog?
 
-All 37 error codes live in one catalog (`docs/error-catalog.md`). Each code fixes the error's phase, severity, category and `rule_ref`. Severity comes from the catalog and never from the AI (PRD F4). A small script (`tools/check_spec.py`) fails if any code cites a rule that isn't in the language spec. That is how we guarantee the AI can't cite a rule that doesn't exist **(planned)**.
+All 37 error codes live in one catalog (`docs/error-catalog.md`). Each code fixes the error's phase, severity, category and `rule_ref`. Severity comes from the catalog and never from the AI (PRD F4). A small script (`tools/check_spec.py`) fails if any code cites a rule that isn't in the language spec. That is how we guarantee the AI can't cite a rule that doesn't exist. The spec, the catalog and the checker now exist (plan 001). We tested the checker by deliberately breaking the catalog twice (a misspelt rule name, a wrong severity), and it caught both. The AI-citation part is **(planned)** for F7.
+
+### 1.6a Where we differ from gcc (on purpose)
+
+- **Stricter than gcc:** `return 5;` in a `void` function and `return;` in an `int` function are errors here, where gcc only warns. Beginners should fix these, not ignore them.
+- **Reported earlier than gcc:** a missing `main` is reported at the end of semantic analysis. Real C only finds it at link time, and we have no linker.
+- **Extra teaching warning:** WRN-UNREACHABLE-CODE (code after `return`/`break`/`continue`) is a warning gcc doesn't give.
+- **Same as gcc:** float→int narrowing (`-Wfloat-conversion`), a missing return in a non-void function (`-Wreturn-type`) and `if (x = 5)` (`-Wparentheses`) are warnings in both.
+- **Evidence:** the spec's example program was compiled with `gcc -std=c99 -Wall -Wconversion`. It gave 0 errors and exactly the 1 warning our spec predicts.
 
 ### 1.7 Build order: the PRD's 5 milestones, all 9 features, no cuts
 
 We follow the PRD's five milestones: 1 Foundation (F1, F4), 2 Intelligence (F2, F3), 3 Extensions (F5, F6, F7), 4 Novelty (F8, F9) and 5 Evaluation. All nine features are built. The PRD's fallback cut order (F9, then F6, then F5) is not used.
 
 There is one deliberate change in order. The PRD puts the faulty-program test corpus in milestone 5, but we build it **before** milestone 1. Each milestone then has automatic pass/fail tests from day one: for example, F1's "one lexical, one syntax, one semantic error → three records" and F2's "missing semicolon → 1 root cause". Measuring the final metrics and writing the report stay in milestone 5.
+
+### 1.8 Error recovery: record everything, link the cascades (plan 002, planned)
+
+- **Missing `;` is repaired, not panicked over.** If the next token starts on a new line, the parser reports SYN-MISSING-SEMICOLON just after the statement and continues as if the `;` were there. Nothing is skipped, so no cascade arises.
+- **Missing `}` is repaired too.** `int main(` inside a function body can only mean an earlier `}` is missing (C has no nested functions). We report one error there and parse the next function normally.
+- **Otherwise panic mode** with explicit synchronisation points: `;` for statements, `}` for blocks, and a type keyword at the start of a line for top-level declarations. A progress proof guarantees the parser can't loop forever.
+- **Semantic analysis always runs, even after syntax errors.** It works on a partial syntax tree with error nodes. That's how one file can show a lexical, a syntax and a semantic error at once (the PRD F1 acceptance test).
+- **We never hide errors; we link them.** Each error may carry `caused_by` (the error that caused it), set only by 8 mechanical rules such as "this operand failed to parse". The raw count is every error; the displayed count is the root causes. This is what F2's "70% fewer displayed errors" measures.
+- **The poison `<error>` type.** An expression that failed to parse has type `<error>`, which passes type checks silently. We can't type-check something we couldn't parse, so no error is hidden, because none was detected.
+- **An honest finding about the PRD.** F2's acceptance test ("one missing semicolon that previously produced 10+ errors shows 1 root") can't be met as written. Our recovery turns a missing `;` into exactly 1 error, so there is no cascade to collapse. We refused to add a "naive mode" just to create fake cascades. Instead we proposed corrected wording, measured on a fixed set of genuinely cascading files **(PRD update pending)**.
+
+### 1.9 The test corpus (plan 003, planned)
+
+- **Test programs:** 37 single-error programs (one per error code), 11+ cascading, 4 multi-fault, 12+ valid, and **20 held-out** programs for the final metrics.
+- **Held-out discipline:** the 20 held-out programs are never looked at while tuning the parser or clustering. Bugs they reveal are reproduced as new dev programs. This prevents overfitting our own evaluation.
+- **Expected results:** each program has a JSON sidecar listing the root causes F2 should show (code + line), not raw error counts. Raw counts depend on recovery details, so we don't predict them.
+- **gcc as an independent check:** `gcc -std=c99 -pedantic-errors -fsyntax-only` runs on every program. Any program we expect to accept must also be accepted by gcc ("accepted => valid C99"). Whether gcc rejects each faulty program is recorded by actually running it, never guessed.
 
 ---
 
@@ -78,6 +103,12 @@ Not in this project (1.3). The AI layer is language-agnostic because it only rea
 **Q: What are the phases of your compiler?**
 Lexical analysis turns characters into tokens. Syntax analysis turns tokens into a parse tree, using a recursive-descent parser. Semantic analysis then checks scopes and types, and handles declarations, function signatures and return paths. Code generation and optimisation are out of scope. We produce diagnostics only.
 
+**Q: Is your compiler exactly as strict as gcc?**
+No, and that's deliberate (1.6a). It is stricter on bad `return` statements, reports a missing `main` without a linker, and adds an unreachable-code warning. It never accepts a program gcc rejects.
+
+**Q: How do you know the spec and the error list agree?**
+`tools/check_spec.py` checks all 37 codes against the spec (phase, severity, category, and that each rule exists). We proved it works by deliberately introducing two mistakes; it caught both.
+
 **Q: Why a hand-written parser instead of Lex/Yacc?**
 See 1.5. It gives control over error recovery and exact `rule_ref`s.
 
@@ -96,6 +127,18 @@ Student IDs and personal data are never sent to the LLM, only the error context.
 **Q: Your PRD puts evaluation last. Why did you build the test programs first?**
 So every milestone could be checked automatically against the PRD's acceptance tests as it was built, instead of discovering problems at the end. The same programs later serve as the evaluation set (1.7).
 
+**Q: What happens after a syntax error? Doesn't one mistake produce lots of errors?**
+Two common mistakes, a missing `;` and a missing `}`, are repaired on the spot, so they produce one error. Other errors use panic mode: skip to the next `;`, `}` or declaration start. Any follow-on errors are kept but linked to their cause with `caused_by`, and the UI shows only the root (1.8).
+
+**Q: Why not just suppress follow-on errors like many compilers do?**
+Suppression hides information and makes the "fewer displayed errors" metric impossible to measure honestly. We record every error and link the cascades, so the raw count and the displayed count are both real numbers.
+
+**Q: Your PRD says one missing semicolon gives 10+ errors. Does it in your compiler?**
+No. Our recovery repairs it, giving exactly 1 error. We report that the PRD's test, as worded, is trivially true and so can't demonstrate clustering. We proposed measuring on genuinely cascading files instead, such as an undeclared variable used 5 times or a lexical error inside an expression (1.8).
+
+**Q: How do you avoid overfitting to your test set?**
+The 20 evaluation programs are held out and never used while designing recovery or clustering (1.9).
+
 **Q: How will you evaluate it?**
 On a folder of faulty C programs with known injected faults, which also serves as the pytest suite. Targets:
 - ≥ 70% fewer displayed errors on cascading files.
@@ -111,6 +154,7 @@ On a folder of faulty C programs with known injected faults, which also serves a
 
 - **"Verified" means the fix compiles, not that it's correct** (see Q above).
 - **Only a C subset:** no pointers, structs, `switch` or most of the preprocessor.
+- **Literal forms are limited:** hex (`0x1F`), octal-style, exponent (`1e3`) and suffixed (`1.0f`, `10L`) literals are not part of the subset. They are reported as malformed numbers.
 - **No runtime errors:** division by zero or out-of-range array indexes at runtime are out of scope, as the PRD says.
 - **No uninitialised-variable warning or `printf` format checking** in the first version. These were deferred.
 - **Clustering is heuristic:** unusual cascades may be missed. Misses are logged and new rules added.
@@ -124,3 +168,5 @@ On a folder of faulty C programs with known injected faults, which also serves a
 |---|---|---|
 | 2026-10-10 | Sections 1.1–1.6, Q&A, limitations | PRD review; plan 001 (C subset, error catalog); decision to support one language only |
 | 2026-10-10 | Section 1.7 (5 milestones, no cuts, corpus first) + Q&A | Owner decision: build all 9 features |
+| 2026-10-10 | 1.6 updated, 1.6a (differences from gcc), 2 Q&A, literal-form limitation | Plan 001 executed and reviewed |
+| 2026-10-10 | 1.8 (error recovery), 1.9 (test corpus), 4 Q&A | Plans 002 and 003 drafted and cross-reviewed |
