@@ -312,7 +312,8 @@ class Parser:
             raise BlockRepair(self.report(code, t0, ["}"]))
 
     def open_region(self, error_id: str) -> None:
-        return None
+        if self.recovering is None:
+            self.recovering = error_id
 
     def panic_stmt(self) -> str | None:
         """Statement-level panic (4.4). Returns stopped_before (None if a ';' was consumed)."""
