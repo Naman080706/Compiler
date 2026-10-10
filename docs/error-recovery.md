@@ -419,8 +419,22 @@ Results that surprised me:
 
 ## 10. F2 feasibility
 
-TODO (plan 002 step 6)
+**F2 acceptance as written is not reachable.**
+
+The PRD says: "a file with one missing semicolon that previously produced 10 or more errors shows 1 root cause".
+
+1. With phrase repair, a missing `;` before a line break yields exactly 1 raw record (T1). On the same line it yields a handful at most (T1b: 2). No design in this document produces 10 or more raw records from one missing `;`, and decision 8 forbids adding a "naive mode" that would. The PRD's premise ("previously produced 10 or more errors") describes a compiler that does not recover, not this one. The conclusion "shows 1 root cause" holds trivially: there is nothing to cluster, so the test cannot demonstrate F2.
+2. The success metric ("at least 70% fewer displayed errors on cascading test files") is also at risk. A file with raw 2 and displayed 1 is only a 50% reduction, and over the five cascading traces of §9 (T1b, T2, T3, T4, T5) the reduction is 13 raw to 5 displayed, 62%. The metric depends on which files count as "cascading", so the corpus plan must fix the file list before anything is measured.
+3. Proposed corrected acceptance wording:
+
+> **F2 acceptance (proposed):** (a) A file with one missing semicolon shows exactly 1 root cause, and that root is SYN-MISSING-SEMICOLON at the position immediately after the unterminated statement. (b) For every single-fault file in the cascade set (files whose raw count is ≥ 2), the displayed count is 1 and the root is the injected fault. The cascade set is fixed before measurement and includes at least: an undeclared variable used ≥ 5 times, a lexical error inside an expression, a missing `(` after `if`/`while`, a broken `for` header whose loop variable is used in the body, and a missing `}`. (c) The clustering metric is reported as raw vs displayed counts summed over the cascade set, together with the per-file table.
+
+4. With the §4.7 repair, part (b) holds for the missing-`}` file (T2: raw 2, displayed 1). A missing `}` in the *last* function is detected only at EOF, but it is still a single root: the first SYN-UNEXPECTED-EOF opens the uncertain region and every later EOF record is linked to it by R2.
+
+The traces cover four of the five required cascade-set members (T4, T5, T3, T2). The `for`-header case is specified (§4.4 for-header panic, §5) but not traced; the corpus plan must add it and check part (b) on it.
 
 ## 11. Interface for later milestones
 
-TODO (plan 002 step 6)
+- Milestone 1 parser: implements §3 to §5 and records `caused_by` for R1/R2. The analyser implements §6 and R3 to R8. Each trace in §9 becomes a pytest case in the corpus, asserting the exact record table.
+- F2: reads `caused_by` and assigns `root_id` (provisional rule in §7).
+- F8: the verifier compares records before and after a patch. Because records are deterministic (invariant 5), "the original error is gone" can be checked by `(code, line, column)` of the root record (adjusted for lines the patch adds or removes). This is to be specified by the F8 plan.
