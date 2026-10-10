@@ -298,7 +298,8 @@ void g(void) { }        /* the file has no main */
 
 ### sem.unused_declaration
 A local variable that is declared but never read produces a warning.
-Parameters and globals are exempt.
+Assigning with `=` is not a read. Compound assignment (`+=` and the like) and
+`++`/`--` both read and write. Parameters and globals are exempt.
 
 ```c
 int main(void) {
