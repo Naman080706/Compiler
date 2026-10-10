@@ -315,30 +315,93 @@ class Parser:
         return None
 
     def panic_stmt(self) -> str | None:
-        raise NotImplementedError("plan 006 step 5")
+        """Statement-level panic (4.4). Returns stopped_before (None if a ';' was consumed)."""
+        while True:
+            tok = self.cur
+            if tok.kind is K.EOF or (tok.kind in SYMBOLIC and tok.text in SYNC_STMT_STOP):
+                self.stop_index = self.pos
+                return tok.text
+            self.consume()
+            if self.is_(tok, ";"):
+                self.recovering = None                                        # 4.5 (i)
+                return None
 
     def panic_for_header(self, base: int) -> str:
-        raise NotImplementedError("plan 006 step 5")
+        """For-header panic (4.4). `base` = bracket depth before the header's '('."""
+        d = sum(1 for b in self.brackets[base:] if b.text == "(")
+        while True:
+            tok = self.cur
+            if tok.kind is K.EOF or (tok.kind in SYMBOLIC and tok.text in SYNC_STMT_STOP):
+                self.stop_index = self.pos
+                return tok.text
+            self.consume()
+            if self.is_(tok, "("):
+                d += 1
+            elif self.is_(tok, ")"):
+                d -= 1
+                if d == 0:
+                    self.stop_index = self.pos
+                    return self.cur.text
 
     def first_on_line(self, i: int) -> bool:
-        raise NotImplementedError("plan 006 step 5")
+        return i == 0 or self.toks[i - 1].line < self.toks[i].line
 
     def panic_top(self) -> str:
-        raise NotImplementedError("plan 006 step 5")
+        """Top-level panic (4.4). Returns the text of the token it stopped before."""
+        depth = 0
+        while True:
+            tok = self.cur
+            if tok.kind is K.EOF:
+                self.stop_index = self.pos
+                return tok.text
+            if is_type_kw(tok) and depth == 0 and self.first_on_line(self.pos):
+                self.recovering = None                                        # 4.5 (ii)
+                self.stop_index = self.pos
+                return tok.text
+            self.consume()
+            if self.is_(tok, "{"):
+                depth += 1
+            elif self.is_(tok, "}"):
+                depth = max(0, depth - 1)
 
     @staticmethod
     def kind_hint(tok: Token) -> str:
-        raise NotImplementedError("plan 006 step 5")
+        if tok.kind is K.UNSUPPORTED_KEYWORD:
+            return "unsupported"
+        if tok.kind is K.KEYWORD:
+            if tok.text in TYPE_KEYWORDS:
+                return "decl"
+            if tok.text in STMT_KEYWORDS:
+                return tok.text
+        return "expr"
 
     def idents(self, i: int, j: int) -> set[str]:
-        raise NotImplementedError("plan 006 step 5")
+        return {t.text for t in self.toks[i:j] if t.kind is K.IDENT}
 
     def error_stmt(self, e: ParseError, start: int, kind: str, stopped: str | None,
                    names: list[tuple[str, str]]) -> A.ErrorStmt:
-        raise NotImplementedError("plan 006 step 5")
+        if kind == "unsupported":
+            self.unsupported_ids.add(e.error_id)
+        return A.ErrorStmt(span=self.span_from(start), error_id=e.error_id, kind_hint=kind,
+                           declared_names=names, idents_in_span=self.idents(start, self.pos),
+                           stopped_before=stopped)
 
     def recover_top(self, e: ParseError, start: int, first: Token, stopped: str):
-        raise NotImplementedError("plan 006 step 5")
+        ctx = self.top_ctx
+        if ctx.func_node is not None:                       # error after the header: broken function
+            ctx.func_node.error_id = e.error_id
+            ctx.func_node.idents_in_span = self.idents(ctx.func_name_index, self.pos)
+            ctx.func_node.span = self.span_from(start)
+            return ctx.func_node
+        if ctx.func_name is not None:                       # error inside the header (5)
+            names = [(ctx.func_name.text, "function")]
+            names += [n for n in self.declared_names(start, self.pos, e.code)
+                      if n[1] == "<unsupported>" and n[0] != ctx.func_name.text]
+            return self.error_stmt(e, start, "top", stopped, names)
+        if self.partial_decl is not None and self.partial_decl.decls:
+            return self.broken_decl(self.partial_decl, e, start)
+        kind = "unsupported" if first.kind is K.UNSUPPORTED_KEYWORD else "top"
+        return self.error_stmt(e, start, kind, stopped, self.declared_names(start, self.pos, e.code))
 
     def declared_names(self, start: int, end: int, code: str) -> list[tuple[str, str]]:
         return []
