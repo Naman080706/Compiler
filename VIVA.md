@@ -90,7 +90,7 @@ There is one deliberate change in order. The PRD puts the faulty-program test co
 - **Expected results:** each program has a JSON sidecar listing the root causes F2 should show (code + line), not raw error counts. Raw counts depend on recovery details, so we don't predict them.
 - **gcc as an independent check:** `gcc -std=c99 -pedantic-errors -fsyntax-only` runs on every program. Any program we expect to accept must also be accepted by gcc ("accepted => valid C99"). Whether gcc rejects each faulty program is recorded by actually running it, never guessed. Result: gcc rejects 59 of 85 programs and accepts 26. The 26 are all valid programs, warning-only programs, or cases where our subset is deliberately stricter than C99 (a variable-length array, a missing `main`, `const`, pointers, `switch`, `<math.h>`). There are 0 mismatches.
 
-### 1.10 Compiler structure (milestone 1: foundation and lexer built; parser and analyser planned)
+### 1.10 Compiler structure (milestone 1: foundation, lexer and parser built; semantic analyser planned)
 
 ```
 source.c --> lexer.py --> parser.py --> semantic.py --> list of ErrorRecord
@@ -105,6 +105,10 @@ source.c --> lexer.py --> parser.py --> semantic.py --> list of ErrorRecord
 - **Lexer details an examiner may probe:** maximal munch (`a+++b` becomes `++` then `+`); `\r\n`, `\n` and a lone `\r` each count as one newline; a tab counts as one column; a malformed number like `12abc`, `0x1F` or `1e5` is one error covering the whole run, not several; `#include <stdio.h> // comment` is accepted, while any other header is LEX-UNSUPPORTED-DIRECTIVE.
 - **The interceptor validates every report:** an unknown code, a 0-based position or a grammar-rule name not in the spec is rejected before an id is used. So a bug in the compiler can't produce a malformed record.
 - **Error messages read naturally** because quoting depends on the phase: syntax messages quote tokens ("Expected ';'"), while semantic messages show types and counts raw ("'add' expects 2 argument(s) but got 1").
+- **Parser built (plan 006):** a recursive-descent parser with one method per grammar rule, about 880 lines, plus 233 tests (591 in the whole suite). Each method is tagged with its grammar-rule name, so every syntax error automatically records *which rule* was being parsed (`rule_ref`). That is what the AI layer will later look up in the spec.
+- **All three recovery layers work as designed.** The phrase repairs fix a missing `;` (next token on a new line), a missing `)` before `{` and a missing `}` (a function header inside a function). Panic mode handles everything else. Broken declarations stay in the tree, so later uses aren't falsely "undeclared". All 9 parser-level hand traces reproduce exactly, and every dev program's syntax errors match its notes.
+- **Robustness evidence:** every valid test program was re-parsed with each single token deleted in turn. That is 1,146 broken programs, with 0 crashes and 0 infinite loops, and at most 2 errors per broken program. A safety-net loop guard fails the tests if it ever fires; it never has.
+- **Known limitation found in review:** an *extra* `}` gets the right error code but a confusing message, because the catalog has one template for both missing and extra closers. It will be fixed in the catalog before the AI layer reads messages.
 - **Standard library only.** The compiler has no third-party dependencies, so it runs anywhere Python 3.11+ runs.
 - **A fixed interface contract** (`plans/m1-architecture.md`) defines every module, record field and syntax-tree node before any code is written. The lexer, parser and analyser were planned in parallel and must fit together. The contract is what guarantees they do.
 - **Spec gaps were fixed before coding (plan 004, done).** Result: a held-out `switch` program went from 5 displayed root causes to 1. Hand-tracing the test programs found four gaps. Two were real design problems: one unsupported `switch` or pointer showed up as several unrelated "root causes". New rule R9 and an extended R7 now link those cascades. A `switch` example (trace T8) and a pointer example (trace T9) were added as exact-match tests.
@@ -177,6 +181,12 @@ We fixed the design document first (plan 004), added a hand-traced example that 
 **Q: How do you guarantee the "no phase prints to the console" requirement?**
 A unit test scans every compiler source file and fails if any module except `cli.py` contains `print(` or writes to `sys.stdout`/`sys.stderr`. So the requirement is enforced automatically, not just promised.
 
+**Q: How do you know your parser never crashes or loops forever on bad input?**
+Two kinds of evidence. First, a written progress argument: every recovery step consumes a token or leaves the loop. Second, a test that deletes each token of every valid program in turn and parses the result: 1,146 broken programs, 0 crashes, 0 loop-guard trips. The guard itself is a safety net that makes tests fail if it ever fires.
+
+**Q: Why does each syntax error carry a grammar-rule name?**
+Each parser method is tagged with its EBNF rule, so an error records the innermost rule being parsed (for example `while_stmt` or `var_decl`). The AI layer uses that name to fetch the exact rule text from the spec, which is how explanations stay grounded in a real rule.
+
 **Q: How do you avoid overfitting to your test set?**
 The 20 evaluation programs are held out and never used while designing recovery or clustering (1.9).
 
@@ -224,3 +234,4 @@ On a folder of faulty C programs with known injected faults, which also serves a
 | 2026-10-10 | 1.10 (compiler structure, interface contract, plan 004 gap fixes, held-out discipline), 2 Q&A | Milestone 1 planning started |
 | 2026-10-10 | Plan 004 executed: switch cascade 5 roots -> 1 (heldout/020), traces T8/T9 exact | Plan 004 reviewed and merged |
 | 2026-10-10 | 1.10 updated (foundation + lexer built, lexer details, validation, message quoting), no-print Q&A | Plan 005 executed, reviewed and merged |
+| 2026-10-10 | 1.10 updated (parser built, recovery layers, robustness evidence, stray-`}` message limitation), 2 Q&A | Plan 006 executed, reviewed and merged |
