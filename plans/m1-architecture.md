@@ -24,7 +24,7 @@ Python ≥ 3.11, **standard library only** (no runtime dependencies). Source liv
 | `src/cea/parser.py` | 006 | `parse()`: the syntax phase and recovery (§4 of error-recovery), rules R1/R2, and the code-selection rules. |
 | `src/cea/semantic.py` | 007 | `analyze()`: the semantic phase, `<error>` type, R3–R8. |
 | `src/cea/pipeline.py` | 007 | `compile_source()`, `CompileResult`. **Created last**: its existence switches on `tests/test_corpus_compile.py`. |
-| `src/cea/cli.py`, `src/cea/__main__.py` | 007 | `python -m cea FILE.c [--json]`. The **only** modules allowed to call `print`. |
+| `src/cea/cli.py`, `src/cea/__main__.py` | 007 | `python -m cea FILE.c [--json]`. `__main__.py` contains only `from cea.cli import main` and `raise SystemExit(main())`; **`cli.py` is the only module allowed to call `print`**. |
 
 **Rule (PRD F1: "No phase may print directly to the console").** No module except `cli.py` may call `print(` or write to `sys.stdout`/`sys.stderr`. Plan 005 adds a test that greps `src/cea/*.py` for `print(` and allows it only in `cli.py`.
 
@@ -69,6 +69,7 @@ class CatalogEntry:
     message_template: str
 
 def load_catalog(path: Path | None = None) -> dict[str, CatalogEntry]: ...
+def load_grammar_rules(path: Path | None = None) -> frozenset[str]: ...   # the 36 rule names of language-spec §2 ebnf block; used to validate syntax rule_refs (added in review of plan 005)
     # default path: <repo root>/docs/error-catalog.md, where repo root = Path(__file__).resolve().parents[2]
     # parse table rows matching r"^\|\s*(LEX|SYN|SEM|WRN)-", 7 cells, strip backticks; cached (functools.lru_cache)
 ```
@@ -80,7 +81,8 @@ class ErrorSink:
     def report(self, code: str, line: int, column: int, *,
                found: str,
                expected: Sequence[str] = (),
-               span_end: Position | None = None,     # default: Position(line, column + max(len(found),1) - 1)
+               span_end: Position | None = None,     # default: zero-width Position(line, column) if found == "EOF" or code == "SYN-MISSING-SEMICOLON";
+                                                     #          otherwise Position(line, column + max(len(found),1) - 1)
                caused_by: str | None = None,
                rule_ref: str | None = None,          # required when the catalog rule_ref is "<production>"
                **message_args: object) -> ErrorRecord: ...
@@ -93,7 +95,7 @@ class ErrorSink:
 - `phase`, `severity` and the default `rule_ref` come from the catalog. If the catalog's `rule_ref` is `<production>`, a `rule_ref` argument is required, and it must be a grammar rule name.
 - `id` is `f"E-{n:04d}"` in creation order. `root_id` is set to `id`. `language` is set to `"c"`.
 - `snippet` is the source lines `max(1, line-1) .. min(last, line+1)`, joined with `"\n"` and otherwise unmodified. That gives "3 lines around the error" (PRD), or fewer at the file's edges.
-- `message` is the template formatted with `found`, `expected` and the `message_args`. `{expected}` renders as the items joined by `" or "`. Each item is wrapped in single quotes unless the template already writes `'{expected}'`. Formatting is **strict**: a missing placeholder raises `KeyError`. That is a programming error and must surface in tests.
+- `message` is the template formatted with `found`, `expected` and the `message_args`. `{expected}` renders as the items joined by `" or "`. **Only for codes whose catalog phase is `syntax`**, each item is wrapped in single quotes, unless the template already writes `'{expected}'`. For lexical and semantic codes the items are inserted raw (they are type names, counts or names: "expects 2 argument(s)", not "expects '2' argument(s)"). `{found}` is always inserted raw (the templates already quote it where needed). Formatting is **strict**: a missing placeholder raises `KeyError`. That is a programming error and must surface in tests. *(Amended 2026-10-10 during review of plan 005.)*
 - An unknown code raises `KeyError`.
 
 ## 3. Tokens and lexer (plan 005)
@@ -126,7 +128,11 @@ class LexResult:
 def lex(source: str, sink: ErrorSink) -> LexResult: ...
 ```
 
-The EOF token's position is immediately after the last token (end line, end column + 1), or 1:1 for an empty file (error-recovery §8). Columns count characters, and a tab counts as one column.
+The EOF token's position is immediately after the last token (end line, end column + 1), or 1:1 for an empty file (error-recovery §8). Columns count characters, and a tab counts as one column. `
+`, `
+` and a lone `` each count as one newline; `` never occupies a column.
+
+**Directives:** `#include <stdio.h>` is accepted when `#` is the first non-blank character of the line, with spaces or tabs allowed around the parts. It may be followed on the same line by whitespace and/or a comment (`// …`, or `/* … */` closed on that line), because comments are whitespace (language-spec §1). Anything else after it makes the line LEX-UNSUPPORTED-DIRECTIVE. *(Amended in review of plan 005.)*
 
 ## 4. AST (plan 006 defines it; plan 007 consumes it)
 
