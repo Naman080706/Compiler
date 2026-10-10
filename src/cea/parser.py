@@ -439,10 +439,15 @@ class Parser:
             self.consume()
 
     def is_lvalue(self, e: A.Expr) -> bool:
-        return True
+        if id(e) in self.paren:
+            return False
+        if isinstance(e, A.Name):
+            return True
+        return isinstance(e, A.Index) and isinstance(e.base, A.Name) and id(e.base) not in self.paren
 
     def invalid_target(self, op: Token) -> NoReturn:
-        raise NotImplementedError("plan 006 step 9")
+        """SYN-INVALID-ASSIGN-TARGET at the assignment/increment operator."""
+        raise ParseError(self.report("SYN-INVALID-ASSIGN-TARGET", op, []), "SYN-INVALID-ASSIGN-TARGET")
 
     # ==================================================== grammar (step 3)
     @rule("program")
