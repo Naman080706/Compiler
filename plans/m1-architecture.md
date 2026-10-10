@@ -97,6 +97,7 @@ class ErrorSink:
 - `snippet` is the source lines `max(1, line-1) .. min(last, line+1)`, joined with `"\n"` and otherwise unmodified. That gives "3 lines around the error" (PRD), or fewer at the file's edges.
 - `message` is the template formatted with `found`, `expected` and the `message_args`. `{expected}` renders as the items joined by `" or "`. **Only for codes whose catalog phase is `syntax`**, each item is wrapped in single quotes, unless the template already writes `'{expected}'`. For lexical and semantic codes the items are inserted raw (they are type names, counts or names: "expects 2 argument(s)", not "expects '2' argument(s)"). `{found}` is always inserted raw (the templates already quote it where needed). Formatting is **strict**: a missing placeholder raises `KeyError`. That is a programming error and must surface in tests. *(Amended 2026-10-10 during review of plan 005.)*
 - An unknown code raises `KeyError`.
+- **`found` for type-valued templates.** For codes whose template uses `{found}` as a type name or count (SEM-TYPE-MISMATCH, SEM-ARG-COUNT, SEM-ARG-TYPE, SEM-RETURN-TYPE, SEM-INDEX-NOT-INT, WRN-IMPLICIT-NARROWING), `found` holds that type/count text, and the caller passes `span_end` explicitly (the offending identifier or operator's extent). *(Amended in review of plan 007.)*
 
 ## 3. Tokens and lexer (plan 005)
 
@@ -128,9 +129,12 @@ class LexResult:
 def lex(source: str, sink: ErrorSink) -> LexResult: ...
 ```
 
-The EOF token's position is immediately after the last token (end line, end column + 1), or 1:1 for an empty file (error-recovery §8). Columns count characters, and a tab counts as one column. `
+The EOF token's position is immediately after the last token (end line, end column + 1), or 1:1 for an empty file (error-recovery §8). Columns count characters, and a tab counts as one column. `
+
 `, `
-` and a lone `` each count as one newline; `` never occupies a column.
+` and a lone `
+` each count as one newline; `
+` never occupies a column.
 
 **Directives:** `#include <stdio.h>` is accepted when `#` is the first non-blank character of the line, with spaces or tabs allowed around the parts. It may be followed on the same line by whitespace and/or a comment (`// …`, or `/* … */` closed on that line), because comments are whitespace (language-spec §1). Anything else after it makes the line LEX-UNSUPPORTED-DIRECTIVE. *(Amended in review of plan 005.)*
 
@@ -145,7 +149,7 @@ class Span:
 
 # ---- top level
 @dataclass
-class Program:      decls: list["FunctionDecl | VarDeclStmt | ErrorStmt"]; span: Span
+class Program:      decls: list["FunctionDecl | VarDeclStmt | ErrorStmt"]; span: Span   # span = 1:1 .. the EOF token's position (start = end = EOF pos); semantic uses span.end_* as the EOF position (amended in review of plan 007)
 
 @dataclass
 class Param:        type_name: str; name: str; name_pos: Position; span: Span
@@ -264,4 +268,4 @@ def compile_source(source: str, filename: str) -> CompileResult: ...
 - **Trace tests:** `tests/test_recovery_traces.py` (plan 007) asserts the exact record table of every trace T1–T7 in `docs/error-recovery.md` §9: id, code, line:col, found, caused_by. Plans 005 and 006 test the lexical and syntax subsets of those traces in their own unit tests.
 - **Determinism:** no sets are iterated when creating records (sort first), and there is no dependence on dict order beyond insertion order.
 - **Nothing may print** (see §1).
-- **No changes to `docs/` or `tests/corpus/`** in plans 005–007. A needed spec change is reported, not made. Plan 004 is the only milestone-1 plan that edits docs and sidecars.
+- **No changes to `docs/` or `tests/corpus/`** in plans 005–007. A needed spec change is reported, not made. Plan 004 is the only milestone-1 plan that edits docs and sidecars. **One advisor-approved exception:** plan 007 rewrites the `sem.return_paths` paragraph of `docs/language-spec.md` (a block returns on every path if ANY of its statements does; statements after it are unreachable), because the literal "last statement" wording made `return 1; f();` also warn about a missing return.
