@@ -67,7 +67,7 @@ We follow the PRD's five milestones: 1 Foundation (F1, F4), 2 Intelligence (F2, 
 
 There is one deliberate change in order. The PRD puts the faulty-program test corpus in milestone 5, but we build it **before** milestone 1. Each milestone then has automatic pass/fail tests from day one: for example, F1's "one lexical, one syntax, one semantic error → three records" and F2's "missing semicolon → 1 root cause". Measuring the final metrics and writing the report stay in milestone 5.
 
-### 1.8 Error recovery: record everything, link the cascades (plan 002, planned)
+### 1.8 Error recovery: record everything, link the cascades (designed in `docs/error-recovery.md`; implementation planned)
 
 - **Missing `;` is repaired, not panicked over.** If the next token starts on a new line, the parser reports SYN-MISSING-SEMICOLON just after the statement and continues as if the `;` were there. Nothing is skipped, so no cascade arises.
 - **Missing `}` is repaired too.** `int main(` inside a function body can only mean an earlier `}` is missing (C has no nested functions). We report one error there and parse the next function normally.
@@ -75,14 +75,20 @@ There is one deliberate change in order. The PRD puts the faulty-program test co
 - **Semantic analysis always runs, even after syntax errors.** It works on a partial syntax tree with error nodes. That's how one file can show a lexical, a syntax and a semantic error at once (the PRD F1 acceptance test).
 - **We never hide errors; we link them.** Each error may carry `caused_by` (the error that caused it), set only by 8 mechanical rules such as "this operand failed to parse". The raw count is every error; the displayed count is the root causes. This is what F2's "70% fewer displayed errors" measures.
 - **The poison `<error>` type.** An expression that failed to parse has type `<error>`, which passes type checks silently. We can't type-check something we couldn't parse, so no error is hidden, because none was detected.
+- **Missing `)` before `{` is repaired too** (`while (i < 10 {`). A `{` can never appear inside an expression, so the missing `)` is certain. Repairing it keeps the loop intact, so a `break` inside it isn't wrongly reported as "outside a loop".
+- **Lexical errors are linked to the syntax errors they cause.** In `int x = 5 @ 2;` the lexer drops the `@`. The parser then sees `5 2` and reports a missing `;`, but that error is linked to the `@` error, so the student is shown the real cause.
+- **Every rule was checked by hand on 8 example programs** (missing `;` on a new line and on the same line, missing `}`, missing `(`, an undeclared variable used 5 times, a bad character, the F1 three-error file, missing `)`), listing every error, its position and its link.
 - **An honest finding about the PRD.** F2's acceptance test ("one missing semicolon that previously produced 10+ errors shows 1 root") can't be met as written. Our recovery turns a missing `;` into exactly 1 error, so there is no cascade to collapse. We refused to add a "naive mode" just to create fake cascades. Instead we proposed corrected wording, measured on a fixed set of genuinely cascading files **(PRD update pending)**.
+- **The 70% target is at risk, and we say so.** On our five hand-traced cascading examples, clustering cuts 13 raw errors to 5 displayed, a 62% reduction. Good recovery leaves fewer cascades to collapse, so the PRD target may be miscalibrated. The real number will be measured on the 20 held-out programs in milestone 5.
 
-### 1.9 The test corpus (plan 003, planned)
+### 1.9 The test corpus (plan 003, built)
 
-- **Test programs:** 37 single-error programs (one per error code), 11+ cascading, 4 multi-fault, 12+ valid, and **20 held-out** programs for the final metrics.
+- **Test programs (built):** 85 C programs. 53 dev programs cover every one of the 37 error codes, plus cascading and multi-fault cases; 12 are valid; and **20 are held out** for the final metrics. Each is realistic student code (bank balance, GPA calculator, power, factorial tables).
+- **The cascade set was derived, not guessed.** Each program's expected errors were hand-traced through our recovery rules, and a file counts as "cascading" only if one fault gives 2 or more raw errors (15 dev, 8 held-out). Our first guesses were wrong for 17 files. For example, a missing `;` we'd assumed gave 10+ errors gives exactly 1 under our repair rule.
+- **The tests found design gaps before any code was written.** Tracing showed that an unsupported pointer declaration loses the variable's name (so later uses look undeclared), and that `break` inside an unsupported `switch` isn't linked to the `switch` error. Both fixes are scheduled for milestone 1.
 - **Held-out discipline:** the 20 held-out programs are never looked at while tuning the parser or clustering. Bugs they reveal are reproduced as new dev programs. This prevents overfitting our own evaluation.
 - **Expected results:** each program has a JSON sidecar listing the root causes F2 should show (code + line), not raw error counts. Raw counts depend on recovery details, so we don't predict them.
-- **gcc as an independent check:** `gcc -std=c99 -pedantic-errors -fsyntax-only` runs on every program. Any program we expect to accept must also be accepted by gcc ("accepted => valid C99"). Whether gcc rejects each faulty program is recorded by actually running it, never guessed.
+- **gcc as an independent check:** `gcc -std=c99 -pedantic-errors -fsyntax-only` runs on every program. Any program we expect to accept must also be accepted by gcc ("accepted => valid C99"). Whether gcc rejects each faulty program is recorded by actually running it, never guessed. Result: gcc rejects 59 of 85 programs and accepts 26. The 26 are all valid programs, warning-only programs, or cases where our subset is deliberately stricter than C99 (a variable-length array, a missing `main`, `const`, pointers, `switch`, `<math.h>`). There are 0 mismatches.
 
 ---
 
@@ -136,8 +142,20 @@ Suppression hides information and makes the "fewer displayed errors" metric impo
 **Q: Your PRD says one missing semicolon gives 10+ errors. Does it in your compiler?**
 No. Our recovery repairs it, giving exactly 1 error. We report that the PRD's test, as worded, is trivially true and so can't demonstrate clustering. We proposed measuring on genuinely cascading files instead, such as an undeclared variable used 5 times or a lexical error inside an expression (1.8).
 
+**Q: Can your parser loop forever on bad input?**
+No. The design includes a progress proof: every recovery step consumes at least one token or leaves the loop, checked for all 10 places a `;` can appear in the grammar. There is also a safety-net guard that fails loudly in tests if it ever fires.
+
+**Q: Do you reach the PRD's 70% error-reduction target?**
+Our hand traces give 62%. Better recovery leaves fewer cascades to collapse, so we report the real number and proposed measuring on a fixed set of cascading files (1.8).
+
 **Q: How do you avoid overfitting to your test set?**
 The 20 evaluation programs are held out and never used while designing recovery or clustering (1.9).
+
+**Q: Some of your "faulty" programs compile with gcc. Isn't that a contradiction?**
+No. Our subset is deliberately stricter than C99. A variable-length array, `const`, pointers and `switch` are valid C that we choose not to support, and a missing `main` is only a link-time error in real C. The rule we enforce is one-directional: every program *we* accept must compile with gcc (1.9).
+
+**Q: How did you decide which test files count as "cascading"?**
+By hand-tracing each program through our recovery rules before the compiler existed, not by guessing. A file is cascading only if one fault produces 2 or more raw errors. This corrected 17 initial guesses (1.9).
 
 **Q: How will you evaluate it?**
 On a folder of faulty C programs with known injected faults, which also serves as the pytest suite. Targets:
@@ -157,6 +175,8 @@ On a folder of faulty C programs with known injected faults, which also serves a
 - **Literal forms are limited:** hex (`0x1F`), octal-style, exponent (`1e3`) and suffixed (`1.0f`, `10L`) literals are not part of the subset. They are reported as malformed numbers.
 - **No runtime errors:** division by zero or out-of-range array indexes at runtime are out of scope, as the PRD says.
 - **No uninitialised-variable warning or `printf` format checking** in the first version. These were deferred.
+- **Over-linking after a broken `for` header:** after such an error, the next statement in the loop body may be wrongly linked to it. This is documented and will be measured on the corpus.
+- **A missing `}` in the last function** is detected only at end of file, not where the brace was forgotten.
 - **Clustering is heuristic:** unusual cascades may be missed. Misses are logged and new rules added.
 - **The user study is small:** 5–10 classmates, so the result is indicative, not statistically strong.
 
@@ -170,3 +190,5 @@ On a folder of faulty C programs with known injected faults, which also serves a
 | 2026-10-10 | Section 1.7 (5 milestones, no cuts, corpus first) + Q&A | Owner decision: build all 9 features |
 | 2026-10-10 | 1.6 updated, 1.6a (differences from gcc), 2 Q&A, literal-form limitation | Plan 001 executed and reviewed |
 | 2026-10-10 | 1.8 (error recovery), 1.9 (test corpus), 4 Q&A | Plans 002 and 003 drafted and cross-reviewed |
+| 2026-10-10 | 1.8 expanded (missing `)` repair, lex links, 8 traces, 62% finding), 2 limitations, 2 Q&A | Plan 002 executed and reviewed |
+| 2026-10-10 | 1.9 updated (85 programs built, traced cascade set, design gaps found, gcc 59/26), 2 Q&A | Plan 003 executed, revised and reviewed |
