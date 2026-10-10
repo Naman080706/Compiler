@@ -1,0 +1,11 @@
+{
+  "description": "Finds the largest and smallest of six readings using a multi-variable declaration and a helper function.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Uses 'int best, i;' style declarations, && and a function with a final return."
+}

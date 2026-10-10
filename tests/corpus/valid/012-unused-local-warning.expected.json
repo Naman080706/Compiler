@@ -1,0 +1,13 @@
+{
+  "description": "Totals the cost of a few items but declares a local variable 'spare' that is never used, which should produce one warning.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-UNUSED-VAR", "line": 5}
+  ],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Intentional warning: 'spare' is declared and never read. Everything else is clean; gcc accepts the file."
+}

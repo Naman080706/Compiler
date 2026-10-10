@@ -1,0 +1,11 @@
+{
+  "description": "Classifies three scores into grades with an if / else-if / else chain in a void function.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "if / else if / else chain that ends in a plain else; char values from character literals."
+}

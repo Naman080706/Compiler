@@ -1,0 +1,11 @@
+{
+  "description": "Walks the letters a to z by character code, counts the vowels and prints the first and last letter in capitals.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "char variables, character literals, char arithmetic converted back to char, || and escape \\n."
+}

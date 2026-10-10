@@ -1,0 +1,11 @@
+{
+  "description": "Stores five marks in an array, adds them in a loop and prints the total and the average.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Array, for loop, += and integer division. No diagnostics expected."
+}

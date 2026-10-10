@@ -1,0 +1,11 @@
+{
+  "description": "Lists the primes up to 30 using a while loop, a prime-test function and 'continue'.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "while loops, continue as the last statement of its block, early returns, ! operator."
+}
