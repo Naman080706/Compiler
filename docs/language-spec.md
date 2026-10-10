@@ -210,10 +210,14 @@ int g(void) {
 ```
 
 ### sem.return_paths
-A non-void function other than `main` should return on every path: the body's
-last statement is a `return`, or an `if` with an `else` whose branches both
-return on every path (recursively through blocks). Loops never count.
-Violation is a warning, as in gcc's -Wreturn-type. `main` implicitly returns 0.
+A non-void function other than `main` should return on every path. A
+statement returns on every path if it is a `return`, a block in which ANY
+statement returns on every path, or an `if` with an `else` whose two branches
+both return on every path. Loops never count. Statements that follow a
+statement which returns on every path, in the same block, can never run: the
+first of them gets WRN-UNREACHABLE-CODE (`sem.unreachable`), not a missing
+return. Violation is a warning, as in gcc's -Wreturn-type. `main` implicitly
+returns 0.
 
 ```c
 int f(int b) {
@@ -309,8 +313,10 @@ int main(void) {
 ```
 
 ### sem.unreachable
-The first statement after a `return`, `break` or `continue` in the same block
-produces one warning. This is a teaching warning that gcc does not emit.
+The first statement after a `break`, a `continue`, or any statement that
+returns on every path (a `return`, a block containing one, or an `if`/`else`
+whose branches both return on every path; see `sem.return_paths`) in the same
+block produces one warning. This is a teaching warning that gcc does not emit.
 
 ```c
 int main(void) {
