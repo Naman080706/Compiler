@@ -376,6 +376,47 @@ int main(void) {
 
 What NO would have produced: the same E-0001 record, then statement-level panic, which would stop at once before `{` (it is in `SYNC_STMT_STOP`), giving an `ErrorStmt` (`kind_hint = "while"`, `stopped_before = "{"`, region owner E-0001) and an orphan block. The `break` at 6:13 would give a second record, SEM-BREAK-OUTSIDE-LOOP, linked to E-0001 by R7, and the read of `i` in the condition would be lost. YES gives one record where NO gives two.
 
+### T8, unsupported `switch` with cases
+
+```c
+int main(void) {
+    int n = 2;
+    switch (n) {
+        case 1:
+            n = 5;
+            break;
+        default:
+            n = 0;
+    }
+    return n;
+}
+```
+
+1. The lexer records nothing.
+2. Line 3: `statement()` sees `switch`, an UNSUPPORTED_KEYWORD. This gives E-0001 SYN-UNSUPPORTED-FEATURE at 3:5 (selection rule 0, `rule_ref = statement`). No region is open and there is no `lex_gap`, so `caused_by` is null. Statement-level panic opens the region (owner E-0001), skips `switch ( n )` and stops before `{`. The result is an `ErrorStmt` with `kind_hint` `unsupported`, `stopped_before = "{"` and `declared_names = []`, because no IDENT is followed by `= ; , [`.
+3. The `{` at 3:16 starts a block with `orphan_of = E-0001`.
+4. Line 4: `case` gives E-0002 SYN-UNSUPPORTED-FEATURE at 4:9, linked to E-0001 by R2 (the region is open). Panic skips `case 1 :` and `n = 5`, then consumes `;`, which closes the region.
+5. Line 6 `break;` parses as a `Break`.
+6. Line 7: `default` gives E-0003 SYN-UNSUPPORTED-FEATURE at 7:9. R2 does not apply (the region is closed) and neither does R1. R9 applies (the innermost block is an orphan of the `unsupported` E-0001), so `caused_by = E-0001`. Panic skips `default : n = 0` and consumes `;`.
+7. The `}` on line 9 ends the orphan block. Lines 10 and 11 parse normally.
+8. Semantics: the `break` at 6:13 is inside the orphan block of an `unsupported` `ErrorStmt` with no real loop in between. This gives E-0004 SEM-BREAK-OUTSIDE-LOOP at 6:13, linked to E-0001 by R7. `n` is read in `return n`, so there is no warning.
+
+### T9, unsupported pointer declaration
+
+```c
+int main(void) {
+    int *p;
+    p = 0;
+    return p;
+}
+```
+
+1. The lexer records nothing.
+2. Line 2: `var_decl` consumes `int`, then expects IDENT and finds `*` at 2:9 directly after a `type_spec`. This gives E-0001 SYN-UNSUPPORTED-FEATURE at 2:9 (rule 0, `found = *`), with null `caused_by`.
+3. The IDENT was not consumed, so the result is an `ErrorStmt` with `kind_hint` `decl`. Panic skips `* p` and consumes `;` (the region opens and closes).
+4. Because the error is SYN-UNSUPPORTED-FEATURE, the new rule of §5 applies: `p` is preceded by `*` and followed by `;`, so `declared_names = [("p", "<unsupported>")]`.
+5. Semantics: `p` at 3:5 is undeclared, giving E-0002 SEM-UNDECLARED-VAR, linked to E-0001 by R5. `p` at 4:12 gives E-0003 SEM-UNDECLARED-VAR, also R5. Both have type `<error>`, so `return p` raises no type error.
+
 ### Record table
 
 | Trace | Id | Code | Line:Col | Found | caused_by | root_id |
@@ -398,6 +439,13 @@ What NO would have produced: the same E-0001 record, then statement-level panic,
 | T6 | E-0002 | SYN-MISSING-SEMICOLON | 5:22 | result | — | E-0002 |
 | T6 | E-0003 | SEM-UNDECLARED-VAR | 6:5 | result | — | E-0003 |
 | T7 | E-0001 | SYN-UNBALANCED-BRACKET | 3:19 | { | — | E-0001 |
+| T8 | E-0001 | SYN-UNSUPPORTED-FEATURE | 3:5 | switch | — | E-0001 |
+| T8 | E-0002 | SYN-UNSUPPORTED-FEATURE | 4:9 | case | E-0001 | E-0001 |
+| T8 | E-0003 | SYN-UNSUPPORTED-FEATURE | 7:9 | default | E-0001 | E-0001 |
+| T8 | E-0004 | SEM-BREAK-OUTSIDE-LOOP | 6:13 | break | E-0001 | E-0001 |
+| T9 | E-0001 | SYN-UNSUPPORTED-FEATURE | 2:9 | * | — | E-0001 |
+| T9 | E-0002 | SEM-UNDECLARED-VAR | 3:5 | p | E-0001 | E-0001 |
+| T9 | E-0003 | SEM-UNDECLARED-VAR | 4:12 | p | E-0001 | E-0001 |
 
 ### Summary table
 
@@ -411,8 +459,10 @@ What NO would have produced: the same E-0001 record, then statement-level panic,
 | T5 | 2 | 1 | 2 | 0 | n/a |
 | T6 | 3 | 3 | 3 | 0 | match |
 | T7 | 1 | 1 | 1 | 0 | n/a |
+| T8 | 4 | 1 | 4 | 0 | n/a |
+| T9 | 3 | 1 | 3 | 0 | n/a |
 
-Raw counts all records; displayed counts distinct roots under the provisional rule of §7. Across the five traces whose raw count is at least 2 (T1b, T2, T3, T4, T5), raw is 13 and displayed is 5, a reduction of 62%. T6 is deliberately three independent faults, so it stays at 3.
+Raw counts all records; displayed counts distinct roots under the provisional rule of §7. Across the seven single-fault traces whose raw count is at least 2 (T1b, T2, T3, T4, T5, T8, T9), raw is 20 and displayed is 7, a reduction of 65%. T6 is deliberately three independent faults, so it stays at 3.
 
 No trace triggered the loop guard (§4.6 point 3): in every trace each parser loop iteration consumed at least one token.
 
