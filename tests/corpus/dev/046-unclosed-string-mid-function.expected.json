@@ -1,0 +1,15 @@
+{
+  "description": "The second printf in the middle of main lacks its closing double quote, and more statements follow it.",
+  "split": "dev",
+  "injected_faults": [
+    "line 8: string literal \"Cost: %d\\n opened but never closed before the end of the line"
+  ],
+  "roots": [
+    {"code": "LEX-UNTERMINATED-STRING", "line": 8}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 2. LEX-UNTERMINATED-STRING 8 (caused_by: none), SYN-EXPECTED-EXPRESSION 9 (caused_by: R1). 'printf(' is left without an argument, so the parser finds 'if' on line 9 (lex_gap set, R1). Panic stops at once before 'if', which is parsed normally; 'cost' is still read on later lines. gcc: missing terminating \" character, then expected ')' before 'if'."
+}

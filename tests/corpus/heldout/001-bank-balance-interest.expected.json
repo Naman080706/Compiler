@@ -1,0 +1,15 @@
+{
+  "description": "Compound-interest loop over five years where the declaration of 'balance' lacks its semicolon.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 4: missing ';' at the end of 'double balance = 1000.0'"
+  ],
+  "roots": [
+    {"code": "SYN-MISSING-SEMICOLON", "line": 4}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-MISSING-SEMICOLON 4 (caused_by: none). Phrase repair (section 4.2): the next token 'double' starts on a later line, so the declaration is completed and nothing else is lost. gcc: expected ',' or ';' before 'double'."
+}

@@ -1,0 +1,19 @@
+{
+  "description": "Three helper/main functions each contain one fault: a stray '@' (lexical), a missing ';' (syntax) and an undeclared 'tot' (semantic).",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: stray character '@' after 'return n * n;' in square()",
+    "line 8: missing ';' at the end of 'int result = n * n * n' in cube()",
+    "line 19: 'tot' is not declared in main (the variable is called 'total')"
+  ],
+  "roots": [
+    {"code": "LEX-INVALID-CHAR", "line": 4},
+    {"code": "SYN-MISSING-SEMICOLON", "line": 8},
+    {"code": "SEM-UNDECLARED-VAR", "line": 19}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 3. LEX-INVALID-CHAR 4 (caused_by: none), SYN-MISSING-SEMICOLON 8 (caused_by: none), SEM-UNDECLARED-VAR 19 (caused_by: none). Three independent faults, so cascading is true only by raw count (3 raw, 3 roots): the '@' does not disturb the parser, the missing ';' is phrase-repaired (next token starts a new line) and 'tot' has no ErrorStmt declaring it. The PRD F1 acceptance program."
+}

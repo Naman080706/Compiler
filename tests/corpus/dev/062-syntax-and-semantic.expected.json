@@ -1,0 +1,17 @@
+{
+  "description": "average() has an empty operand after '/', and main indexes the plain int 'count' as if it were an array.",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: expression missing after '/' in 'return total / ;'",
+    "line 14: 'count' is an int, not an array, so 'count[0]' is invalid"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-EXPRESSION", "line": 4},
+    {"code": "SEM-NOT-ARRAY", "line": 14}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 3. SYN-EXPECTED-EXPRESSION 4 (caused_by: none), WRN-MISSING-RETURN 3 (caused_by: R8), SEM-NOT-ARRAY 14 (caused_by: none). The failed 'return total / ;' becomes an ErrorStmt, so average() has no return and R8 links WRN-MISSING-RETURN to the syntax record (the warning is not in the sidecar warnings because of the SYN root). SEM-NOT-ARRAY is independent. Raw 3 but 2 roots: cascading is true by raw count."
+}

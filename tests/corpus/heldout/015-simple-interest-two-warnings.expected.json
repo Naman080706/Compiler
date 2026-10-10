@@ -1,0 +1,17 @@
+{
+  "description": "Simple-interest program that stores a fractional result in an int and declares an unused 'bonus' variable.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 9: the double expression 'principal * rate * years / 100.0' is stored in the int 'interest'",
+    "line 8: local variable 'bonus' is declared but never used"
+  ],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-IMPLICIT-NARROWING", "line": 9},
+    {"code": "WRN-UNUSED-VAR", "line": 8}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Expected under plan 002: raw 2. WRN-UNUSED-VAR 8 (caused_by: none), WRN-IMPLICIT-NARROWING 9 (caused_by: none). Two independent warnings (2 raw, 2 roots, 0 fatal), so cascading stays false: the schema test requires a cascading program to have at least one root, and this one is warning-only. The relative order of the two ids depends on when the analyser emits unused-variable warnings (plan 002 does not fix it); listed here by line."
+}

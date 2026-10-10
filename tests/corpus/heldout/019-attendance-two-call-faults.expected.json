@@ -1,0 +1,17 @@
+{
+  "description": "Computes attendance percentage but uses the result of the void show() and passes a string to percent().",
+  "split": "heldout",
+  "injected_faults": [
+    "line 23: the void function show() is used as a value in 'pct = show(...)'",
+    "line 24: argument 2 of percent() is the string \"sixty\" but the parameter is an int"
+  ],
+  "roots": [
+    {"code": "SEM-VOID-VALUE", "line": 23},
+    {"code": "SEM-ARG-TYPE", "line": 24}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 2. SEM-VOID-VALUE 23 (caused_by: none), SEM-ARG-TYPE 24 (caused_by: none). Two independent semantic faults (2 raw, 2 roots), so cascading is true only by raw count."
+}

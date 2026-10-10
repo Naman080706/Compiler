@@ -1,0 +1,11 @@
+{
+  "description": "Fills an array with the first ten Fibonacci numbers and prints them.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Array element reads and writes with computed indices; two printf calls."
+}

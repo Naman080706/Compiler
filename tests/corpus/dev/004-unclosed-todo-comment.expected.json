@@ -1,0 +1,15 @@
+{
+  "description": "Average-of-three program ends with a '/* TODO' block comment that is never closed.",
+  "split": "dev",
+  "injected_faults": [
+    "line 11: block comment opened with '/*' is never closed with '*/' before the end of the file"
+  ],
+  "roots": [
+    {"code": "LEX-UNTERMINATED-COMMENT", "line": 11}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. LEX-UNTERMINATED-COMMENT 11 (caused_by: none). Expected under plan 002: raw 1. LEX-UNTERMINATED-COMMENT 11 (caused_by: none). The file ends inside the comment (line 12); the error is reported at the '/*' on line 11, not at EOF. The code above the comment is valid. gcc: unterminated comment."
+}

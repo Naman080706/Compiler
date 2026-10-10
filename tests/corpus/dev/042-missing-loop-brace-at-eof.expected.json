@@ -1,0 +1,15 @@
+{
+  "description": "The 'while' loop in main (the last function) is never closed, so the file ends while main's body is still open.",
+  "split": "dev",
+  "injected_faults": [
+    "line 9: closing '}' of the while loop is missing (the final '}' closes the loop, not main)"
+  ],
+  "roots": [
+    {"code": "SYN-UNEXPECTED-EOF", "line": 12}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-UNEXPECTED-EOF 12 (caused_by: none). Only main's body is still open at EOF (the last '}' closes the while), so exactly one SYN-UNEXPECTED-EOF is recorded (section 4.4) and main stays intact. gcc: expected declaration or statement at end of input."
+}

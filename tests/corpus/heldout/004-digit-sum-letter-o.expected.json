@@ -1,0 +1,15 @@
+{
+  "description": "Adds the digits of a number, but the divisor is typed as '1O' (digit one, letter O).",
+  "split": "heldout",
+  "injected_faults": [
+    "line 7: '1O' mixes a digit and a letter, so it is not a valid number"
+  ],
+  "roots": [
+    {"code": "LEX-MALFORMED-NUMBER", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 2. LEX-MALFORMED-NUMBER 7 (caused_by: none), SYN-EXPECTED-EXPRESSION 7 (caused_by: R1). The skipped '1O' leaves 'n = n / ;'; the ';' carries lex_gap (R1). The ErrorStmt is skipped; n is a parameter, so there is no unused warning. gcc: invalid suffix \"O\" on integer constant."
+}

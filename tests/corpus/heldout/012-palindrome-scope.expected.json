@@ -1,0 +1,15 @@
+{
+  "description": "Reverses a number to test for a palindrome, but 'digit' is declared inside the loop body and used after the loop.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 12: 'digit' is used after the while block that declares it, where it is out of scope"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-VAR", "line": 12}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 4. SEM-UNDECLARED-VAR 12 (caused_by: none), SEM-UNDECLARED-VAR 13 (caused_by: none), SEM-UNDECLARED-VAR 16 (caused_by: none), SEM-UNDECLARED-VAR 16 (caused_by: none). No parse error, so R5 does not apply; 'digit' is out of scope after the while block, and each of its four uses (line 16 has two) is its own record. F2 groups them under the first."
+}

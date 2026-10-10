@@ -1,0 +1,15 @@
+{
+  "description": "Loop accumulates with add() but the call passes one argument instead of two.",
+  "split": "dev",
+  "injected_faults": [
+    "line 11: call add(total) is missing its second argument (should be add(total, i))"
+  ],
+  "roots": [
+    {"code": "SEM-ARG-COUNT", "line": 11}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-ARG-COUNT 11 (caused_by: none). Expected under plan 002: raw 1. SEM-ARG-COUNT 11 (caused_by: none). Single fault. Line 11 is the line of the identifier 'add' in the call. gcc: 11:17 too few arguments to function 'add'."
+}

@@ -1,0 +1,17 @@
+{
+  "description": "main calls add() with one argument, and the void helper report() returns a value.",
+  "split": "dev",
+  "injected_faults": [
+    "line 14: add(x) passes one argument but add takes two",
+    "line 9: 'return value;' returns a value from the void function report()"
+  ],
+  "roots": [
+    {"code": "SEM-ARG-COUNT", "line": 14},
+    {"code": "SEM-RETURN-TYPE", "line": 9}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 2. SEM-RETURN-TYPE 9 (caused_by: none), SEM-ARG-COUNT 14 (caused_by: none). Two independent semantic faults (2 raw, 2 roots), so cascading is true only by raw count."
+}

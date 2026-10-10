@@ -1,0 +1,15 @@
+{
+  "description": "Sums the squares of 1 to 5, but main calls square() before the function is defined and there is no prototype.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: square(i) is called before any declaration of square (the definition comes later in the file)"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-FUNC", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-UNDECLARED-FUNC 7 (caused_by: none). Expected under plan 002: raw 1. SEM-UNDECLARED-FUNC 7 (caused_by: none). Single fault; the one call is the first use. Fix: add a prototype before main or move the definition up. gcc: implicit declaration of function 'square'."
+}

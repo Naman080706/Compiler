@@ -1,0 +1,15 @@
+{
+  "description": "Stores n marks in an array whose size is the variable n instead of a literal.",
+  "split": "dev",
+  "injected_faults": [
+    "line 5: array size 'n' is a variable, not an integer literal"
+  ],
+  "roots": [
+    {"code": "SEM-BAD-ARRAY-SIZE", "line": 5}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Expected under plan 002: raw 1. SEM-BAD-ARRAY-SIZE 5 (caused_by: none). Expected under plan 002: raw 1. SEM-BAD-ARRAY-SIZE 5 (caused_by: none). Single fault. gcc accepts this as a C99 variable-length array, so gcc_rejects is false: the subset is stricter than C99."
+}

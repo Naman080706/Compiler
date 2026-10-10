@@ -1,0 +1,15 @@
+{
+  "description": "Prints a Celsius to Fahrenheit table and flags hot days, but 'if c > 30)' has no opening parenthesis.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 9: 'if c > 30) {' is missing '(' after 'if'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-TOKEN", "line": 9}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-EXPECTED-TOKEN 9 (caused_by: none). Panic stops before '{', so the block becomes an orphan block that is still analysed. 'c' and 'hot' are read on other lines, so there is no WRN-UNUSED-VAR and no break to link. gcc: expected '(' before 'c'."
+}

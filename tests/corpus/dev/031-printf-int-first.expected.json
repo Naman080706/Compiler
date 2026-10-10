@@ -1,0 +1,15 @@
+{
+  "description": "Prints the total with printf(total), but the first argument of printf must be a string literal.",
+  "split": "dev",
+  "injected_faults": [
+    "line 9: first argument of printf is the int 'total', not a string literal"
+  ],
+  "roots": [
+    {"code": "SEM-PRINTF-FORMAT", "line": 9}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-PRINTF-FORMAT 9 (caused_by: none). Expected under plan 002: raw 1. SEM-PRINTF-FORMAT 9 (caused_by: none). Single fault. gcc: passing argument 1 of 'printf' makes pointer from integer without a cast (an error under -pedantic-errors)."
+}

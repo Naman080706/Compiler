@@ -1,0 +1,15 @@
+{
+  "description": "The declaration 'double average = ;' has no initial value expression, and 'average' is used four more times.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: expression missing after '=' in 'double average = ;'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-EXPRESSION", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-EXPECTED-EXPRESSION 6 (caused_by: none). 'double average = ;' is a broken declaration (section 5): the initializer becomes an ErrorExpr, the ';' is consumed, and 'average' stays declared as double, so its later uses raise nothing. gcc: expected expression before ';' token."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Prints squares of 1 to 5, but the closing brace of main (the last function) is missing.",
+  "split": "dev",
+  "injected_faults": [
+    "end of file (line 12): closing '}' of 'main' is missing at the end of the file"
+  ],
+  "roots": [
+    {"code": "SYN-UNEXPECTED-EOF", "line": 12}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-UNEXPECTED-EOF 12 (caused_by: none). Expected under plan 002: raw 1. SYN-UNEXPECTED-EOF 12 (caused_by: none). main is the last function, so the parser reaches the end of the file while the body is still open. EOF is on the last line, line 12. gcc: expected declaration or statement at end of input."
+}

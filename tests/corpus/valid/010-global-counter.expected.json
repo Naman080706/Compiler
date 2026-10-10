@@ -1,0 +1,11 @@
+{
+  "description": "A global counter is changed by a void function with += and %=, using global variables with literal initialisers.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Globals with literal initialisers (including a negative literal and a double), compound assignment operators, -- and *=."
+}

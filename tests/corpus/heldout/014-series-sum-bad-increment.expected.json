@@ -1,0 +1,15 @@
+{
+  "description": "Adds up the squares of 1 to 10 in a while loop, but the increment is written backwards as 'i + 1 = i;'.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 9: 'i + 1 = i;' tries to assign to the expression 'i + 1'"
+  ],
+  "roots": [
+    {"code": "SYN-INVALID-ASSIGN-TARGET", "line": 9}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-INVALID-ASSIGN-TARGET 9 (caused_by: none). Expected under plan 002: raw 1. SYN-INVALID-ASSIGN-TARGET 9 (caused_by: none). Single fault. gcc: lvalue required as left operand of assignment."
+}

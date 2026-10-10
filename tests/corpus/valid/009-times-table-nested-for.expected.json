@@ -1,0 +1,11 @@
+{
+  "description": "Prints a 5 by 5 multiplication table with nested for loops that declare their counters in the for header.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "for (int i = 0; ...) declarations in both loops."
+}

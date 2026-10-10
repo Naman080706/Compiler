@@ -1,0 +1,15 @@
+{
+  "description": "Averages four course grades weighted by credits but never declares the 'credits' variable.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 13: 'credits' is used in 'credits += 3;' but never declared"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-VAR", "line": 13}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 3. SEM-UNDECLARED-VAR 13 (caused_by: none), SEM-UNDECLARED-VAR 15 (caused_by: none), SEM-UNDECLARED-VAR 16 (caused_by: none). No parse error, so R5 does not apply; each use of 'credits' gets its own record and F2 groups them under the first."
+}

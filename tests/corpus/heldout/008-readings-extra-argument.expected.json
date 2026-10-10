@@ -1,0 +1,15 @@
+{
+  "description": "Finds the highest, lowest and average of five readings, but calls larger() with three arguments.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 25: larger(highest, readings[i], 0) passes 3 arguments to a 2-parameter function"
+  ],
+  "roots": [
+    {"code": "SEM-ARG-COUNT", "line": 25}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-ARG-COUNT 25 (caused_by: none). Expected under plan 002: raw 1. SEM-ARG-COUNT 25 (caused_by: none). Single fault. gcc: too many arguments to function 'larger'."
+}

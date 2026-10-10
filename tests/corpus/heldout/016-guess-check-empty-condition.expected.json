@@ -1,0 +1,15 @@
+{
+  "description": "Checks a guess against a target number, but the second if has an empty right-hand side in 'guess > )'.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 7: expression missing after '>' in 'if (guess > ) {'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-EXPRESSION", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-EXPECTED-EXPRESSION 7 (caused_by: none). Expected under plan 002: raw 1. SYN-EXPECTED-EXPRESSION 7 (caused_by: none). The found token is the ')' where an expression was expected. gcc: expected expression before ')' token."
+}

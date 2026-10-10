@@ -1,0 +1,15 @@
+{
+  "description": "The 'if' block in larger() is never closed, so the parser meets 'int main(' while larger()'s body is still open.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: closing '}' of the if block is missing after 'result = a;' (the '}' on line 8 closes the if, not the function)"
+  ],
+  "roots": [
+    {"code": "SYN-UNBALANCED-BRACKET", "line": 10}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 2. SYN-UNBALANCED-BRACKET 10 (caused_by: none), WRN-MISSING-RETURN 3 (caused_by: R8). Section 4.7 repair at 'int main' closes larger()'s open blocks, keeps larger() intact (so it is NOT reported undeclared) and main parses normally. larger()'s last statement is an if without else, hence WRN-MISSING-RETURN, linked by R8 (closed_by_repair). The warning is not listed in the sidecar warnings because programs with a SYN root keep warnings empty. gcc: line 10 col 1: ISO C forbids nested functions (it parses main as a nested function)."
+}

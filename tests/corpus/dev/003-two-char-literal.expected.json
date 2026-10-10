@@ -1,0 +1,15 @@
+{
+  "description": "Grade classifier initialises 'char grade' with the two-character literal 'AB'.",
+  "split": "dev",
+  "injected_faults": [
+    "line 5: character literal 'AB' holds two characters"
+  ],
+  "roots": [
+    {"code": "LEX-BAD-CHAR-LITERAL", "line": 5}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Expected under plan 002: raw 2. LEX-BAD-CHAR-LITERAL 5 (caused_by: none), SYN-EXPECTED-EXPRESSION 5 (caused_by: R1). The skipped 'AB' leaves 'char grade = ;'; the ';' carries lex_gap (R1). The declaration is a broken declaration that still declares 'grade' (section 5), so later uses are fine. gcc only warns about a multi-character constant, so gcc_rejects is false."
+}

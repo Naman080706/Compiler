@@ -1,0 +1,15 @@
+{
+  "description": "Prints leap years between 1896 and 1912 but writes 'if (leap = is_leap(year))' instead of a comparison.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 20: the condition assigns with '=' to 'leap' instead of comparing"
+  ],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-ASSIGN-IN-CONDITION", "line": 20}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Expected under plan 002: raw 1. WRN-ASSIGN-IN-CONDITION 20 (caused_by: none). Expected under plan 002: raw 1. WRN-ASSIGN-IN-CONDITION 20 (caused_by: none). Warning-only program: the assignment is deliberate-looking but flagged. gcc accepts it without -Wall."
+}

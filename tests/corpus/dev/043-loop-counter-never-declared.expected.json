@@ -1,0 +1,15 @@
+{
+  "description": "Two loops use the counter 'i' (8 uses in all) but 'int i;' was never declared.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: first use of 'i' in 'for (i = 0; ...)' with no declaration of 'i' anywhere"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-VAR", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 9. SEM-UNDECLARED-VAR 6 (caused_by: none), SEM-UNDECLARED-VAR 6 (caused_by: none), SEM-UNDECLARED-VAR 6 (caused_by: none), SEM-UNDECLARED-VAR 7 (caused_by: none), SEM-UNDECLARED-VAR 7 (caused_by: none), SEM-UNDECLARED-VAR 9 (caused_by: none), SEM-UNDECLARED-VAR 9 (caused_by: none), SEM-UNDECLARED-VAR 9 (caused_by: none), SEM-UNDECLARED-VAR 10 (caused_by: none). No parse error, so no ErrorStmt: R5 does not apply. Every use of 'i' gets its own record (section 6): line 6 has 3 uses (i = 0, i < 5, i++), line 7 has 2, line 9 has 3, line 10 has 1. F2 groups them under the first (provisional root rule). gcc reports 'i' undeclared once."
+}

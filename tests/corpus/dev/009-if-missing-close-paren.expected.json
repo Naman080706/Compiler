@@ -1,0 +1,15 @@
+{
+  "description": "Pass/fail check with a bonus; the condition 'score > 50' is missing its closing parenthesis.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: 'if (score > 50 {' is missing ')' before the '{'"
+  ],
+  "roots": [
+    {"code": "SYN-UNBALANCED-BRACKET", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-UNBALANCED-BRACKET 6 (caused_by: none). Expected under plan 002: raw 1. SYN-UNBALANCED-BRACKET 6 (caused_by: none). The found token is the '{' on the same line, where ')' was expected. gcc: expected ')' before '{' token."
+}

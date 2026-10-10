@@ -1,0 +1,13 @@
+{
+  "description": "Adds up three prices and, on purpose, stores 7.9 in an int, which truncates it and should produce one narrowing warning.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-IMPLICIT-NARROWING", "line": 7}
+  ],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Intentional warning: 'int whole = 7.9;' converts a double to an int. Everything else is clean; gcc accepts the file."
+}

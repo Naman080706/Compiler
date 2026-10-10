@@ -1,0 +1,15 @@
+{
+  "description": "Prototype says area() returns int, but the definition says float.",
+  "split": "dev",
+  "injected_faults": [
+    "line 11: definition 'float area(int w, int h)' conflicts with the prototype 'int area(int w, int h)' on line 3"
+  ],
+  "roots": [
+    {"code": "SEM-CONFLICTING-TYPES", "line": 11}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-CONFLICTING-TYPES 11 (caused_by: none). Expected under plan 002: raw 1. SEM-CONFLICTING-TYPES 11 (caused_by: none). The root is at the later declaration's name (the definition). gcc: conflicting types for 'area'."
+}

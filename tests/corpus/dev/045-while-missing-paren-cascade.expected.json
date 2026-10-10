@@ -1,0 +1,15 @@
+{
+  "description": "The while condition 'count < 10)' has no opening parenthesis and the loop body is five statements long.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: 'while count < 10) {' is missing '(' after 'while'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-TOKEN", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-EXPECTED-TOKEN 7 (caused_by: none). Panic stops before '{', so the loop body becomes an orphan block that is still analysed: 'count', 'square' and 'total' are all read inside it or later, so there is no WRN-UNUSED-VAR and no break to link. gcc: expected '(' before 'count'."
+}

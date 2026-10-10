@@ -1,0 +1,15 @@
+{
+  "description": "Counts down from 5 and then uses 'break;' in an if after the loop has ended.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 11: 'break;' is inside an if after the while loop, not inside the loop"
+  ],
+  "roots": [
+    {"code": "SEM-BREAK-OUTSIDE-LOOP", "line": 11}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-BREAK-OUTSIDE-LOOP 11 (caused_by: none). Expected under plan 002: raw 1. SEM-BREAK-OUTSIDE-LOOP 11 (caused_by: none). Single fault; the loop itself is correct and 'break' is the last statement of its block. gcc: break statement not within loop or switch."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Prints a factorial table, then starts a '/* TODO' comment in main that is never closed and swallows the rest of the file.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 15: block comment opened with '/*' is never closed with '*/'"
+  ],
+  "roots": [
+    {"code": "LEX-UNTERMINATED-COMMENT", "line": 15}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 2. LEX-UNTERMINATED-COMMENT 15 (caused_by: none), SYN-UNEXPECTED-EOF 14 (caused_by: R1). The comment swallows the rest of the file, so main's block hits EOF; the EOF token carries lex_gap, so R1 links the SYN-UNEXPECTED-EOF (located just after the last token, the '}' on line 14). gcc: unterminated comment."
+}

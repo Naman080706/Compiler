@@ -1,0 +1,11 @@
+{
+  "description": "Computes factorials of 1 to 6 with a recursive function declared by a prototype before main.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Prototype plus definition, recursion; the function ends with a return so there is no missing-return warning."
+}

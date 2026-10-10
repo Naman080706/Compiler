@@ -1,0 +1,15 @@
+{
+  "description": "Loop that prints doubled counters declares 'int i' in the for header, but the first ';' of the header is missing.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: missing ';' after 'int i = 0' in the for header"
+  ],
+  "roots": [
+    {"code": "SYN-MISSING-SEMICOLON", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 3. SYN-MISSING-SEMICOLON 6 (caused_by: none), SEM-UNDECLARED-VAR 7 (caused_by: R5), SEM-UNDECLARED-VAR 8 (caused_by: R5). Same-line case, so panic (no phrase repair). The for statement fails after 'for (int i', giving an ErrorStmt with declared_names [(i, int)]; for-header panic consumes the header's ')' and stops before '{', which becomes an orphan block that is still analysed. 'i' is not declared there, so its two body uses are SEM-UNDECLARED-VAR linked by R5 to the syntax record. 'n' is read again on line 11, so there is no WRN-UNUSED-VAR (R6) for it. gcc: expected ',' or ';' before 'i'."
+}

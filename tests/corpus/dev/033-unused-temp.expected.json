@@ -1,0 +1,15 @@
+{
+  "description": "Adds the numbers 1 to 10 correctly, but also declares 'int temp = 0;' that is never used.",
+  "split": "dev",
+  "injected_faults": [
+    "line 5: local variable 'temp' is declared but never read"
+  ],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-UNUSED-VAR", "line": 5}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Expected under plan 002: raw 1. WRN-UNUSED-VAR 5 (caused_by: none). Expected under plan 002: raw 1. WRN-UNUSED-VAR 5 (caused_by: none). Warning-only program: roots is empty and gcc accepts the file (no -Wall)."
+}

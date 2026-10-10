@@ -1,0 +1,15 @@
+{
+  "description": "main calls cube() four times, but cube() is defined after main and has no prototype.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: first call cube(i) appears before any declaration of cube"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-FUNC", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 4. SEM-UNDECLARED-FUNC 7 (caused_by: none), SEM-UNDECLARED-FUNC 9 (caused_by: none), SEM-UNDECLARED-FUNC 10 (caused_by: none), SEM-UNDECLARED-FUNC 11 (caused_by: none). No parse error, so R5 does not apply; each of the four calls gets its own record (section 6) and F2 groups them under the first. Fix: add 'int cube(int x);' before main."
+}

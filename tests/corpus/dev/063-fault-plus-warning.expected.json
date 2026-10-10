@@ -1,0 +1,18 @@
+{
+  "description": "half_of() stores 'n / 2.0' in an int (warning) and main initialises an int loop limit with a string (error).",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: 'n / 2.0' is a double stored in an int (narrowing)",
+    "line 9: string literal \"ten\" used to initialise the int 'count'"
+  ],
+  "roots": [
+    {"code": "SEM-TYPE-MISMATCH", "line": 9}
+  ],
+  "warnings": [
+    {"code": "WRN-IMPLICIT-NARROWING", "line": 4}
+  ],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 2. WRN-IMPLICIT-NARROWING 4 (caused_by: none), SEM-TYPE-MISMATCH 9 (caused_by: none). One warning and one independent fatal error (2 raw, 2 displayed), so cascading is true only by raw count. Semantic records are created in source order."
+}

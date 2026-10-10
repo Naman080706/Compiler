@@ -1,0 +1,15 @@
+{
+  "description": "Uses 'int count = \"five\";' as the loop limit, assigning a string to an int.",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: string literal \"five\" used to initialise an int"
+  ],
+  "roots": [
+    {"code": "SEM-TYPE-MISMATCH", "line": 4}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-TYPE-MISMATCH 4 (caused_by: none). Expected under plan 002: raw 1. SEM-TYPE-MISMATCH 4 (caused_by: none). Single fault. gcc: initialization of 'int' from 'char *' makes integer from pointer without a cast (an error under -pedantic-errors)."
+}

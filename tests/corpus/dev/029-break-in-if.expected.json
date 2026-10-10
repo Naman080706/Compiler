@@ -1,0 +1,15 @@
+{
+  "description": "Wallet check that uses 'break;' inside an if in main, with no loop around it.",
+  "split": "dev",
+  "injected_faults": [
+    "line 8: 'break;' is not inside a while or for loop"
+  ],
+  "roots": [
+    {"code": "SEM-BREAK-OUTSIDE-LOOP", "line": 8}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-BREAK-OUTSIDE-LOOP 8 (caused_by: none). Expected under plan 002: raw 1. SEM-BREAK-OUTSIDE-LOOP 8 (caused_by: none). Single fault; 'break' is the last statement in its block, so no unreachable-code warning. gcc: break statement not within loop or switch."
+}

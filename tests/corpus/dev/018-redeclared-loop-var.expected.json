@@ -1,0 +1,15 @@
+{
+  "description": "Counts even numbers below 20, but 'int i;' is declared twice in the same block.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: second declaration of 'i' in the same scope (first one is on line 4)"
+  ],
+  "roots": [
+    {"code": "SEM-REDECLARED", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-REDECLARED 6 (caused_by: none). Expected under plan 002: raw 1. SEM-REDECLARED 6 (caused_by: none). The root is at the later declaration's name. gcc: redeclaration of 'i' with no linkage."
+}

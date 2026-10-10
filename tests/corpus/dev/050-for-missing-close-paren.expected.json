@@ -1,0 +1,15 @@
+{
+  "description": "The for header 'for (i = 1; i < 6; i++ {' is missing its closing parenthesis.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: for header is missing ')' before the '{'"
+  ],
+  "roots": [
+    {"code": "SYN-UNBALANCED-BRACKET", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SYN-UNBALANCED-BRACKET 7 (caused_by: none). Phrase repair (section 4.3): the missing ')' before '{' is inserted, the for node keeps its header and body, so only one record. gcc: expected ')' before '{' token."
+}

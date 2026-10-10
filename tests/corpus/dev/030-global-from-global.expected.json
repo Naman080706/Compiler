@@ -1,0 +1,15 @@
+{
+  "description": "Global 'half' is initialised from another global, which is not a literal.",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: global initialiser 'limit / 2' is not a literal"
+  ],
+  "roots": [
+    {"code": "SEM-NONCONST-GLOBAL-INIT", "line": 4}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-NONCONST-GLOBAL-INIT 4 (caused_by: none). Expected under plan 002: raw 1. SEM-NONCONST-GLOBAL-INIT 4 (caused_by: none). Single fault. Fix: initialise with the literal 5. gcc: initializer element is not constant."
+}

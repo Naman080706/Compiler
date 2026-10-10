@@ -1,0 +1,15 @@
+{
+  "description": "main declares 'int *values;' (pointers are not in the subset) and then uses 'values' five times.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: pointer declaration 'int *values;' is not supported"
+  ],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Expected under plan 002: raw 6. SYN-UNSUPPORTED-FEATURE 6 (caused_by: none), SEM-UNDECLARED-VAR 7 (caused_by: none), SEM-UNDECLARED-VAR 8 (caused_by: none), SEM-UNDECLARED-VAR 9 (caused_by: none), SEM-UNDECLARED-VAR 11 (caused_by: none), SEM-UNDECLARED-VAR 13 (caused_by: none). Panic skips '* values' and consumes the ';'. The ErrorStmt has declared_names [] because the IDENT 'values' was never consumed (section 5), so R5 does not apply and the five uses of 'values' are unlinked records. gcc accepts the file, so gcc_rejects is false."
+}

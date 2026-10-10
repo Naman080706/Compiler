@@ -1,0 +1,11 @@
+{
+  "description": "Prints a Celsius to Fahrenheit table for -10 to 40 degrees in steps of 10 using double variables.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "double arithmetic and comparisons; no float-to-int conversions anywhere."
+}

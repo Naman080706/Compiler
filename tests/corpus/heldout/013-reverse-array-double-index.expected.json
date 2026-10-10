@@ -1,0 +1,15 @@
+{
+  "description": "Reverses a six-element array and prints the middle element, using the double variable 'half' as an array index.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 19: array index 'half' has type double"
+  ],
+  "roots": [
+    {"code": "SEM-INDEX-NOT-INT", "line": 19}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Expected under plan 002: raw 1. SEM-INDEX-NOT-INT 19 (caused_by: none). Expected under plan 002: raw 1. SEM-INDEX-NOT-INT 19 (caused_by: none). Single fault; the reversing loop above it is correct. gcc: array subscript is not an integer."
+}
