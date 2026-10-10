@@ -279,13 +279,37 @@ class Parser:
 
     # =================================================== recovery (steps 4-9)
     def expect_semi(self) -> Token | None:
-        return self.expect(";")
+        """expect(';') with the 4.2 missing-';' repair."""
+        tok = self.cur
+        if self.is_(tok, ";"):
+            return self.match(";")
+        after = (self.prev.end_line, self.prev.end_col + 1)
+        if tok.kind is not K.EOF and tok.line > self.prev.end_line:
+            self.report("SYN-MISSING-SEMICOLON", tok, [";"], at=after)        # 4.2: repair, no panic
+            return None
+        code = self.select_code(tok, [";"])
+        rid = self.report(code, tok, [";"], at=after if code == "SYN-MISSING-SEMICOLON" else None)
+        raise ParseError(rid, code)
 
     def expect_header_close(self) -> None:
-        self.expect(")")
+        """expect(')') closing an if/while/for header, with the 4.3 missing-')'-before-'{' repair."""
+        if self.at(")"):
+            self.match(")")
+            return
+        if self.at("{"):
+            code = self.select_code(self.cur, [")"])                          # rule 3
+            self.report(code, self.cur, [")"])
+            if self.brackets and self.brackets[-1].text == "(":
+                self.brackets.pop()                                           # as if ')' matched
+            return
+        self.fail([")"])
 
     def check_missing_brace(self) -> None:
-        return None
+        """4.7: `type IDENT (` at the start of a statement proves a missing '}'."""
+        t0, t1, t2 = self.cur, self.peek(1), self.peek(2)
+        if is_type_kw(t0) and t1.kind is K.IDENT and self.is_(t2, "("):
+            code = self.select_code(t0, ["}"])                                # rule 3
+            raise BlockRepair(self.report(code, t0, ["}"]))
 
     def open_region(self, error_id: str) -> None:
         return None
