@@ -8,8 +8,8 @@
     {"code": "LEX-BAD-CHAR-LITERAL", "line": 5}
   ],
   "warnings": [],
-  "cascading": false,
+  "cascading": true,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "Single fault; the rest of the program is valid. gcc only warns about a multi-character constant (see gcc_rejects)."
+  "notes": "Expected under plan 002: raw 2. LEX-BAD-CHAR-LITERAL 5 (caused_by: none), SYN-EXPECTED-EXPRESSION 5 (caused_by: R1). The skipped 'AB' leaves 'char grade = ;'; the ';' carries lex_gap (R1). The declaration is a broken declaration that still declares 'grade' (section 5), so later uses are fine. gcc only warns about a multi-character constant, so gcc_rejects is false."
 }

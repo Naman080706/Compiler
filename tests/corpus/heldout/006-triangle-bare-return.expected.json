@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. gcc: 'return' with no value, in function returning non-void (an error under -pedantic-errors)."
+  "notes": "Expected under plan 002: raw 1. SEM-RETURN-TYPE 5 (caused_by: none). Expected under plan 002: raw 1. SEM-RETURN-TYPE 5 (caused_by: none). Single fault. gcc: 'return' with no value, in function returning non-void (an error under -pedantic-errors)."
 }

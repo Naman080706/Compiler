@@ -10,8 +10,8 @@
     {"code": "SEM-NOT-ARRAY", "line": 14}
   ],
   "warnings": [],
-  "cascading": false,
+  "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "One syntax and one semantic fault in different functions; both are expected as roots (the semantic fault is expected to be reported if the compiler keeps analysing after a recovered syntax error). warnings is empty because there is a syntax root."
+  "notes": "Expected under plan 002: raw 3. SYN-EXPECTED-EXPRESSION 4 (caused_by: none), WRN-MISSING-RETURN 3 (caused_by: R8), SEM-NOT-ARRAY 14 (caused_by: none). The failed 'return total / ;' becomes an ErrorStmt, so average() has no return and R8 links WRN-MISSING-RETURN to the syntax record (the warning is not in the sidecar warnings because of the SYN root). SEM-NOT-ARRAY is independent. Raw 3 but 2 roots: cascading is true by raw count."
 }

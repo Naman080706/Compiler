@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault; 'scores' is a proper array. gcc: subscripted value is neither array nor pointer nor vector."
+  "notes": "Expected under plan 002: raw 1. SEM-NOT-ARRAY 14 (caused_by: none). Expected under plan 002: raw 1. SEM-NOT-ARRAY 14 (caused_by: none). Single fault; 'scores' is a proper array. gcc: subscripted value is neither array nor pointer nor vector."
 }

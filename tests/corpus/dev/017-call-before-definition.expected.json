@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault; the one call is the first use. Fix: add a prototype before main or move the definition up. gcc: implicit declaration of function 'square'."
+  "notes": "Expected under plan 002: raw 1. SEM-UNDECLARED-FUNC 7 (caused_by: none). Expected under plan 002: raw 1. SEM-UNDECLARED-FUNC 7 (caused_by: none). Single fault; the one call is the first use. Fix: add a prototype before main or move the definition up. gcc: implicit declaration of function 'square'."
 }

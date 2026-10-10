@@ -10,8 +10,8 @@
     {"code": "SEM-RETURN-TYPE", "line": 9}
   ],
   "warnings": [],
-  "cascading": false,
+  "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Two independent semantic faults in different functions; expect two roots and no cascade."
+  "notes": "Expected under plan 002: raw 2. SEM-RETURN-TYPE 9 (caused_by: none), SEM-ARG-COUNT 14 (caused_by: none). Two independent semantic faults (2 raw, 2 roots), so cascading is true only by raw count."
 }

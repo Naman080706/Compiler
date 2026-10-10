@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. gcc: void value not ignored as it ought to be."
+  "notes": "Expected under plan 002: raw 1. SEM-VOID-VALUE 8 (caused_by: none). Expected under plan 002: raw 1. SEM-VOID-VALUE 8 (caused_by: none). Single fault. gcc: void value not ignored as it ought to be."
 }

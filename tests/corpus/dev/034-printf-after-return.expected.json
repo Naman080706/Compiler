@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "Warning-only program: the warning is at the first unreachable statement, not at the return. gcc accepts the file (it does not warn without -Wall)."
+  "notes": "Expected under plan 002: raw 1. WRN-UNREACHABLE-CODE 6 (caused_by: none). Expected under plan 002: raw 1. WRN-UNREACHABLE-CODE 6 (caused_by: none). Warning-only program: the warning is at the first unreachable statement, not at the return. gcc accepts the file (it does not warn without -Wall)."
 }

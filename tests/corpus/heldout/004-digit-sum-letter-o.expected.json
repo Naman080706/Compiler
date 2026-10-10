@@ -8,8 +8,8 @@
     {"code": "LEX-MALFORMED-NUMBER", "line": 7}
   ],
   "warnings": [],
-  "cascading": false,
+  "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single lexical fault; the rest of the function is valid. gcc: invalid suffix \"O\" on integer constant."
+  "notes": "Expected under plan 002: raw 2. LEX-MALFORMED-NUMBER 7 (caused_by: none), SYN-EXPECTED-EXPRESSION 7 (caused_by: R1). The skipped '1O' leaves 'n = n / ;'; the ';' carries lex_gap (R1). The ErrorStmt is skipped; n is a parameter, so there is no unused warning. gcc: invalid suffix \"O\" on integer constant."
 }

@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault; the loop itself is correct and 'break' is the last statement of its block. gcc: break statement not within loop or switch."
+  "notes": "Expected under plan 002: raw 1. SEM-BREAK-OUTSIDE-LOOP 11 (caused_by: none). Expected under plan 002: raw 1. SEM-BREAK-OUTSIDE-LOOP 11 (caused_by: none). Single fault; the loop itself is correct and 'break' is the last statement of its block. gcc: break statement not within loop or switch."
 }

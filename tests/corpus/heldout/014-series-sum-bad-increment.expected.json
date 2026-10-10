@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. gcc: lvalue required as left operand of assignment."
+  "notes": "Expected under plan 002: raw 1. SYN-INVALID-ASSIGN-TARGET 9 (caused_by: none). Expected under plan 002: raw 1. SYN-INVALID-ASSIGN-TARGET 9 (caused_by: none). Single fault. gcc: lvalue required as left operand of assignment."
 }

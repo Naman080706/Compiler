@@ -11,5 +11,5 @@
   "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Cascade: the later uses of 'digit' (the if condition and the squared printf) are symptoms under the first out-of-scope use."
+  "notes": "Expected under plan 002: raw 4. SEM-UNDECLARED-VAR 12 (caused_by: none), SEM-UNDECLARED-VAR 13 (caused_by: none), SEM-UNDECLARED-VAR 16 (caused_by: none), SEM-UNDECLARED-VAR 16 (caused_by: none). No parse error, so R5 does not apply; 'digit' is out of scope after the while block, and each of its four uses (line 16 has two) is its own record. F2 groups them under the first."
 }

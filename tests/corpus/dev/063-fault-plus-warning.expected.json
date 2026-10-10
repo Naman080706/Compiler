@@ -11,8 +11,8 @@
   "warnings": [
     {"code": "WRN-IMPLICIT-NARROWING", "line": 4}
   ],
-  "cascading": false,
+  "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "One fatal root plus one independent warning in separate functions. The warning is only a warning, so fixing the root is enough to compile."
+  "notes": "Expected under plan 002: raw 2. WRN-IMPLICIT-NARROWING 4 (caused_by: none), SEM-TYPE-MISMATCH 9 (caused_by: none). One warning and one independent fatal error (2 raw, 2 displayed), so cascading is true only by raw count. Semantic records are created in source order."
 }

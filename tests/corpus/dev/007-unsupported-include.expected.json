@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "Single fault; nothing from math.h is used. gcc accepts the file, so gcc_rejects is false: the subset is stricter than C."
+  "notes": "Expected under plan 002: raw 1. LEX-UNSUPPORTED-DIRECTIVE 2 (caused_by: none). Expected under plan 002: raw 1. LEX-UNSUPPORTED-DIRECTIVE 2 (caused_by: none). Single fault; nothing from math.h is used. gcc accepts the file, so gcc_rejects is false: the subset is stricter than C."
 }

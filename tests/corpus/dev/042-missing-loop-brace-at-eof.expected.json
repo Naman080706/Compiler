@@ -8,8 +8,8 @@
     {"code": "SYN-UNEXPECTED-EOF", "line": 12}
   ],
   "warnings": [],
-  "cascading": true,
+  "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The parser reaches EOF (line 12) with main's body open. EOF is at the last token, the final '}'. gcc: expected declaration or statement at end of input."
+  "notes": "Expected under plan 002: raw 1. SYN-UNEXPECTED-EOF 12 (caused_by: none). Only main's body is still open at EOF (the last '}' closes the while), so exactly one SYN-UNEXPECTED-EOF is recorded (section 4.4) and main stays intact. gcc: expected declaration or statement at end of input."
 }

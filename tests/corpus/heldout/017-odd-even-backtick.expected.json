@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single lexical fault; the rest of the line is valid. gcc: stray '`' in program."
+  "notes": "Expected under plan 002: raw 1. LEX-INVALID-CHAR 9 (caused_by: none). Expected under plan 002: raw 1. LEX-INVALID-CHAR 9 (caused_by: none). Single lexical fault; the rest of the line is valid. gcc: stray '`' in program."
 }

@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The found token is the '{' on the same line, where ')' was expected. gcc: expected ')' before '{' token."
+  "notes": "Expected under plan 002: raw 1. SYN-UNBALANCED-BRACKET 6 (caused_by: none). Expected under plan 002: raw 1. SYN-UNBALANCED-BRACKET 6 (caused_by: none). The found token is the '{' on the same line, where ')' was expected. gcc: expected ')' before '{' token."
 }

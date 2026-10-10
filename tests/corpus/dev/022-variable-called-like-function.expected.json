@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault; the global function max() is valid but hidden by the local variable. gcc: called object 'max' is not a function or function pointer."
+  "notes": "Expected under plan 002: raw 1. SEM-NOT-CALLABLE 14 (caused_by: none). Expected under plan 002: raw 1. SEM-NOT-CALLABLE 14 (caused_by: none). Single fault; the global function max() is valid but hidden by the local variable. gcc: called object 'max' is not a function or function pointer."
 }

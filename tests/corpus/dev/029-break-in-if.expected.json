@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault; 'break' is the last statement in its block, so no unreachable-code warning. gcc: break statement not within loop or switch."
+  "notes": "Expected under plan 002: raw 1. SEM-BREAK-OUTSIDE-LOOP 8 (caused_by: none). Expected under plan 002: raw 1. SEM-BREAK-OUTSIDE-LOOP 8 (caused_by: none). Single fault; 'break' is the last statement in its block, so no unreachable-code warning. gcc: break statement not within loop or switch."
 }

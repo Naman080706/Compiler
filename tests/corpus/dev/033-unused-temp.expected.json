@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "Warning-only program: roots is empty and gcc accepts the file (no -Wall)."
+  "notes": "Expected under plan 002: raw 1. WRN-UNUSED-VAR 5 (caused_by: none). Expected under plan 002: raw 1. WRN-UNUSED-VAR 5 (caused_by: none). Warning-only program: roots is empty and gcc accepts the file (no -Wall)."
 }

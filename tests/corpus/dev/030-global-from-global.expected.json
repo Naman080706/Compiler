@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. Fix: initialise with the literal 5. gcc: initializer element is not constant."
+  "notes": "Expected under plan 002: raw 1. SEM-NONCONST-GLOBAL-INIT 4 (caused_by: none). Expected under plan 002: raw 1. SEM-NONCONST-GLOBAL-INIT 4 (caused_by: none). Single fault. Fix: initialise with the literal 5. gcc: initializer element is not constant."
 }

@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. gcc: array subscript is not an integer."
+  "notes": "Expected under plan 002: raw 1. SEM-INDEX-NOT-INT 10 (caused_by: none). Expected under plan 002: raw 1. SEM-INDEX-NOT-INT 10 (caused_by: none). Single fault. gcc: array subscript is not an integer."
 }

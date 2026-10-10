@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The root is at the later declaration's name (the definition). gcc: conflicting types for 'area'."
+  "notes": "Expected under plan 002: raw 1. SEM-CONFLICTING-TYPES 11 (caused_by: none). Expected under plan 002: raw 1. SEM-CONFLICTING-TYPES 11 (caused_by: none). The root is at the later declaration's name (the definition). gcc: conflicting types for 'area'."
 }

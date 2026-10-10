@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The found token is the ';' on the same line. gcc: expected expression before ';' token."
+  "notes": "Expected under plan 002: raw 1. SYN-EXPECTED-EXPRESSION 12 (caused_by: none). Expected under plan 002: raw 1. SYN-EXPECTED-EXPRESSION 12 (caused_by: none). The found token is the ';' on the same line. gcc: expected expression before ';' token."
 }

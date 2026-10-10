@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "Warning-only program; gcc accepts it (it only warns with -Wall)."
+  "notes": "Expected under plan 002: raw 1. WRN-ASSIGN-IN-CONDITION 5 (caused_by: none). Expected under plan 002: raw 1. WRN-ASSIGN-IN-CONDITION 5 (caused_by: none). Warning-only program; gcc accepts it (it only warns with -Wall)."
 }

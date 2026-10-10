@@ -8,8 +8,8 @@
     {"code": "SYN-UNBALANCED-BRACKET", "line": 7}
   ],
   "warnings": [],
-  "cascading": true,
+  "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The found token is the '{' where ')' was expected. Cascade: the loop body and closing brace may be reported again as unexpected tokens. gcc: expected ')' before '{' token."
+  "notes": "Expected under plan 002: raw 1. SYN-UNBALANCED-BRACKET 7 (caused_by: none). Phrase repair (section 4.3): the missing ')' before '{' is inserted, the for node keeps its header and body, so only one record. gcc: expected ')' before '{' token."
 }

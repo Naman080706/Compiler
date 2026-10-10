@@ -8,8 +8,8 @@
     {"code": "SYN-EXPECTED-TOKEN", "line": 7}
   ],
   "warnings": [],
-  "cascading": true,
+  "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The found token is 'count' where '(' was expected. Symptoms depend on recovery: the stray ')' and the 5-statement body may produce extra syntax errors or undeclared uses of 'square'. gcc: expected '(' before 'count', then 'else' / '}' follow-ups."
+  "notes": "Expected under plan 002: raw 1. SYN-EXPECTED-TOKEN 7 (caused_by: none). Panic stops before '{', so the loop body becomes an orphan block that is still analysed: 'count', 'square' and 'total' are all read inside it or later, so there is no WRN-UNUSED-VAR and no break to link. gcc: expected '(' before 'count'."
 }

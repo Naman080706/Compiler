@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. gcc: passing argument 1 of 'printf' makes pointer from integer without a cast (an error under -pedantic-errors)."
+  "notes": "Expected under plan 002: raw 1. SEM-PRINTF-FORMAT 9 (caused_by: none). Expected under plan 002: raw 1. SEM-PRINTF-FORMAT 9 (caused_by: none). Single fault. gcc: passing argument 1 of 'printf' makes pointer from integer without a cast (an error under -pedantic-errors)."
 }

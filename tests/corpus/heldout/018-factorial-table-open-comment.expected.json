@@ -11,5 +11,5 @@
   "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The file ends inside the comment (line 22); the lexical error is at the '/*' on line 15. Cascade: the code of main after the comment is lost, so the closing '}' of main is missing and a syntax error at EOF can follow. gcc: unterminated comment."
+  "notes": "Expected under plan 002: raw 2. LEX-UNTERMINATED-COMMENT 15 (caused_by: none), SYN-UNEXPECTED-EOF 14 (caused_by: R1). The comment swallows the rest of the file, so main's block hits EOF; the EOF token carries lex_gap, so R1 links the SYN-UNEXPECTED-EOF (located just after the last token, the '}' on line 14). gcc: unterminated comment."
 }

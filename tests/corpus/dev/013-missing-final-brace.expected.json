@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "main is the last function, so the parser reaches the end of the file while the body is still open. EOF is on the last line, line 12. gcc: expected declaration or statement at end of input."
+  "notes": "Expected under plan 002: raw 1. SYN-UNEXPECTED-EOF 12 (caused_by: none). Expected under plan 002: raw 1. SYN-UNEXPECTED-EOF 12 (caused_by: none). main is the last function, so the parser reaches the end of the file while the body is still open. EOF is on the last line, line 12. gcc: expected declaration or statement at end of input."
 }

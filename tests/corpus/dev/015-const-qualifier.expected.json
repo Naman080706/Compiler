@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "The found token is 'const'. Uses of LIMIT below may produce follow-up diagnostics depending on recovery; only the unsupported-feature error is expected as a root. gcc accepts const, so gcc_rejects is false."
+  "notes": "Expected under plan 002: raw 1. SYN-UNSUPPORTED-FEATURE 4 (caused_by: none). Statement panic skips 'const' and stops before 'int' (a SYNC_STMT_STOP token), so 'int LIMIT = 5;' is parsed normally and LIMIT stays declared. gcc accepts const, so gcc_rejects is false."
 }

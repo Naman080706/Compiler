@@ -10,8 +10,8 @@
     {"code": "SEM-ARG-TYPE", "line": 24}
   ],
   "warnings": [],
-  "cascading": false,
+  "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Two independent semantic faults on different lines of main; expect two roots and no cascade."
+  "notes": "Expected under plan 002: raw 2. SEM-VOID-VALUE 23 (caused_by: none), SEM-ARG-TYPE 24 (caused_by: none). Two independent semantic faults (2 raw, 2 roots), so cascading is true only by raw count."
 }

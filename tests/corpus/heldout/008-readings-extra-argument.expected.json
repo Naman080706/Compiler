@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. gcc: too many arguments to function 'larger'."
+  "notes": "Expected under plan 002: raw 1. SEM-ARG-COUNT 25 (caused_by: none). Expected under plan 002: raw 1. SEM-ARG-COUNT 25 (caused_by: none). Single fault. gcc: too many arguments to function 'larger'."
 }

@@ -8,8 +8,8 @@
     {"code": "SYN-MISSING-SEMICOLON", "line": 3}
   ],
   "warnings": [],
-  "cascading": true,
+  "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The next line starts with the keyword 'int', so the parser notices there; by convention the root is the line of the global. Cascade: main may be swallowed into the declaration, and 'limit' / 'main' symptoms follow. gcc: expected ',' or ';' before 'int'."
+  "notes": "Expected under plan 002: raw 1. SYN-MISSING-SEMICOLON 3 (caused_by: none). Phrase repair (section 4.2) at the global declaration: 'int' starts on a later line, so the ';' is assumed and main is parsed normally. gcc: expected ',' or ';' before 'int'."
 }

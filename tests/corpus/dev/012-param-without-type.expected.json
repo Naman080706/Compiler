@@ -8,8 +8,8 @@
     {"code": "SYN-EXPECTED-TYPE", "line": 3}
   ],
   "warnings": [],
-  "cascading": false,
+  "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The found token is the identifier 'a' where a type was expected. The later call max(...) may or may not be reported as undeclared, depending on recovery; only the syntax error is expected as a root. gcc is more lenient (K&R style) but rejects this mixed form."
+  "notes": "Expected under plan 002: raw 2. SYN-EXPECTED-TYPE 3 (caused_by: none), SEM-UNDECLARED-FUNC 13 (caused_by: R5). A failed function header becomes a top-level ErrorStmt with declared_names [(max, function)] and does not declare max, so the call on line 13 is undeclared and R5 links it. Top-level panic resumes at 'int main' (first on its line, brace depth 0)."
 }

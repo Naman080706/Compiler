@@ -11,5 +11,5 @@
   "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The error is at the opening quote on line 11. Symptoms after recovery may include a missing ')' / ';' on the same statement. gcc: missing terminating \" character, then expected ')' before 'return'."
+  "notes": "Expected under plan 002: raw 2. LEX-UNTERMINATED-STRING 11 (caused_by: none), SYN-EXPECTED-EXPRESSION 12 (caused_by: R1). The unterminated string leaves 'printf(' without an argument, so the parser finds 'return' on line 12; the token carries lex_gap, so R1 links the syntax record to the lexical one. gcc: missing terminating \" character, then expected ')' before 'return'."
 }

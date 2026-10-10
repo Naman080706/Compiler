@@ -11,5 +11,5 @@
   "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Root is the 'int' of 'int main' on line 23, where '}' was expected. After the repair main is parsed normally; swaps_needed may be reported as undeclared at the call in main."
+  "notes": "Expected under plan 002: raw 2. SYN-UNBALANCED-BRACKET 23 (caused_by: none), WRN-MISSING-RETURN 3 (caused_by: R8). Section 4.7 repair at 'int main' keeps swaps_needed intact; its last statement is the unclosed if (no else), so WRN-MISSING-RETURN follows, linked by R8. The warning is not in the sidecar warnings because of the SYN root. gcc: line 23 col 1: ISO C forbids nested functions."
 }

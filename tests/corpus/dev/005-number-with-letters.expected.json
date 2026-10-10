@@ -8,8 +8,8 @@
     {"code": "LEX-MALFORMED-NUMBER", "line": 4}
   ],
   "warnings": [],
-  "cascading": false,
+  "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. gcc: invalid suffix \"x\" on integer constant."
+  "notes": "Expected under plan 002: raw 2. LEX-MALFORMED-NUMBER 4 (caused_by: none), SYN-EXPECTED-EXPRESSION 4 (caused_by: R1). The skipped '10x' leaves 'int limit = ;'; the ';' carries lex_gap (R1). 'limit' stays declared as a broken declaration (section 5). gcc: invalid suffix \"x\" on integer constant."
 }

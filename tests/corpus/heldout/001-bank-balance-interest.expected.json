@@ -8,8 +8,8 @@
     {"code": "SYN-MISSING-SEMICOLON", "line": 4}
   ],
   "warnings": [],
-  "cascading": true,
+  "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The next line starts with the keyword 'double'. Cascade: if recovery drops the declaration, the five later uses of 'balance' become undeclared-variable symptoms."
+  "notes": "Expected under plan 002: raw 1. SYN-MISSING-SEMICOLON 4 (caused_by: none). Phrase repair (section 4.2): the next token 'double' starts on a later line, so the declaration is completed and nothing else is lost. gcc: expected ',' or ';' before 'double'."
 }

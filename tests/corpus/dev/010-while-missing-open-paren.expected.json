@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The found token is 'count' on the same line, where '(' was expected. gcc: expected '(' before 'count'."
+  "notes": "Expected under plan 002: raw 1. SYN-EXPECTED-TOKEN 6 (caused_by: none). Expected under plan 002: raw 1. SYN-EXPECTED-TOKEN 6 (caused_by: none). The found token is 'count' on the same line, where '(' was expected. gcc: expected '(' before 'count'."
 }

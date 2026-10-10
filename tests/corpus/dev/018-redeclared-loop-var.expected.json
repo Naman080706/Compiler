@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The root is at the later declaration's name. gcc: redeclaration of 'i' with no linkage."
+  "notes": "Expected under plan 002: raw 1. SEM-REDECLARED 6 (caused_by: none). Expected under plan 002: raw 1. SEM-REDECLARED 6 (caused_by: none). The root is at the later declaration's name. gcc: redeclaration of 'i' with no linkage."
 }

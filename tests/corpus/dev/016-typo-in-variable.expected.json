@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "The typo appears exactly once, so there is a single record. gcc: 'totl' undeclared (first use in this function)."
+  "notes": "Expected under plan 002: raw 1. SEM-UNDECLARED-VAR 7 (caused_by: none). Expected under plan 002: raw 1. SEM-UNDECLARED-VAR 7 (caused_by: none). The typo appears exactly once, so there is a single record. gcc: 'totl' undeclared (first use in this function)."
 }

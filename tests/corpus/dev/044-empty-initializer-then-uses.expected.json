@@ -8,8 +8,8 @@
     {"code": "SYN-EXPECTED-EXPRESSION", "line": 6}
   ],
   "warnings": [],
-  "cascading": true,
+  "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Root is at the ';' (found token). Cascade: if the declaration is dropped, the four uses of 'average' (lines 10, 11, 12, 13) can become SEM-UNDECLARED-VAR symptoms. gcc: expected expression before ';' token, and nothing else."
+  "notes": "Expected under plan 002: raw 1. SYN-EXPECTED-EXPRESSION 6 (caused_by: none). 'double average = ;' is a broken declaration (section 5): the initializer becomes an ErrorExpr, the ';' is consumed, and 'average' stays declared as double, so its later uses raise nothing. gcc: expected expression before ';' token."
 }

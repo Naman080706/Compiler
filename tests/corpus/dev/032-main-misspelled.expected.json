@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "Reported at EOF (line 11) because it is detected at the end of semantic analysis. gcc accepts the file with -fsyntax-only, since a missing main is a link-time error; gcc_rejects is false."
+  "notes": "Expected under plan 002: raw 1. SEM-MISSING-MAIN 11 (caused_by: none). Expected under plan 002: raw 1. SEM-MISSING-MAIN 11 (caused_by: none). Reported at EOF (line 11) because it is detected at the end of semantic analysis. gcc accepts the file with -fsyntax-only, since a missing main is a link-time error; gcc_rejects is false."
 }

@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "Warning-only program: the final 'else if' has no 'else', so not every path returns. gcc accepts it silently without -Wall."
+  "notes": "Expected under plan 002: raw 1. WRN-MISSING-RETURN 3 (caused_by: none). Expected under plan 002: raw 1. WRN-MISSING-RETURN 3 (caused_by: none). Warning-only program: the final 'else if' has no 'else', so not every path returns. gcc accepts it silently without -Wall."
 }

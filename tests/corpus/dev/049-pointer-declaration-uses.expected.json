@@ -11,5 +11,5 @@
   "cascading": true,
   "fixable": true,
   "gcc_rejects": false,
-  "notes": "The root is at the '*'. Cascade: if the declaration is dropped, the five uses of 'values' (lines 8, 9, 10, 12 and 14) can become SEM-UNDECLARED-VAR symptoms. gcc accepts the file, so gcc_rejects is false."
+  "notes": "Expected under plan 002: raw 6. SYN-UNSUPPORTED-FEATURE 6 (caused_by: none), SEM-UNDECLARED-VAR 7 (caused_by: none), SEM-UNDECLARED-VAR 8 (caused_by: none), SEM-UNDECLARED-VAR 9 (caused_by: none), SEM-UNDECLARED-VAR 11 (caused_by: none), SEM-UNDECLARED-VAR 13 (caused_by: none). Panic skips '* values' and consumes the ';'. The ErrorStmt has declared_names [] because the IDENT 'values' was never consumed (section 5), so R5 does not apply and the five uses of 'values' are unlinked records. gcc accepts the file, so gcc_rejects is false."
 }

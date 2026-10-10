@@ -8,8 +8,8 @@
     {"code": "SYN-MISSING-SEMICOLON", "line": 5}
   ],
   "warnings": [],
-  "cascading": true,
+  "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Cascade: depending on recovery, uses of 'i' (lines 7-8) and 'count' (lines 9, 11, 12, 14, 15) become SEM-UNDECLARED-VAR symptoms (10+ records), all under the one root. gcc reports line 6 col 5 (before 'int') and then 'i' undeclared; our convention reports line 5, just after '0'."
+  "notes": "Expected under plan 002: raw 1. SYN-MISSING-SEMICOLON 5 (caused_by: none). Phrase repair (section 4.2): the next token 'int' starts on a later line, so a ';' is assumed and nothing else is lost. This is the plan 002 reference case for a missing ';' before a line break. gcc reports line 6 col 5 (before 'int') and then 'i' undeclared; our convention reports line 5, just after '0'."
 }

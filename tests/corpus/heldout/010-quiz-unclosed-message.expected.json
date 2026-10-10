@@ -11,5 +11,5 @@
   "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Root is at the opening quote. Cascade: the rest of the printf statement is swallowed, so a missing ')' and ';' can be reported before the 'if' that follows."
+  "notes": "Expected under plan 002: raw 2. LEX-UNTERMINATED-STRING 15 (caused_by: none), SYN-EXPECTED-EXPRESSION 16 (caused_by: R1). 'printf(' is left without an argument, so the parser finds 'if' on line 16 (lex_gap set, R1); panic stops before 'if', which parses normally. gcc: missing terminating \" character, then expected ')' before 'if'."
 }

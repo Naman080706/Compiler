@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault. Line 11 is the line of the identifier 'add' in the call. gcc: 11:17 too few arguments to function 'add'."
+  "notes": "Expected under plan 002: raw 1. SEM-ARG-COUNT 11 (caused_by: none). Expected under plan 002: raw 1. SEM-ARG-COUNT 11 (caused_by: none). Single fault. Line 11 is the line of the identifier 'add' in the call. gcc: 11:17 too few arguments to function 'add'."
 }

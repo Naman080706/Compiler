@@ -11,5 +11,5 @@
   "cascading": false,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Single fault; the string is otherwise terminated correctly. gcc reports an unknown escape sequence."
+  "notes": "Expected under plan 002: raw 1. LEX-INVALID-ESCAPE 10 (caused_by: none). Expected under plan 002: raw 1. LEX-INVALID-ESCAPE 10 (caused_by: none). Single fault; the string is otherwise terminated correctly. gcc reports an unknown escape sequence."
 }

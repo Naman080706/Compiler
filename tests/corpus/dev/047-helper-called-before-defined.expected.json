@@ -11,5 +11,5 @@
   "cascading": true,
   "fixable": true,
   "gcc_rejects": true,
-  "notes": "Cascade: the other three calls (lines 9, 10, 11) are symptoms grouped under the first. Fix: add 'int cube(int x);' before main. gcc: implicit declaration of function 'cube' (reported at each use of the function in the first call only)."
+  "notes": "Expected under plan 002: raw 4. SEM-UNDECLARED-FUNC 7 (caused_by: none), SEM-UNDECLARED-FUNC 9 (caused_by: none), SEM-UNDECLARED-FUNC 10 (caused_by: none), SEM-UNDECLARED-FUNC 11 (caused_by: none). No parse error, so R5 does not apply; each of the four calls gets its own record (section 6) and F2 groups them under the first. Fix: add 'int cube(int x);' before main."
 }
