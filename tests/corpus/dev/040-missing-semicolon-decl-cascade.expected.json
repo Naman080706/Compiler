@@ -1,0 +1,15 @@
+{
+  "description": "Declaration 'int count = 0' lacks its ';', so the parser can lose both 'count' and the next declaration 'int i'.",
+  "split": "dev",
+  "injected_faults": [
+    "line 5: missing ';' at the end of 'int count = 0'"
+  ],
+  "roots": [
+    {"code": "SYN-MISSING-SEMICOLON", "line": 5}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Cascade: depending on recovery, uses of 'i' (lines 7-8) and 'count' (lines 9, 11, 12, 14, 15) become SEM-UNDECLARED-VAR symptoms (10+ records), all under the one root. gcc reports line 6 col 5 (before 'int') and then 'i' undeclared; our convention reports line 5, just after '0'."
+}
