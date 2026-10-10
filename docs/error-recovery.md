@@ -205,15 +205,18 @@ Rules:
 | R4 broken declaration | WRN-UNUSED-VAR | the declaration it is about has `error_id` set | that `error_id` |
 | R5 lost declaration | SEM-UNDECLARED-VAR, SEM-UNDECLARED-FUNC for name n; SEM-MISSING-MAIN (n = `main`) | an earlier node (in source order) in the current function body or at file scope is an `ErrorStmt` with n in `declared_names`, or a broken declaration named n | the `error_id` of the nearest such node |
 | R6 lost read | WRN-UNUSED-VAR for variable v (when R4 does not apply) | an `ErrorStmt`, `ErrorExpr` or broken declaration in v's scope, after v's declaration, has v's name in `idents_in_span` | the `error_id` of the first such node |
-| R7 orphan loop body | SEM-BREAK-OUTSIDE-LOOP | the `break`/`continue` is inside (at any depth, with no real `while` or `for` node in between) a `Block` whose `orphan_of` points to an `ErrorStmt` with `kind_hint` `while` or `for` | `orphan_of` |
+| R7 orphan loop body | SEM-BREAK-OUTSIDE-LOOP | the `break`/`continue` is inside (at any depth, with no real `while` or `for` node in between) a `Block` whose `orphan_of` points to an `ErrorStmt` with `kind_hint` `while`, `for` or `unsupported` | `orphan_of` |
 | R8 incomplete body | WRN-MISSING-RETURN | the function body contains an `ErrorStmt` at any depth, or the body `Block` has `closed_by_repair` set (§4.7) | the `error_id` of the first `ErrorStmt` in source order, else `closed_by_repair` |
+| R9 orphan unsupported body | any syntax record | R2 and R1 do not apply, and the innermost `Block` being parsed has `orphan_of` = X, where X is an `ErrorStmt` with `kind_hint` `unsupported` | X's `error_id` |
+
+R9 explained: an unsupported construct such as `switch` makes its whole `{ … }` body unparseable as intended, so every syntax error inside that orphan body (each `case`/`default`) is a consequence of the unsupported construct. The parser knows this mechanically through `orphan_of`. R9 may over-link a genuinely independent error inside such a body. That is accepted, because the body must be rewritten anyway.
 
 Notes:
 
-- Precedence: for syntax records, R2 then R1. Semantic rules don't overlap except R4 vs R6 (R4 first). If no rule applies, `caused_by = null`.
-- Lexical records never get `caused_by`. R1 and R2 are the only rules that apply to syntax records. R3 to R8 apply to semantic records only.
+- Precedence: for syntax records, R2, then R1, then R9. Semantic rules don't overlap except R4 vs R6 (R4 first). If no rule applies, `caused_by = null`.
+- Lexical records never get `caused_by`. R1, R2 and R9 apply to syntax records. R3 to R8 apply to semantic records only.
 - `caused_by` always points to an **earlier** record (smaller id), so the links form a forest with no cycles. An error detected later than its true cause can't be linked backward. This is why §4.7 detects a missing `}` early, at the next function header, instead of at EOF.
-- **Provisional F2 root rule** (used only to fill `root_id` in §9; F2's own plan decides the final algorithm). `root(r) = root(caused_by(r))` if `caused_by` is set. Otherwise, if r is SEM-UNDECLARED-VAR or SEM-UNDECLARED-FUNC and an earlier record with the same code and the same name exists in the same function body (or both at file scope), `root(r)` = that record's root (the PRD rule "an undeclared variable groups all its later uses"). Otherwise `root(r) = r.id`. Displayed count = number of distinct roots. The PRD's other rule ("errors after a syntax error within the same statement or block are children of the first") is approximated here only through R1/R2. Applying it to whole blocks would wrongly merge independent errors. F2's plan must decide this.
+- **Provisional F2 root rule** (used only to fill `root_id` in §9; F2's own plan decides the final algorithm). `root(r) = root(caused_by(r))` if `caused_by` is set. Otherwise, if r is SEM-UNDECLARED-VAR or SEM-UNDECLARED-FUNC and an earlier record with the same code and the same name exists in the same function body (or both at file scope), `root(r)` = that record's root (the PRD rule "an undeclared variable groups all its later uses"). Otherwise `root(r) = r.id`. Displayed count = number of distinct roots. The PRD's other rule ("errors after a syntax error within the same statement or block are children of the first") is approximated here only through R1/R2/R9. Applying it to whole blocks would wrongly merge independent errors. F2's plan must decide this.
 
 ## 8. Locations
 
@@ -439,6 +442,6 @@ The traces cover four of the five required cascade-set members (T4, T5, T3, T2).
 
 ## 11. Interface for later milestones
 
-- Milestone 1 parser: implements §3 to §5 and records `caused_by` for R1/R2. The analyser implements §6 and R3 to R8. Each trace in §9 becomes a pytest case in the corpus, asserting the exact record table.
+- Milestone 1 parser: implements §3 to §5 and records `caused_by` for R1/R2/R9. The analyser implements §6 and R3 to R8. Each trace in §9 becomes a pytest case in the corpus, asserting the exact record table.
 - F2: reads `caused_by` and assigns `root_id` (provisional rule in §7).
 - F8: the verifier compares records before and after a patch. Because records are deterministic (invariant 5), "the original error is gone" can be checked by `(code, line, column)` of the root record (adjusted for lines the patch adds or removes). This is to be specified by the F8 plan.
