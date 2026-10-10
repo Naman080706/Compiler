@@ -1,0 +1,15 @@
+{
+  "description": "Adds up four marks in a loop, but a stray '@' is typed after the semicolon inside the loop.",
+  "split": "dev",
+  "injected_faults": [
+    "line 12: stray character '@' after 'total += marks[i];'"
+  ],
+  "roots": [
+    {"code": "LEX-INVALID-CHAR", "line": 12}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault. The '@' is not part of the subset's alphabet; the rest of the line is valid. gcc: stray '@' in program."
+}

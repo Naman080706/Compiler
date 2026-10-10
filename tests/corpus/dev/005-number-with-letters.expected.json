@@ -1,0 +1,15 @@
+{
+  "description": "Counts numbers divisible by 7 up to a limit, but the limit is typed as '10x'.",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: number literal '10x' has a letter attached to it"
+  ],
+  "roots": [
+    {"code": "LEX-MALFORMED-NUMBER", "line": 4}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault. gcc: invalid suffix \"x\" on integer constant."
+}

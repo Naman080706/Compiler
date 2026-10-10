@@ -1,0 +1,15 @@
+{
+  "description": "Grade classifier initialises 'char grade' with the two-character literal 'AB'.",
+  "split": "dev",
+  "injected_faults": [
+    "line 5: character literal 'AB' holds two characters"
+  ],
+  "roots": [
+    {"code": "LEX-BAD-CHAR-LITERAL", "line": 5}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Single fault; the rest of the program is valid. gcc only warns about a multi-character constant (see gcc_rejects)."
+}

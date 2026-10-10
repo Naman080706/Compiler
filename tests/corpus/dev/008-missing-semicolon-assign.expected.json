@@ -1,0 +1,15 @@
+{
+  "description": "Loop adds the numbers 1 to 10 but 'sum = sum + i' has no semicolon.",
+  "split": "dev",
+  "injected_faults": [
+    "line 8: missing ';' at the end of 'sum = sum + i'"
+  ],
+  "roots": [
+    {"code": "SYN-MISSING-SEMICOLON", "line": 8}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The next line starts with an identifier, so the parser notices at line 9 (token count); by convention the error is at the end of line 8. gcc reports line 8 col 22 (end of the statement): expected ';' before 'count'."
+}

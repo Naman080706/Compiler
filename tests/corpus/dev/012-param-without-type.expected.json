@@ -1,0 +1,15 @@
+{
+  "description": "Defines max(a, int b) where the first parameter has no type.",
+  "split": "dev",
+  "injected_faults": [
+    "line 3: parameter 'a' has no type in 'int max(a, int b)'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-TYPE", "line": 3}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The found token is the identifier 'a' where a type was expected. The later call max(...) may or may not be reported as undeclared, depending on recovery; only the syntax error is expected as a root. gcc is more lenient (K&R style) but rejects this mixed form."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Multiplication table that declares its size with 'const int LIMIT = 5;', and const is not in the subset.",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: 'const' qualifier is not supported"
+  ],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 4}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "The found token is 'const'. Uses of LIMIT below may produce follow-up diagnostics depending on recovery; only the unsupported-feature error is expected as a root. gcc accepts const, so gcc_rejects is false."
+}

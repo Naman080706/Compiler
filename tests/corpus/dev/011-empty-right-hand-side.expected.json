@@ -1,0 +1,15 @@
+{
+  "description": "Computes the average of five readings but leaves the divisor out of 'average = sum / ;'.",
+  "split": "dev",
+  "injected_faults": [
+    "line 12: expression missing after '/' in 'average = sum / ;'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-EXPRESSION", "line": 12}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The found token is the ';' on the same line. gcc: expected expression before ';' token."
+}

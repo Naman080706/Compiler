@@ -1,0 +1,15 @@
+{
+  "description": "Prints a save message that contains a Windows path, where '\\d' is not a valid escape sequence.",
+  "split": "dev",
+  "injected_faults": [
+    "line 10: invalid escape sequence '\\d' in the string literal"
+  ],
+  "roots": [
+    {"code": "LEX-INVALID-ESCAPE", "line": 10}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault; the string is otherwise terminated correctly. gcc reports an unknown escape sequence."
+}

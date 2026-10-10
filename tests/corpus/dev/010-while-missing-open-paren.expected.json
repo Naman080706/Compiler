@@ -1,0 +1,15 @@
+{
+  "description": "Counts up to 10 with a while loop whose condition lacks the opening parenthesis.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: 'while count < 10) {' is missing '(' after 'while'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-TOKEN", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The found token is 'count' on the same line, where '(' was expected. gcc: expected '(' before 'count'."
+}
