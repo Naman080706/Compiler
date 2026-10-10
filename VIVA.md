@@ -90,7 +90,7 @@ There is one deliberate change in order. The PRD puts the faulty-program test co
 - **Expected results:** each program has a JSON sidecar listing the root causes F2 should show (code + line), not raw error counts. Raw counts depend on recovery details, so we don't predict them.
 - **gcc as an independent check:** `gcc -std=c99 -pedantic-errors -fsyntax-only` runs on every program. Any program we expect to accept must also be accepted by gcc ("accepted => valid C99"). Whether gcc rejects each faulty program is recorded by actually running it, never guessed. Result: gcc rejects 59 of 85 programs and accepts 26. The 26 are all valid programs, warning-only programs, or cases where our subset is deliberately stricter than C99 (a variable-length array, a missing `main`, `const`, pointers, `switch`, `<math.h>`). There are 0 mismatches.
 
-### 1.10 Compiler structure (milestone 1: foundation, lexer and parser built; semantic analyser planned)
+### 1.10 Compiler structure (milestone 1 complete)
 
 ```
 source.c --> lexer.py --> parser.py --> semantic.py --> list of ErrorRecord
@@ -109,6 +109,8 @@ source.c --> lexer.py --> parser.py --> semantic.py --> list of ErrorRecord
 - **All three recovery layers work as designed.** The phrase repairs fix a missing `;` (next token on a new line), a missing `)` before `{` and a missing `}` (a function header inside a function). Panic mode handles everything else. Broken declarations stay in the tree, so later uses aren't falsely "undeclared". All 9 parser-level hand traces reproduce exactly, and every dev program's syntax errors match its notes.
 - **Robustness evidence:** every valid test program was re-parsed with each single token deleted in turn. That is 1,146 broken programs, with 0 crashes and 0 infinite loops, and at most 2 errors per broken program. A safety-net loop guard fails the tests if it ever fires; it never has.
 - **Known limitation found in review:** an *extra* `}` gets the right error code but a confusing message, because the catalog has one template for both missing and extra closers. It will be fixed in the catalog before the AI layer reads messages.
+- **Milestone 1 complete (plan 007):** the semantic analyser (all 16 rules, one source-order pass, which C99's declare-before-use allows), `compile_source()` and `python -m cea file.c [--json]`. The suite is 858 tests. All 10 hand traces are reproduced exactly, and all 54 dev and 12 valid programs give their expected errors. PRD F1 is met (the T6 file gives 3 records: lexical, syntax, semantic) and so is F4 (a warnings-only file compiles, with summary "0 fatal, 1 warning"). The exit code is 1 on any fatal error and 0 otherwise.
+- **The spec was corrected during this step:** a block returns on every path if *any* statement in it does, so `return 1; f();` gives only an unreachable-code warning, not a false missing-return warning too.
 - **Standard library only.** The compiler has no third-party dependencies, so it runs anywhere Python 3.11+ runs.
 - **A fixed interface contract** (`plans/m1-architecture.md`) defines every module, record field and syntax-tree node before any code is written. The lexer, parser and analyser were planned in parallel and must fit together. The contract is what guarantees they do.
 - **Spec gaps were fixed before coding (plan 004, done).** Result: a held-out `switch` program went from 5 displayed root causes to 1. Hand-tracing the test programs found four gaps. Two were real design problems: one unsupported `switch` or pointer showed up as several unrelated "root causes". New rule R9 and an extended R7 now link those cascades. A `switch` example (trace T8) and a pointer example (trace T9) were added as exact-match tests.
@@ -235,3 +237,4 @@ On a folder of faulty C programs with known injected faults, which also serves a
 | 2026-10-10 | Plan 004 executed: switch cascade 5 roots -> 1 (heldout/020), traces T8/T9 exact | Plan 004 reviewed and merged |
 | 2026-10-10 | 1.10 updated (foundation + lexer built, lexer details, validation, message quoting), no-print Q&A | Plan 005 executed, reviewed and merged |
 | 2026-10-10 | 1.10 updated (parser built, recovery layers, robustness evidence, stray-`}` message limitation), 2 Q&A | Plan 006 executed, reviewed and merged |
+| 2026-10-10 | 1.10: milestone 1 complete (analyser, pipeline, CLI, F1/F4 met, return-path fix) | Plan 007 executed, reviewed and merged |
