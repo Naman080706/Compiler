@@ -276,3 +276,488 @@ class Parser:
         tok = self.cur
         code = self.select_code(tok, expected)
         raise ParseError(self.report(code, tok, expected), code)
+
+    # =================================================== recovery (steps 4-9)
+    def expect_semi(self) -> Token | None:
+        return self.expect(";")
+
+    def expect_header_close(self) -> None:
+        self.expect(")")
+
+    def check_missing_brace(self) -> None:
+        return None
+
+    def open_region(self, error_id: str) -> None:
+        return None
+
+    def panic_stmt(self) -> str | None:
+        raise NotImplementedError("plan 006 step 5")
+
+    def panic_for_header(self, base: int) -> str:
+        raise NotImplementedError("plan 006 step 5")
+
+    def first_on_line(self, i: int) -> bool:
+        raise NotImplementedError("plan 006 step 5")
+
+    def panic_top(self) -> str:
+        raise NotImplementedError("plan 006 step 5")
+
+    @staticmethod
+    def kind_hint(tok: Token) -> str:
+        raise NotImplementedError("plan 006 step 5")
+
+    def idents(self, i: int, j: int) -> set[str]:
+        raise NotImplementedError("plan 006 step 5")
+
+    def error_stmt(self, e: ParseError, start: int, kind: str, stopped: str | None,
+                   names: list[tuple[str, str]]) -> A.ErrorStmt:
+        raise NotImplementedError("plan 006 step 5")
+
+    def recover_top(self, e: ParseError, start: int, first: Token, stopped: str):
+        raise NotImplementedError("plan 006 step 5")
+
+    def declared_names(self, start: int, end: int, code: str) -> list[tuple[str, str]]:
+        return []
+
+    def broken_decl(self, stmt: A.VarDeclStmt, e: ParseError, start: int) -> A.VarDeclStmt:
+        return stmt
+
+    def guard(self, before: int) -> None:
+        return None
+
+    def is_lvalue(self, e: A.Expr) -> bool:
+        return True
+
+    def invalid_target(self, op: Token) -> NoReturn:
+        raise NotImplementedError("plan 006 step 9")
+
+    # ==================================================== grammar (step 3)
+    @rule("program")
+    def program(self) -> A.Program:
+        decls: list = []
+        while self.cur.kind is not K.EOF:
+            before = self.pos
+            decls.append(self.top_decl())
+            self.guard(before)
+        eof = self.toks[-1]                    # contract: 1:1 .. the EOF position
+        return A.Program(decls, A.Span(1, 1, eof.line, eof.col))
+
+    @rule("top_decl")
+    def top_decl(self) -> A.FunctionDecl | A.VarDeclStmt | A.ErrorStmt:
+        start, depth, first = self.pos, len(self.brackets), self.cur
+        saved_ctx, saved_partial = self.top_ctx, self.partial_decl
+        self.top_ctx, self.partial_decl = _TopCtx(), None
+        try:
+            type_tok = self.type_spec()
+            if self.cur.kind is K.IDENT and self.is_(self.peek(1), "("):
+                return self.function_def(type_tok, start)
+            return self.global_decl(type_tok, start)
+        except ParseError as e:                                            # catch point (c)
+            del self.brackets[depth:]
+            self.open_region(e.error_id)
+            stopped = self.panic_top()
+            return self.recover_top(e, start, first, stopped)
+        finally:
+            self.top_ctx, self.partial_decl = saved_ctx, saved_partial
+
+    @rule("function_def")
+    def function_def(self, type_tok: Token, start: int) -> A.FunctionDecl:
+        name = self.consume()                               # IDENT (checked by top_decl)
+        self.top_ctx.func_name, self.top_ctx.func_name_index = name, self.pos - 1
+        self.match("(")
+        params = self.params()
+        self.expect(")")
+        node = A.FunctionDecl(type_tok.text, name.text, Position(name.line, name.col), params, None,
+                              self.span_from(start))
+        self.top_ctx.func_node = node
+        if self.at("{"):
+            try:
+                node.body = self.block()
+            except BlockRepair as r:                        # 4.7: body closed by the repair
+                node.body = r.node if isinstance(r.node, A.Block) else None
+        else:
+            self.expect_semi()                              # site S1
+        node.span = self.span_from(start)
+        return node
+
+    @rule("params")
+    def params(self) -> list[A.Param]:
+        if self.at(")"):
+            return []
+        if self.at("void") and self.is_(self.peek(1), ")"):
+            self.consume()
+            return []
+        return self.param_list()
+
+    @rule("param_list")
+    def param_list(self) -> list[A.Param]:
+        out = [self.param()]
+        while True:
+            if self.at(","):
+                self.consume()
+                out.append(self.param())
+            elif self.at(")"):
+                return out
+            else:
+                self.fail([",", ")"])
+
+    @rule("param")
+    def param(self) -> A.Param:
+        t = self.type_spec()
+        name = self.expect_ident()
+        return A.Param(t.text, name.text, Position(name.line, name.col),
+                       A.Span(t.line, t.col, name.end_line, name.end_col))
+
+    @rule("global_decl")
+    def global_decl(self, type_tok: Token, start: int) -> A.VarDeclStmt:
+        stmt = A.VarDeclStmt([], self.span_from(start))
+        self.partial_decl = stmt
+        self.declarator(type_tok.text, stmt, is_global=True)
+        while self.at(","):
+            self.consume()
+            self.declarator(type_tok.text, stmt, is_global=True)
+        self.expect_semi()                                  # site S2
+        stmt.span = self.span_from(start)
+        return stmt
+
+    @rule("type_spec")
+    def type_spec(self) -> Token:
+        if is_type_kw(self.cur):
+            return self.consume()
+        self.fail([TYPE])
+
+    @rule("declarator")
+    def declarator(self, type_name: str, stmt: A.VarDeclStmt, is_global: bool) -> A.VarDecl:
+        name = self.expect_ident()
+        name_i = self.pos - 1
+        node = A.VarDecl(type_name, name.text, Position(name.line, name.col), None, None, is_global,
+                         self.span(name_i, name_i))
+        stmt.decls.append(node)
+        self.decl_log.append((name_i, name.text, type_name))
+        self.name_index[id(node)] = name_i
+        if self.at("["):
+            self.array_suffix(node)
+        if self.at("="):
+            self.consume()
+            node.init = self.guarded_expression(node, "init")       # CP-INIT
+        node.span = self.span_from(name_i)
+        return node
+
+    @rule("array_suffix")
+    def array_suffix(self, node: A.VarDecl) -> None:
+        self.match("[")
+        node.array_size = self.guarded_expression(node, "array_size")   # CP-SIZE
+        self.expect("]")
+
+    def guarded_expression(self, node: A.VarDecl, field: str) -> A.Expr:
+        """CP-INIT / CP-SIZE (4.4 b): the failed expression becomes an ErrorExpr on the
+        declaration; the ParseError is re-raised so the enclosing statement()/top_decl()
+        runs the panic and returns the (broken) declaration."""
+        start = self.pos
+        try:
+            return self.expression()
+        except ParseError as e:
+            setattr(node, field, A.ErrorExpr(self.span(start, self.pos - 1), e.error_id))
+            raise
+
+    @rule("block")
+    def block(self) -> A.Block:
+        start, depth = self.pos, len(self.brackets)
+        orphan = self.recovering if self.stop_index == self.pos else None    # section 5 orphan_of
+        self.match("{")
+        node = A.Block([], self.span(start, start), orphan_of=orphan)
+        self.block_orphans.append(orphan)
+        try:
+            while not (self.at("}") or self.cur.kind is K.EOF):
+                before = self.pos
+                node.stmts.append(self.statement())
+                self.guard(before)
+            if self.at("}"):
+                self.match("}")
+            else:
+                self.report("SYN-UNEXPECTED-EOF", self.cur, ["}"])         # 4.4 EOF: no raise
+            node.span = self.span_from(start)
+            return node
+        except BlockRepair as r:                                           # 4.7 propagation
+            if r.node is not None:
+                node.stmts.append(r.node)
+            node.span = self.span_from(start)
+            node.closed_by_repair = r.error_id
+            r.node = node
+            raise
+        finally:
+            self.block_orphans.pop()
+            del self.brackets[depth:]
+
+    @rule("statement")
+    def statement(self) -> A.Stmt:
+        start, depth, first = self.pos, len(self.brackets), self.cur
+        saved_partial = self.partial_decl
+        self.partial_decl = None
+        try:
+            self.check_missing_brace()                                     # 4.7 first
+            return self.statement_body()
+        except ParseError as e:                                            # catch point (a)
+            kind = self.kind_hint(first)
+            self.open_region(e.error_id)
+            if e.in_for_header:
+                stopped = self.panic_for_header(depth)
+            else:
+                stopped = self.panic_stmt()
+            del self.brackets[depth:]
+            if kind == "decl" and self.partial_decl is not None and self.partial_decl.decls:
+                return self.broken_decl(self.partial_decl, e, start)
+            return self.error_stmt(e, start, kind, stopped, self.declared_names(start, self.pos, e.code))
+        finally:
+            self.partial_decl = saved_partial
+
+    def statement_body(self) -> A.Stmt:
+        t = self.cur
+        if t.kind is K.UNSUPPORTED_KEYWORD:
+            self.fail([])                                                  # rule 0
+        if is_type_kw(t):
+            return self.var_decl()
+        if t.kind is K.KEYWORD and t.text in STMT_KEYWORDS:
+            return getattr(self, t.text + "_stmt")()
+        if self.at("{"):
+            return self.block()
+        if self.at(";"):
+            return self.empty_stmt()
+        return self.expr_stmt()
+
+    @rule("var_decl")
+    def var_decl(self) -> A.VarDeclStmt:
+        start = self.pos
+        stmt = self.var_core(register=True)
+        self.expect_semi()                                                 # site S3
+        stmt.span = self.span_from(start)
+        return stmt
+
+    @rule("var_core")
+    def var_core(self, register: bool) -> A.VarDeclStmt:
+        start = self.pos
+        type_tok = self.type_spec()
+        stmt = A.VarDeclStmt([], self.span_from(start))
+        if register:
+            self.partial_decl = stmt
+        self.declarator(type_tok.text, stmt, is_global=False)
+        while self.at(","):
+            self.consume()
+            self.declarator(type_tok.text, stmt, is_global=False)
+        stmt.span = self.span_from(start)
+        return stmt
+
+    @rule("if_stmt")
+    def if_stmt(self) -> A.If:
+        start = self.pos
+        self.consume()                                                     # 'if'
+        self.expect("(")
+        cond = self.expression()
+        self.expect_header_close()
+        try:
+            then = self.statement()
+        except BlockRepair as r:
+            if r.node is not None:
+                r.node = A.If(cond, r.node, None, self.span_from(start))
+            raise
+        els = None
+        if self.at("else"):
+            self.consume()
+            try:
+                els = self.statement()
+            except BlockRepair as r:
+                r.node = A.If(cond, then, r.node, self.span_from(start))
+                raise
+        return A.If(cond, then, els, self.span_from(start))
+
+    @rule("while_stmt")
+    def while_stmt(self) -> A.While:
+        start = self.pos
+        self.consume()                                                     # 'while'
+        self.expect("(")
+        cond = self.expression()
+        self.expect_header_close()
+        try:
+            body = self.statement()
+        except BlockRepair as r:
+            if r.node is not None:
+                r.node = A.While(cond, r.node, self.span_from(start))
+            raise
+        return A.While(cond, body, self.span_from(start))
+
+    @rule("for_stmt")
+    def for_stmt(self) -> A.For:
+        start = self.pos
+        self.consume()                                                     # 'for'
+        self.expect("(")
+        try:
+            init = None if self.at(";") else self.for_init()
+            self.expect_semi()                                             # site S4
+            cond = None if self.at(";") else self.expression()
+            self.expect_semi()                                             # site S5
+            step = None if self.at(")") else self.expression()
+            self.expect_header_close()
+        except ParseError as e:
+            e.in_for_header = True
+            raise
+        try:
+            body = self.statement()
+        except BlockRepair as r:
+            if r.node is not None:
+                r.node = A.For(init, cond, step, r.node, self.span_from(start))
+            raise
+        return A.For(init, cond, step, body, self.span_from(start))
+
+    @rule("for_init")
+    def for_init(self) -> A.VarDeclStmt | A.Expr:
+        if is_type_kw(self.cur):
+            return self.var_core(register=False)
+        return self.expression()
+
+    @rule("return_stmt")
+    def return_stmt(self) -> A.Return:
+        start = self.pos
+        self.consume()                                                     # 'return'
+        value = None if self.at(";") else self.expression()
+        self.expect_semi()                                                 # site S6
+        return A.Return(value, self.span_from(start))
+
+    @rule("break_stmt")
+    def break_stmt(self) -> A.Break:
+        start = self.pos
+        self.consume()
+        self.expect_semi()                                                 # site S7
+        return A.Break(self.span_from(start))
+
+    @rule("continue_stmt")
+    def continue_stmt(self) -> A.Continue:
+        start = self.pos
+        self.consume()
+        self.expect_semi()                                                 # site S8
+        return A.Continue(self.span_from(start))
+
+    @rule("expr_stmt")
+    def expr_stmt(self) -> A.ExprStmt:
+        start = self.pos
+        e = self.expression()
+        self.expect_semi()                                                 # site S9
+        return A.ExprStmt(e, self.span_from(start))
+
+    @rule("empty_stmt")
+    def empty_stmt(self) -> A.EmptyStmt:
+        start = self.pos
+        self.match(";")                                                    # site S10
+        return A.EmptyStmt(self.span_from(start))
+
+    @rule("expression")
+    def expression(self) -> A.Expr:
+        return self.assignment()
+
+    @rule("assignment")
+    def assignment(self) -> A.Expr:
+        left = self.logic_or()
+        if self.at_any(ASSIGN_OPS):
+            op = self.cur
+            if not self.is_lvalue(left):
+                self.invalid_target(op)
+            self.consume()
+            value = self.assignment()
+            return A.Assign(op.text, left, value, Position(op.line, op.col), self.join(left.span, value.span))
+        return left
+
+    def binary(self, ops: tuple[str, ...], sub: Callable[[], A.Expr]) -> A.Expr:
+        left = sub()
+        while self.at_any(ops):
+            op = self.consume()
+            right = sub()
+            left = A.Binary(op.text, left, right, Position(op.line, op.col), self.join(left.span, right.span))
+        return left
+
+    @rule("logic_or")
+    def logic_or(self) -> A.Expr:
+        return self.binary(("||",), self.logic_and)
+
+    @rule("logic_and")
+    def logic_and(self) -> A.Expr:
+        return self.binary(("&&",), self.equality)
+
+    @rule("equality")
+    def equality(self) -> A.Expr:
+        return self.binary(("==", "!="), self.comparison)
+
+    @rule("comparison")
+    def comparison(self) -> A.Expr:
+        return self.binary(("<", "<=", ">", ">="), self.term)
+
+    @rule("term")
+    def term(self) -> A.Expr:
+        return self.binary(("+", "-"), self.factor)
+
+    @rule("factor")
+    def factor(self) -> A.Expr:
+        return self.binary(("*", "/", "%"), self.unary)
+
+    @rule("unary")
+    def unary(self) -> A.Expr:
+        if self.at_any(("!", "-", "+", "++", "--")):
+            op = self.consume()
+            operand = self.unary()
+            if op.text in ("++", "--") and not self.is_lvalue(operand):
+                self.invalid_target(op)
+            return A.Unary(op.text, operand, False,
+                           A.Span(op.line, op.col, operand.span.end_line, operand.span.end_col))
+        return self.postfix()
+
+    @rule("postfix")
+    def postfix(self) -> A.Expr:
+        e = self.primary()
+        while True:
+            if self.at("("):
+                self.match("(")
+                args = [] if self.at(")") else self.arg_list()             # 4.1 lookahead commitment
+                close = self.expect(")")
+                e = A.Call(e, args, A.Span(e.span.start_line, e.span.start_col, close.end_line, close.end_col))
+            elif self.at("["):
+                self.match("[")
+                idx = self.expression()
+                close = self.expect("]")
+                e = A.Index(e, idx, A.Span(e.span.start_line, e.span.start_col, close.end_line, close.end_col))
+            else:
+                break
+        if self.at_any(("++", "--")):
+            op = self.cur
+            if not self.is_lvalue(e):
+                self.invalid_target(op)
+            self.consume()
+            e = A.Unary(op.text, e, True, A.Span(e.span.start_line, e.span.start_col, op.end_line, op.end_col))
+        return e
+
+    @rule("arg_list")
+    def arg_list(self) -> list[A.Expr]:
+        out = [self.assignment()]
+        while True:
+            if self.at(","):
+                self.consume()
+                out.append(self.assignment())
+            elif self.at(")"):
+                return out
+            else:
+                self.fail([",", ")"])
+
+    @rule("primary")
+    def primary(self) -> A.Expr:
+        t = self.cur
+        lit = {K.INT_LIT: A.IntLit, K.FLOAT_LIT: A.FloatLit, K.CHAR_LIT: A.CharLit, K.STRING_LIT: A.StringLit}
+        if t.kind in lit:
+            self.consume()
+            return lit[t.kind](t.value, A.Span(t.line, t.col, t.end_line, t.end_col))
+        if t.kind is K.IDENT:
+            self.consume()
+            return A.Name(t.text, A.Span(t.line, t.col, t.end_line, t.end_col))
+        if self.at("("):
+            self.match("(")
+            e = self.expression()
+            self.expect(")")
+            self.paren[id(e)] = e
+            return e
+        self.fail([EXPR])
