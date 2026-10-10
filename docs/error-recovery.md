@@ -147,19 +147,78 @@ Implementation note: the repair is raised as an internal `BlockRepair(error_id)`
 
 ## 5. Error AST nodes
 
-TODO (plan 002 step 4)
+The sketch below is documentation, not a code file. The field names are the contract.
+
+```python
+@dataclass
+class Span:            # inclusive, 1-based
+    start_line: int; start_col: int; end_line: int; end_col: int
+
+@dataclass
+class ErrorExpr:       # has type <error>; stands in for an expression that failed to parse
+    span: Span
+    error_id: str      # the syntax record that replaced it
+
+@dataclass
+class ErrorStmt:       # a statement or top-level declaration that failed and was skipped
+    span: Span         # first token of the statement .. last token consumed or skipped
+    error_id: str
+    kind_hint: str     # 'if' 'while' 'for' 'return' 'break' 'continue' 'decl' 'expr' 'top'
+    declared_names: list[tuple[str, str]]   # (name, type) for each `type_spec IDENT` consumed inside it
+    idents_in_span: set[str]                # every IDENT text inside span (consumed or skipped)
+    stopped_before: str | None              # token text if panic stopped without consuming, else None
+```
+
+Further node fields:
+
+- `VarDecl`, the global declaration node and the function declaration node gain `error_id: str | None` and `idents_in_span: set[str]`. They are set when an error occurred after the name was consumed: a "broken declaration".
+- `Block` gains `orphan_of: str | None`. It is set to the current `recovering` id when the block starts at a `{` where panic stopped (`stopped_before == "{"`).
+- `Block` also gains `closed_by_repair: str | None`. It is set by the §4.7 missing-`}` repair.
+- Tokens carry `lex_gap: str | None` (§3).
+
+Rules:
+
+- **Broken declaration.** Once `type_spec IDENT` of a local or global variable has been consumed, a later error never turns the declaration into an `ErrorStmt`. The node is kept, the name is declared with its declared type, a failed initializer or array size becomes an `ErrorExpr`, and remaining declarators after the error are lost (they are in the skipped span). Example: `int x = ;` declares `x : int` with initializer `ErrorExpr`.
+- A **function** whose header fails (error inside `params`) becomes a top-level `ErrorStmt` with `declared_names = [(name, "function")]`. It does **not** declare the name, because its signature is unknown. Uses are linked by R5.
+- `ErrorStmt` never declares names. `declared_names` exists only for linking. A `for` statement whose header failed after `for (int i` gives `declared_names = [("i","int")]`, and `i` is not declared in the enclosing scope (correct C scoping, since `i`'s scope was the `for` statement).
 
 ## 6. Semantic analysis on a partial AST
 
-TODO (plan 002 step 4)
+- The analyser visits every node, depth-first and left to right in source order (for an assignment, the target before the value). Semantic records are created in that order, which fixes their ids. On `ErrorStmt` it does nothing: it does not analyse the partial contents and does not declare anything. On a broken declaration it declares the name and analyses whatever parts are not `ErrorExpr`.
+- **The `<error>` type.** Every `ErrorExpr` has type `<error>` carrying `cause = its error_id`. A use of an undeclared name gets type `<error>` carrying `cause = the SEM-UNDECLARED-VAR (or SEM-UNDECLARED-FUNC) record's id`. A binary or unary operation, call or index with an `<error>` operand has result type `<error>` with the cause of its first `<error>` operand.
+- **Type checks absorb `<error>`.** A per-operand type requirement is satisfied by an `<error>` operand, and a pairwise compatibility check (assignment, initialisation, argument vs parameter, return value vs return type) passes if either side is `<error>`. This applies to: SEM-TYPE-MISMATCH, WRN-IMPLICIT-NARROWING, SEM-VOID-VALUE, SEM-NOT-CALLABLE, SEM-ARG-TYPE, SEM-RETURN-TYPE, SEM-NOT-ARRAY, SEM-INDEX-NOT-INT, and the arithmetic-condition requirement of `sem.conditions`. Justification: a type check on an operand of unknown type has no answer, so not reporting it does not hide an error, because none was detected. This is the only place where an `<error>` value avoids a record.
+- **Shape checks still run** on `ErrorExpr` operands, because an `ErrorExpr` is visibly not the required shape. These are SEM-BAD-ARRAY-SIZE (size must be an integer literal > 0), SEM-NONCONST-GLOBAL-INIT (a global initializer must be a literal) and SEM-PRINTF-FORMAT (the first argument must be a string literal). When one fails because its operand is an `ErrorExpr`, the record gets `caused_by` by R3.
+- Repeated uses of the same undeclared name each produce their own SEM-UNDECLARED-VAR record (gcc reports only once per function; we do not hide). F2's PRD rule groups them, not `caused_by`.
+- For `sem.unused_declaration`, a plain `=` assignment target is a write, not a read, so a variable that is only assigned is still unused (this is what happens to `x` in trace T3 and `b` in T1b). Reads inside an `ErrorStmt` or an `ErrorExpr` are never seen by the analyser, which is what rules R4 and R6 compensate for.
 
 ## 7. caused_by rules
 
-TODO (plan 002 step 4)
+| Rule | Applies to | Condition (mechanical) | caused_by = |
+|---|---|---|---|
+| R1 lex gap | any syntax record | the found token's `lex_gap` is set and R2 does not apply | the `lex_gap` id |
+| R2 uncertain region | any syntax record | `recovering` is open when the record is created | `recovering` (the region owner) |
+| R3 poison operand | SEM-BAD-ARRAY-SIZE, SEM-NONCONST-GLOBAL-INIT, SEM-PRINTF-FORMAT | the operand that fails the shape check is an `ErrorExpr` | that `ErrorExpr.error_id` |
+| R4 broken declaration | WRN-UNUSED-VAR | the declaration it is about has `error_id` set | that `error_id` |
+| R5 lost declaration | SEM-UNDECLARED-VAR, SEM-UNDECLARED-FUNC for name n; SEM-MISSING-MAIN (n = `main`) | an earlier node (in source order) in the current function body or at file scope is an `ErrorStmt` with n in `declared_names`, or a broken declaration named n | the `error_id` of the nearest such node |
+| R6 lost read | WRN-UNUSED-VAR for variable v (when R4 does not apply) | an `ErrorStmt`, `ErrorExpr` or broken declaration in v's scope, after v's declaration, has v's name in `idents_in_span` | the `error_id` of the first such node |
+| R7 orphan loop body | SEM-BREAK-OUTSIDE-LOOP | the `break`/`continue` is inside (at any depth, with no real `while` or `for` node in between) a `Block` whose `orphan_of` points to an `ErrorStmt` with `kind_hint` `while` or `for` | `orphan_of` |
+| R8 incomplete body | WRN-MISSING-RETURN | the function body contains an `ErrorStmt` at any depth, or the body `Block` has `closed_by_repair` set (§4.7) | the `error_id` of the first `ErrorStmt` in source order, else `closed_by_repair` |
+
+Notes:
+
+- Precedence: for syntax records, R2 then R1. Semantic rules don't overlap except R4 vs R6 (R4 first). If no rule applies, `caused_by = null`.
+- Lexical records never get `caused_by`. R1 and R2 are the only rules that apply to syntax records. R3 to R8 apply to semantic records only.
+- `caused_by` always points to an **earlier** record (smaller id), so the links form a forest with no cycles. An error detected later than its true cause can't be linked backward. This is why §4.7 detects a missing `}` early, at the next function header, instead of at EOF.
+- **Provisional F2 root rule** (used only to fill `root_id` in §9; F2's own plan decides the final algorithm). `root(r) = root(caused_by(r))` if `caused_by` is set. Otherwise, if r is SEM-UNDECLARED-VAR or SEM-UNDECLARED-FUNC and an earlier record with the same code and the same name exists in the same function body (or both at file scope), `root(r)` = that record's root (the PRD rule "an undeclared variable groups all its later uses"). Otherwise `root(r) = r.id`. Displayed count = number of distinct roots. The PRD's other rule ("errors after a syntax error within the same statement or block are children of the first") is approximated here only through R1/R2. Applying it to whole blocks would wrongly merge independent errors. F2's plan must decide this.
 
 ## 8. Locations
 
-TODO (plan 002 step 4)
+SYN-MISSING-SEMICOLON is reported at the line and column immediately after the last token of the unterminated statement. Every other syntax error is reported at the found token. Lexical errors are reported at the first bad character. Semantic errors are reported at the offending identifier or operator.
+
+- `column` is 1-based. A tab counts as one column. "Immediately after the last token" means that token's end line, end column + 1.
+- The EOF token's position is immediately after the last token of the file (its end line, end column + 1). For an empty file it is 1:1. `found = "EOF"`.
+- SEM-MISSING-MAIN has no identifier. It is reported at the EOF position. This is confirmed by the advisor; plan 003's corpus uses the line of the file's last token.
+- `span_end`: lexical = last character skipped (for LEX-INVALID-ESCAPE in a string, the escape's second character); SYN-MISSING-SEMICOLON and EOF errors = same as `(line, column)`; other syntax = last character of the found token; semantic = last character of the offending identifier or operator.
 
 ## 9. Traced examples
 
