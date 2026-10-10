@@ -154,7 +154,7 @@ return type and parameter types.
 ```c
 int f(int a);
 float f(int a) {    /* return type disagrees with the prototype */
-    return 1.0f;
+    return 1.0;
 }
 ```
 
