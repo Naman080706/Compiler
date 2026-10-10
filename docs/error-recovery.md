@@ -222,7 +222,200 @@ SYN-MISSING-SEMICOLON is reported at the line and column immediately after the l
 
 ## 9. Traced examples
 
-TODO (plan 002 step 5)
+Eight programs are traced by hand through §3 to §7. Each is a separate compilation, so ids restart at `E-0001` in each. Source lines are numbered from 1 and use four-space indentation. Columns are 1-based. After the traces come two tables: the records, and a summary. Milestone 1 turns each trace into an exact-match test.
+
+### T1, missing `;` mid-function (newline after)
+
+```c
+int main(void) {
+    int a = 1;
+    int b = 2
+    a = a + b;
+    return a;
+}
+```
+
+1. Lexer: no lexical errors, no `lex_gap` is set.
+2. Parser, line 3: `int b = 2` is a `var_decl` with one declarator; the initializer is the expression `2` (ends at 3:13). The next token is `a` at 4:5, which cannot continue the expression.
+3. `expect(";")` finds `a`. It is not EOF, and its start line (4) is greater than the end line of the previous token (3). §4.2 fires: E-0001 SYN-MISSING-SEMICOLON at 3:14 (end column 13 + 1), `found = a`, `expected = [";"]`. Nothing is consumed, no panic, no region (`recovering` stays empty). R2 and R1 do not apply, so `caused_by` is null.
+4. Lines 4 and 5 parse normally. Semantics: `a` and `b` are both read in `a = a + b`, `a` also in `return a`. No other record.
+
+### T1b, missing `;` with the next statement on the same line
+
+```c
+int main(void) {
+    int a = 1;
+    int b = 2 a = a + b;
+    return a;
+}
+```
+
+1. Lexer: nothing.
+2. Parser, line 3: after the initializer `2` (ends 3:13) `expect(";")` finds `a` at 3:15, on the **same** line, so §4.2 does not repair. Selection rule 2 (expected set exactly `;`) gives E-0001 SYN-MISSING-SEMICOLON, still located at 3:14 by the location convention, `found = a`. `recovering` is empty and R1 does not apply (`a` has no `lex_gap`), so `caused_by` is null.
+3. The error is raised as a `ParseError` and caught by `statement()`. The statement is a `var_decl` whose first `IDENT` (`b`) was consumed, so the result is a broken declaration: `VarDecl b : int` with `error_id = E-0001` and `idents_in_span = {b, a}` (§5).
+4. Statement-level panic starts for E-0001 and opens the region (owner E-0001). It skips `a`, `=`, `a`, `+`, `b`, then consumes `;`. That closes the region (§4.5 (i)). Line 4 parses normally.
+5. Semantics: `b` is declared (as `int`) but never read. WRN-UNUSED-VAR at `b` (3:9). The declaration has `error_id` set, so R4 gives `caused_by = E-0001`. (The only text that mentions `b` after its declaration is the skipped `a = a + b`, which is not in the AST.) `a` is read in `return a`, so there is no warning for it.
+
+### T2, missing `}` before the end of a function
+
+```c
+int f(int a) {
+    if (a > 0) {
+        a = a - 1;
+    return a;
+}
+int main(void) {
+    return f(3);
+}
+```
+
+1. Lexer: nothing.
+2. Parser: `f`'s body block opens at 1:14. The `if` opens a second block at 2:16. `a = a - 1;` and `return a;` are matched inside it. The `}` on line 5 closes the `if` block. The parser is still inside `f`'s body.
+3. The block loop of `f`'s body calls `statement()` with the current token `int` (6:1). §4.7 is checked first: `int`, then `main` (IDENT), then `(`. It fires: E-0001 SYN-UNBALANCED-BRACKET at 6:1, `found = int`, `expected = ["}"]`. The message names the innermost open `{`, which is the `{` on line 1 (the `if` block is already closed). `f`'s body is closed with `closed_by_repair = E-0001`; nothing is consumed and no region is opened. `recovering` is empty and `lex_gap` is not set, so `caused_by` is null.
+4. The top-level loop parses `int main(void) { return f(3); }` normally and reaches EOF with no open block.
+5. Semantics: the last statement of `f`'s body is an `if` without `else`, so not every path returns: WRN-MISSING-RETURN at `f` (1:5). The body block has `closed_by_repair`, so R8 gives `caused_by = E-0001`. `a` is a parameter (exempt from `sem.unused_declaration`). `main` exists. Nothing else is reported.
+
+Without §4.7, line 6 would be parsed as a local declaration `int main`, and the first record would be a misleading SYN-MISSING-SEMICOLON at `(`; the real cause would surface only at EOF as a second, unrelated root. A missing `}` in the *last* function is still reported only at EOF.
+
+### T3, missing `(` after `if`
+
+```c
+int main(void) {
+    int x = 1;
+    if x > 0) {
+        x = 2;
+    }
+    return 0;
+}
+```
+
+1. Lexer: nothing.
+2. Parser, line 3: `if_stmt` consumes `if`, then `expect("(")` finds `x` (3:8). Selection: not unsupported, not EOF, expected set is `(` (not `;`, not only closing brackets, not the start of an expression), so selection rule 5 gives E-0001 SYN-EXPECTED-TOKEN at 3:8, `found = x`, `expected = ["("]`. `recovering` is empty and `x` has no `lex_gap`, so `caused_by` is null.
+3. `ParseError` is caught by the `statement()` of the `if`. Statement-level panic starts and opens the region (owner E-0001). It skips `x`, `>`, `0`, `)` and stops before `{`, which is in `SYNC_STMT_STOP`. The result is an `ErrorStmt` with `kind_hint = "if"`, span 3:5 to 3:13, `declared_names = []`, `idents_in_span = {x}` and `stopped_before = "{"`.
+4. The block loop calls `statement()` at `{` (3:15), a block. Panic stopped before `{`, so this block gets `orphan_of = E-0001`. Inside, `x = 2;` parses; its `;` is consumed by a successful match, which closes the region (§4.5 (iii)). The `}` on line 5 ends the block. `return 0;` and the final `}` parse normally. No further syntax error.
+5. Semantics: the `ErrorStmt` is skipped, so the read of `x` in `x > 0` is lost. The orphan block only writes `x` (`x = 2`). `x` is declared at 2:9 and never read: WRN-UNUSED-VAR. R4 does not apply (the declaration is not broken). R6 applies: the `ErrorStmt` is in `x`'s scope after its declaration and `x` is in its `idents_in_span`, so `caused_by = E-0001`. No other record (`main` exists and returns).
+
+### T4, undeclared variable used 5 times
+
+```c
+int main(void) {
+    int total = 0;
+    count = 1;
+    total = total + count;
+    count = count + 1;
+    total = total + count;
+    return total;
+}
+```
+
+1. Lexer and parser: no errors. The AST is complete and has no error nodes.
+2. Semantics, in source order. `count` is never declared: five uses (3:5, 4:21, 5:5, 5:13, 6:21), each a SEM-UNDECLARED-VAR record (§6: no suppression of repeated uses). `count` gets type `<error>`, so the assignments `total = total + count` and `count = count + 1` raise no SEM-TYPE-MISMATCH (§6: type checks absorb `<error>`).
+3. `caused_by`: R5 needs an `ErrorStmt` or broken declaration that declares `count`; there is none. All five records have `caused_by = null`.
+4. `total` is read (`total + count`, `return total`), so there is no WRN-UNUSED-VAR.
+5. Provisional F2 root rule: E-0002 to E-0005 have the same code and name as E-0001 in the same function, so their root is E-0001. Displayed count: 1.
+
+### T5, lexical error inside an expression
+
+```c
+int main(void) {
+    int x = 5 @ 2;
+    return x;
+}
+```
+
+1. Lexer, line 2: `@` (2:15) is in no token: E-0001 LEX-INVALID-CHAR, `found = @`. The character is skipped, no token is emitted, and the next token (`2`, 2:17) gets `lex_gap = E-0001`.
+2. Parser: the initializer is the expression `5` (ends 2:13); the next token `2` cannot continue it. `expect(";")` finds `2` on the **same** line, so §4.2 does not repair. Selection rule 2 gives E-0002 SYN-MISSING-SEMICOLON at 2:14, `found = 2`. `recovering` is empty, so R2 does not apply; `2` has `lex_gap = E-0001`, so R1 applies: `caused_by = E-0001`.
+3. As in T1b: a broken declaration `x : int` with `error_id = E-0002`; panic opens the region, skips `2`, consumes `;`, which closes it.
+4. Semantics: `x` is read in `return x`, so there is no warning. No other record.
+
+### T6, the F1 acceptance file (one lexical, one syntax, one semantic error)
+
+```c
+#include <stdio.h>
+int main(void) {
+    int count = 0;
+    printf("total\q\n", count);
+    count = count + 1
+    result = count;
+    return 0;
+}
+```
+
+1. Lexer: line 1 is an accepted `#include <stdio.h>` and produces no token (it sets no `lex_gap`). On line 4, the escape `\q` at 4:18 is not in `escape`: E-0001 LEX-INVALID-ESCAPE, `found = \q`. The STRING_LIT token is still emitted with the escape removed, so no `lex_gap` is set.
+2. Parser: `count = count + 1` ends at 5:21. `expect(";")` finds `result` (6:5), on a later line: §4.2 fires, E-0002 SYN-MISSING-SEMICOLON at 5:22, `found = result`. No region, no `lex_gap`: `caused_by` is null. Line 6 parses as a normal statement.
+3. Semantics: `printf` is declared (the include was seen) and its first argument is a string literal. `count` is read. `result` is never declared: E-0003 SEM-UNDECLARED-VAR at 6:5. No `ErrorStmt` or broken declaration declares `result`, so R5 does not apply: `caused_by` is null.
+
+This reaches PRD F1's acceptance test (three records, one per phase, correct positions) **only because** the semantic analyser runs on the partial AST (invariant 1).
+
+### T7, missing `)` before `{`
+
+```c
+int main(void) {
+    int i = 0;
+    while (i < 10 {
+        i = i + 1;
+        if (i == 5) {
+            break;
+        }
+    }
+    return i;
+}
+```
+
+1. Lexer: nothing.
+2. Parser, line 3: `while`, `(`, then the expression `i < 10`. `expect(")")` finds `{` (3:19). The §4.3 decision is YES, so the rule applies: the required `)` closes a `while` header and the current token is `{`. E-0001 SYN-UNBALANCED-BRACKET at 3:19, `found = {`, `expected = [")"]`; the message names the `(` on line 3. Nothing is consumed, no region is opened, `caused_by` is null.
+3. The `while` node is kept with its condition `i < 10`, and the body block `{ … }` is parsed as its body. The `if` and `break` inside are ordinary.
+4. Semantics: `break` is inside a real `while` node, so there is no SEM-BREAK-OUTSIDE-LOOP. `i` is read in the condition and in `return i`. No other record.
+
+What NO would have produced: the same E-0001 record, then statement-level panic, which would stop at once before `{` (it is in `SYNC_STMT_STOP`), giving an `ErrorStmt` (`kind_hint = "while"`, `stopped_before = "{"`, region owner E-0001) and an orphan block. The `break` at 6:13 would give a second record, SEM-BREAK-OUTSIDE-LOOP, linked to E-0001 by R7, and the read of `i` in the condition would be lost. YES gives one record where NO gives two.
+
+### Record table
+
+| Trace | Id | Code | Line:Col | Found | caused_by | root_id |
+|---|---|---|---|---|---|---|
+| T1 | E-0001 | SYN-MISSING-SEMICOLON | 3:14 | a | — | E-0001 |
+| T1b | E-0001 | SYN-MISSING-SEMICOLON | 3:14 | a | — | E-0001 |
+| T1b | E-0002 | WRN-UNUSED-VAR | 3:9 | b | E-0001 | E-0001 |
+| T2 | E-0001 | SYN-UNBALANCED-BRACKET | 6:1 | int | — | E-0001 |
+| T2 | E-0002 | WRN-MISSING-RETURN | 1:5 | f | E-0001 | E-0001 |
+| T3 | E-0001 | SYN-EXPECTED-TOKEN | 3:8 | x | — | E-0001 |
+| T3 | E-0002 | WRN-UNUSED-VAR | 2:9 | x | E-0001 | E-0001 |
+| T4 | E-0001 | SEM-UNDECLARED-VAR | 3:5 | count | — | E-0001 |
+| T4 | E-0002 | SEM-UNDECLARED-VAR | 4:21 | count | — | E-0001 |
+| T4 | E-0003 | SEM-UNDECLARED-VAR | 5:5 | count | — | E-0001 |
+| T4 | E-0004 | SEM-UNDECLARED-VAR | 5:13 | count | — | E-0001 |
+| T4 | E-0005 | SEM-UNDECLARED-VAR | 6:21 | count | — | E-0001 |
+| T5 | E-0001 | LEX-INVALID-CHAR | 2:15 | @ | — | E-0001 |
+| T5 | E-0002 | SYN-MISSING-SEMICOLON | 2:14 | 2 | E-0001 | E-0001 |
+| T6 | E-0001 | LEX-INVALID-ESCAPE | 4:18 | \q | — | E-0001 |
+| T6 | E-0002 | SYN-MISSING-SEMICOLON | 5:22 | result | — | E-0002 |
+| T6 | E-0003 | SEM-UNDECLARED-VAR | 6:5 | result | — | E-0003 |
+| T7 | E-0001 | SYN-UNBALANCED-BRACKET | 3:19 | { | — | E-0001 |
+
+### Summary table
+
+| Trace | Raw | Displayed | Fatal | Warning | Reference |
+|---|---|---|---|---|---|
+| T1 | 1 | 1 | 1 | 0 | match |
+| T1b | 2 | 1 | 1 | 1 | match |
+| T2 | 2 | 1 | 1 | 1 | match |
+| T3 | 2 | 1 | 1 | 1 | n/a |
+| T4 | 5 | 1 | 5 | 0 | n/a |
+| T5 | 2 | 1 | 2 | 0 | n/a |
+| T6 | 3 | 3 | 3 | 0 | match |
+| T7 | 1 | 1 | 1 | 0 | n/a |
+
+Raw counts all records; displayed counts distinct roots under the provisional rule of §7. Across the five traces whose raw count is at least 2 (T1b, T2, T3, T4, T5), raw is 13 and displayed is 5, a reduction of 62%. T6 is deliberately three independent faults, so it stays at 3.
+
+No trace triggered the loop guard (§4.6 point 3): in every trace each parser loop iteration consumed at least one token.
+
+Results that surprised me:
+
+- T5: the student's fault is the `@`, but the parser reports a SYN-MISSING-SEMICOLON, because the lexer deleted the `@` and the parser then saw `5 2`. Only the R1 link (`lex_gap`) shows that the lexical error caused it.
+- T3: the only symptom of the missing `(` besides the syntax error is a WRN-UNUSED-VAR on a variable that the student does use (in the lost condition). R6 links it, but a student reading the raw list would be confused without the link.
+- T4: the PRD's "undeclared variable groups all its later uses" is not a `caused_by` relation. The five records are independent in `caused_by` and are merged only by the provisional F2 rule.
+- T1b: the same fault on one line gives two raw records (the second is a warning), while on separate lines it gives one (T1).
+- T7: the YES decision gives a single record. The cascade described under "What NO would have produced" is real but is avoided by the phrase-level repair.
 
 ## 10. F2 feasibility
 
