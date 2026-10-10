@@ -1,0 +1,15 @@
+{
+  "description": "Computes three powers but declares the local 'first' twice in main.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 15: second declaration of 'first' in main (first one is on line 13)"
+  ],
+  "roots": [
+    {"code": "SEM-REDECLARED", "line": 15}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The root is at the later declaration's name. gcc: redeclaration of 'first' with no linkage."
+}

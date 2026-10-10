@@ -1,0 +1,15 @@
+{
+  "description": "Prints a day name from a menu number using a switch statement, which the subset does not support.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 6: 'switch' statements are not supported"
+  ],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "The found token is 'switch'. Cascade: the 'case', 'default' and 'break' lines inside the switch body can produce many follow-up errors. gcc accepts the file, so gcc_rejects is false."
+}

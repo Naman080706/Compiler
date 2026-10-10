@@ -1,0 +1,15 @@
+{
+  "description": "Classifies a triangle by its sides, but the early exit for impossible triangles is a bare 'return;' in an int function.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 5: 'return;' gives no value in the int function classify()"
+  ],
+  "roots": [
+    {"code": "SEM-RETURN-TYPE", "line": 5}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault. gcc: 'return' with no value, in function returning non-void (an error under -pedantic-errors)."
+}

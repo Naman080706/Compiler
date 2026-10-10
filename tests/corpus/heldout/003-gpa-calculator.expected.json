@@ -1,0 +1,15 @@
+{
+  "description": "Averages four course grades weighted by credits but never declares the 'credits' variable.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 13: 'credits' is used in 'credits += 3;' but never declared"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-VAR", "line": 13}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Cascade: the two later uses of 'credits' (printf and the division) are symptoms grouped under the first use."
+}

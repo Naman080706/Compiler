@@ -1,0 +1,15 @@
+{
+  "description": "Compound-interest loop over five years where the declaration of 'balance' lacks its semicolon.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 4: missing ';' at the end of 'double balance = 1000.0'"
+  ],
+  "roots": [
+    {"code": "SYN-MISSING-SEMICOLON", "line": 4}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The next line starts with the keyword 'double'. Cascade: if recovery drops the declaration, the five later uses of 'balance' become undeclared-variable symptoms."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Counts the swaps needed to sort three numbers, but the first if block in swaps_needed() is never closed.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 10: closing '}' of the first 'if (a > b)' block is missing, so the function body is still open when main starts"
+  ],
+  "roots": [
+    {"code": "SYN-UNBALANCED-BRACKET", "line": 23}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Root is the 'int' of 'int main' on line 23, where '}' was expected. After the repair main is parsed normally; swaps_needed may be reported as undeclared at the call in main."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Counts even and odd numbers from 1 to 20 but a stray backtick sneaks into 'evens = evens + `1;'.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 9: stray backtick character before '1'"
+  ],
+  "roots": [
+    {"code": "LEX-INVALID-CHAR", "line": 9}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single lexical fault; the rest of the line is valid. gcc: stray '`' in program."
+}

@@ -1,0 +1,17 @@
+{
+  "description": "Simple-interest program that stores a fractional result in an int and declares an unused 'bonus' variable.",
+  "split": "heldout",
+  "injected_faults": [
+    "line 9: the double expression 'principal * rate * years / 100.0' is stored in the int 'interest'",
+    "line 8: local variable 'bonus' is declared but never used"
+  ],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-IMPLICIT-NARROWING", "line": 9},
+    {"code": "WRN-UNUSED-VAR", "line": 8}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Warning-only program with two independent warnings; gcc accepts it silently without -Wall."
+}
