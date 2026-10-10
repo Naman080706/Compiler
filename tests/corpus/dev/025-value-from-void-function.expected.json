@@ -1,0 +1,15 @@
+{
+  "description": "Prints a multiplication table in a void function that ends with 'return 0;'.",
+  "split": "dev",
+  "injected_faults": [
+    "line 8: 'return 0;' returns a value from a void function"
+  ],
+  "roots": [
+    {"code": "SEM-RETURN-TYPE", "line": 8}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault. Fix: change to 'return;' or delete the line. gcc: 'return' with a value, in function returning void (an error under -pedantic-errors)."
+}

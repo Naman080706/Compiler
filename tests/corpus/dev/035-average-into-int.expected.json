@@ -1,0 +1,15 @@
+{
+  "description": "Average of two marks is divided by 2.0 and stored in an int, losing the fraction.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: double value 'total / 2.0' is converted to int in the initialiser"
+  ],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-IMPLICIT-NARROWING", "line": 7}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Warning-only program; gcc accepts it silently without -Wconversion."
+}

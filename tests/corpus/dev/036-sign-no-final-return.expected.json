@@ -1,0 +1,15 @@
+{
+  "description": "sign() returns 1 or -1 but has no return for the case n == 0.",
+  "split": "dev",
+  "injected_faults": [
+    "line 3: function 'sign' can reach its end without returning a value"
+  ],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-MISSING-RETURN", "line": 3}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Warning-only program: the final 'else if' has no 'else', so not every path returns. gcc accepts it silently without -Wall."
+}

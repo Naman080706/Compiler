@@ -1,0 +1,15 @@
+{
+  "description": "Averages three scores but stores the result with 'average[0]' although 'average' is a plain int.",
+  "split": "dev",
+  "injected_faults": [
+    "line 14: 'average' is an int, not an array, so 'average[0]' is invalid"
+  ],
+  "roots": [
+    {"code": "SEM-NOT-ARRAY", "line": 14}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault; 'scores' is a proper array. gcc: subscripted value is neither array nor pointer nor vector."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Program whose only function is misspelled 'mian', so the file has no main.",
+  "split": "dev",
+  "injected_faults": [
+    "the entry point is spelled 'mian' (line 3) so the program defines no 'main'"
+  ],
+  "roots": [
+    {"code": "SEM-MISSING-MAIN", "line": 11}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Reported at EOF (line 11) because it is detected at the end of semantic analysis. gcc accepts the file with -fsyntax-only, since a missing main is a link-time error; gcc_rejects is false."
+}

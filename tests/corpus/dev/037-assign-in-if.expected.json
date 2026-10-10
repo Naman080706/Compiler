@@ -1,0 +1,15 @@
+{
+  "description": "Menu check writes 'if (choice = 1)' where a comparison was meant.",
+  "split": "dev",
+  "injected_faults": [
+    "line 5: condition uses '=' (assignment) instead of '=='"
+  ],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-ASSIGN-IN-CONDITION", "line": 5}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Warning-only program; gcc accepts it (it only warns with -Wall)."
+}

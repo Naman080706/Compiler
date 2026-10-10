@@ -1,0 +1,15 @@
+{
+  "description": "Reads a mark with a double used as the array index.",
+  "split": "dev",
+  "injected_faults": [
+    "line 10: array index 'avg' has type double"
+  ],
+  "roots": [
+    {"code": "SEM-INDEX-NOT-INT", "line": 10}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault. gcc: array subscript is not an integer."
+}

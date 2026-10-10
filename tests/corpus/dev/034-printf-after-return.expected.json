@@ -1,0 +1,15 @@
+{
+  "description": "A void helper prints a cube and returns, then has a printf after the return that can never run.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: statement after 'return;' can never be executed"
+  ],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-UNREACHABLE-CODE", "line": 6}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "Warning-only program: the warning is at the first unreachable statement, not at the return. gcc accepts the file (it does not warn without -Wall)."
+}

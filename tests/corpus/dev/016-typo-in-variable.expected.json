@@ -1,0 +1,15 @@
+{
+  "description": "Adds the numbers 1 to 5 into 'total', but the assignment target is mistyped as 'totl'.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: 'totl' is used on the left of the assignment but only 'total' is declared"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-VAR", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The typo appears exactly once, so there is a single record. gcc: 'totl' undeclared (first use in this function)."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Stores the result of print_header(), a void function, in an int variable.",
+  "split": "dev",
+  "injected_faults": [
+    "line 8: print_header() returns void but its result is assigned to 'r'"
+  ],
+  "roots": [
+    {"code": "SEM-VOID-VALUE", "line": 8}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault. gcc: void value not ignored as it ought to be."
+}

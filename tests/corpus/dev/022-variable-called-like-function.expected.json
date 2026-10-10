@@ -1,0 +1,15 @@
+{
+  "description": "A local variable named 'max' shadows the function max(), so 'max(a, b)' tries to call an int.",
+  "split": "dev",
+  "injected_faults": [
+    "line 14: 'max' is the local int on line 13, not the function, so 'max(a, b)' is not callable"
+  ],
+  "roots": [
+    {"code": "SEM-NOT-CALLABLE", "line": 14}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault; the global function max() is valid but hidden by the local variable. gcc: called object 'max' is not a function or function pointer."
+}

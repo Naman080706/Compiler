@@ -1,0 +1,15 @@
+{
+  "description": "Prints scores with print_score(int id, int score), but one call passes the string \"Alice\" as the id.",
+  "split": "dev",
+  "injected_faults": [
+    "line 12: argument 1 of print_score is a string literal but the parameter is int"
+  ],
+  "roots": [
+    {"code": "SEM-ARG-TYPE", "line": 12}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Single fault; the other call in the loop is correct. gcc: passing argument 1 of 'print_score' makes integer from pointer without a cast (an error under -pedantic-errors)."
+}
