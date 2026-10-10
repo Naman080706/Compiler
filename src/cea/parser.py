@@ -432,7 +432,11 @@ class Parser:
         return stmt
 
     def guard(self, before: int) -> None:
-        return None
+        """Loop guard (4.6 point 3)."""
+        if self.pos == before:
+            if STRICT_PROGRESS:
+                raise ProgressError(f"no progress at token {before}: {self.cur!r}")
+            self.consume()
 
     def is_lvalue(self, e: A.Expr) -> bool:
         return True
