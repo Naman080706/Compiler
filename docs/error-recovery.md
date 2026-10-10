@@ -165,8 +165,8 @@ class ErrorExpr:       # has type <error>; stands in for an expression that fail
 class ErrorStmt:       # a statement or top-level declaration that failed and was skipped
     span: Span         # first token of the statement .. last token consumed or skipped
     error_id: str
-    kind_hint: str     # 'if' 'while' 'for' 'return' 'break' 'continue' 'decl' 'expr' 'top'
-    declared_names: list[tuple[str, str]]   # (name, type) for each `type_spec IDENT` consumed inside it
+    kind_hint: str     # 'if' 'while' 'for' 'return' 'break' 'continue' 'decl' 'expr' 'top' 'unsupported'
+    declared_names: list[tuple[str, str]]   # (name, type) for each `type_spec IDENT` consumed inside it; type is "<unsupported>" for names recovered from unsupported code (see Rules)
     idents_in_span: set[str]                # every IDENT text inside span (consumed or skipped)
     stopped_before: str | None              # token text if panic stopped without consuming, else None
 ```
@@ -183,6 +183,8 @@ Rules:
 - **Broken declaration.** Once `type_spec IDENT` of a local or global variable has been consumed, a later error never turns the declaration into an `ErrorStmt`. The node is kept, the name is declared with its declared type, a failed initializer or array size becomes an `ErrorExpr`, and remaining declarators after the error are lost (they are in the skipped span). Example: `int x = ;` declares `x : int` with initializer `ErrorExpr`.
 - A **function** whose header fails (error inside `params`) becomes a top-level `ErrorStmt` with `declared_names = [(name, "function")]`. It does **not** declare the name, because its signature is unknown. Uses are linked by R5.
 - `ErrorStmt` never declares names. `declared_names` exists only for linking. A `for` statement whose header failed after `for (int i` gives `declared_names = [("i","int")]`, and `i` is not declared in the enclosing scope (correct C scoping, since `i`'s scope was the `for` statement).
+- **`kind_hint = 'unsupported'`** is used when the statement (or top-level declaration) **starts** with an UNSUPPORTED_KEYWORD (`switch`, `do`, `struct`, `const`, …). The error is SYN-UNSUPPORTED-FEATURE at that keyword, and statement-level (or top-level) panic follows as usual.
+- **Declarator-like names in unsupported code.** When an `ErrorStmt`'s error is SYN-UNSUPPORTED-FEATURE, `declared_names` additionally contains every IDENT in its span that (a) is immediately preceded by a type keyword, by `*`, or by another IDENT, and (b) is immediately followed by `=`, `;`, `,` or `[`. Each such name gets type `"<unsupported>"`, in source order without duplicates. Example: `int *values;` gives `declared_names = [("values", "<unsupported>")]`, so R5 links later uses of `values` to the SYN-UNSUPPORTED-FEATURE record. This is mechanical (a token pattern), so it meets invariant 3. It deliberately applies only to unsupported-feature errors, where the student clearly meant to declare something.
 
 ## 6. Semantic analysis on a partial AST
 
