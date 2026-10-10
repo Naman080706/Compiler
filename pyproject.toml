@@ -1,0 +1,15 @@
+[project]
+name = "compiler-error-assistant"
+version = "0.0.0"
+description = "Course compiler for a C99 subset with an AI error-assistant layer"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-m 'not heldout'"
+markers = [
+    "corpus: tests driven by the C program corpus in tests/corpus",
+    "heldout: evaluation-only tests over tests/corpus/heldout (milestone 5; deselected by default)",
+    "gcc: cross-checks the corpus against gcc -std=c99 -pedantic-errors -fsyntax-only",
+]
