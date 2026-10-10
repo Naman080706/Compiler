@@ -27,6 +27,19 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - Phase 1 scaffold: error record (with a `language` field fixed to `"c"`), interceptor, severity (F1/F4). Needs 001 and the recovery plan.
 - PRD revision: **F2 acceptance wording is unreachable as written** (plan 002 §10 proposes replacement wording; owner must update the PRD), verified-fix guardrails (F8), F3/F8 acceptance conflict, schema gaps (`message`, span), RAG as a deterministic lookup, privacy note, F9 counting, latency target.
 
+## Milestone 2 (F2 clustering, F3 AI agent, FastAPI + React)
+
+Contract: `plans/m2-architecture.md`. Owner decisions: Gemini primary with an Ollama fallback; FastAPI + React now; fix diffs shown labelled **Unverified**.
+
+| Plan | Title | Depends on | Status |
+|------|-------|------------|--------|
+| 008 | Fix stray-closer message | — | DRAFTING |
+| 009 | F2 clustering + exact-root test + metrics | 008 | DRAFTING |
+| 010 | LLM layer (client, fallback, cache, fake) | — | DRAFTING |
+| 011 | F3 agent + rule lookup + CLI --explain | 009, 010 | DRAFTING |
+| 012 | FastAPI backend | 011 | DRAFTING |
+| 013 | React UI | 012 | DRAFTING |
+
 ## Milestone 1
 
 All milestone-1 plans (005–007) share the interface contract in `plans/m1-architecture.md` (module layout, record/token/AST names, error-sink API). Plan 004 must land before 006/007 execute, because they implement the amended recovery spec.
