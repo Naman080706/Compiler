@@ -1,0 +1,18 @@
+{
+  "description": "half_of() stores 'n / 2.0' in an int (warning) and main initialises an int loop limit with a string (error).",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: 'n / 2.0' is a double stored in an int (narrowing)",
+    "line 9: string literal \"ten\" used to initialise the int 'count'"
+  ],
+  "roots": [
+    {"code": "SEM-TYPE-MISMATCH", "line": 9}
+  ],
+  "warnings": [
+    {"code": "WRN-IMPLICIT-NARROWING", "line": 4}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "One fatal root plus one independent warning in separate functions. The warning is only a warning, so fixing the root is enough to compile."
+}

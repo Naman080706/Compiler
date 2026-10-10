@@ -1,0 +1,15 @@
+{
+  "description": "Two loops use the counter 'i' (8 uses in all) but 'int i;' was never declared.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: first use of 'i' in 'for (i = 0; ...)' with no declaration of 'i' anywhere"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-VAR", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Cascade: every later use of 'i' (lines 6 (rest of the header), 7, 9 and 10) is a symptom under the first undeclared use on line 6. gcc reports 'i' undeclared only at its first use; the compiler should group every further use under this root."
+}

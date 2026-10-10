@@ -1,0 +1,15 @@
+{
+  "description": "The while condition 'count < 10)' has no opening parenthesis and the loop body is five statements long.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: 'while count < 10) {' is missing '(' after 'while'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-TOKEN", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The found token is 'count' where '(' was expected. Symptoms depend on recovery: the stray ')' and the 5-statement body may produce extra syntax errors or undeclared uses of 'square'. gcc: expected '(' before 'count', then 'else' / '}' follow-ups."
+}

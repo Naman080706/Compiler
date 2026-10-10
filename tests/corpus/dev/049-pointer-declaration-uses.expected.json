@@ -1,0 +1,15 @@
+{
+  "description": "main declares 'int *values;' (pointers are not in the subset) and then uses 'values' five times.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: pointer declaration 'int *values;' is not supported"
+  ],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "The root is at the '*'. Cascade: if the declaration is dropped, the five uses of 'values' (lines 8, 9, 10, 12 and 14) can become SEM-UNDECLARED-VAR symptoms. gcc accepts the file, so gcc_rejects is false."
+}

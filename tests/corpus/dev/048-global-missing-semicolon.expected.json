@@ -1,0 +1,15 @@
+{
+  "description": "The global 'int limit = 10' has no semicolon and is directly followed by 'int main(void) {'.",
+  "split": "dev",
+  "injected_faults": [
+    "line 3: missing ';' at the end of the global declaration 'int limit = 10'"
+  ],
+  "roots": [
+    {"code": "SYN-MISSING-SEMICOLON", "line": 3}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The next line starts with the keyword 'int', so the parser notices there; by convention the root is the line of the global. Cascade: main may be swallowed into the declaration, and 'limit' / 'main' symptoms follow. gcc: expected ',' or ';' before 'int'."
+}

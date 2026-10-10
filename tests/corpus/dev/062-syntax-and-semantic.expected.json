@@ -1,0 +1,17 @@
+{
+  "description": "average() has an empty operand after '/', and main indexes the plain int 'count' as if it were an array.",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: expression missing after '/' in 'return total / ;'",
+    "line 14: 'count' is an int, not an array, so 'count[0]' is invalid"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-EXPRESSION", "line": 4},
+    {"code": "SEM-NOT-ARRAY", "line": 14}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "One syntax and one semantic fault in different functions; both are expected as roots (the semantic fault is expected to be reported if the compiler keeps analysing after a recovered syntax error). warnings is empty because there is a syntax root."
+}

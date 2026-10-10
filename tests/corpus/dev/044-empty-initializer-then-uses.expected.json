@@ -1,0 +1,15 @@
+{
+  "description": "The declaration 'double average = ;' has no initial value expression, and 'average' is used four more times.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: expression missing after '=' in 'double average = ;'"
+  ],
+  "roots": [
+    {"code": "SYN-EXPECTED-EXPRESSION", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Root is at the ';' (found token). Cascade: if the declaration is dropped, the four uses of 'average' (lines 10, 11, 12, 13) can become SEM-UNDECLARED-VAR symptoms. gcc: expected expression before ';' token, and nothing else."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "The 'while' loop in main (the last function) is never closed, so the file ends while main's body is still open.",
+  "split": "dev",
+  "injected_faults": [
+    "line 9: closing '}' of the while loop is missing (the final '}' closes the loop, not main)"
+  ],
+  "roots": [
+    {"code": "SYN-UNEXPECTED-EOF", "line": 12}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The parser reaches EOF (line 12) with main's body open. EOF is at the last token, the final '}'. gcc: expected declaration or statement at end of input."
+}

@@ -1,0 +1,19 @@
+{
+  "description": "Three helper/main functions each contain one fault: a stray '@' (lexical), a missing ';' (syntax) and an undeclared 'tot' (semantic).",
+  "split": "dev",
+  "injected_faults": [
+    "line 4: stray character '@' after 'return n * n;' in square()",
+    "line 8: missing ';' at the end of 'int result = n * n * n' in cube()",
+    "line 19: 'tot' is not declared in main (the variable is called 'total')"
+  ],
+  "roots": [
+    {"code": "LEX-INVALID-CHAR", "line": 4},
+    {"code": "SYN-MISSING-SEMICOLON", "line": 8},
+    {"code": "SEM-UNDECLARED-VAR", "line": 19}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The PRD F1 acceptance program: one error per phase in three different functions, so three roots are expected. warnings is empty because there are syntax roots. Fixing all three lines makes the program valid."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "main calls cube() four times, but cube() is defined after main and has no prototype.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: first call cube(i) appears before any declaration of cube"
+  ],
+  "roots": [
+    {"code": "SEM-UNDECLARED-FUNC", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Cascade: the other three calls (lines 9, 10, 11) are symptoms grouped under the first. Fix: add 'int cube(int x);' before main. gcc: implicit declaration of function 'cube' (reported at each use of the function in the first call only)."
+}

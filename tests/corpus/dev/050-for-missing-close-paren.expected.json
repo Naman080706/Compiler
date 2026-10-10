@@ -1,0 +1,15 @@
+{
+  "description": "The for header 'for (i = 1; i < 6; i++ {' is missing its closing parenthesis.",
+  "split": "dev",
+  "injected_faults": [
+    "line 7: for header is missing ')' before the '{'"
+  ],
+  "roots": [
+    {"code": "SYN-UNBALANCED-BRACKET", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "The found token is the '{' where ')' was expected. Cascade: the loop body and closing brace may be reported again as unexpected tokens. gcc: expected ')' before '{' token."
+}

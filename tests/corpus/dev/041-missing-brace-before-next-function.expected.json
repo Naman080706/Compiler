@@ -1,0 +1,15 @@
+{
+  "description": "The 'if' block in larger() is never closed, so the parser meets 'int main(' while larger()'s body is still open.",
+  "split": "dev",
+  "injected_faults": [
+    "line 6: closing '}' of the if block is missing after 'result = a;' (the '}' on line 8 closes the if, not the function)"
+  ],
+  "roots": [
+    {"code": "SYN-UNBALANCED-BRACKET", "line": 10}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "Root is reported at the 'int' of 'int main' (line 10), where '}' was expected. The following function is parsed normally after the repair. Possible symptoms: main's body re-parsed, 'larger' reported undeclared at its two calls. gcc: line 10 col 1: ISO C forbids nested functions (it parses main as a nested function)."
+}
