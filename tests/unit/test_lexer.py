@@ -210,3 +210,169 @@ def test_hash_after_code_is_an_invalid_char():
     assert (rec.code, rec.line, rec.column, rec.found) == ("LEX-INVALID-CHAR", 1, 8, "#")
     assert [(t.text, t.lex_gap) for t in result.tokens] == \
         [("int", None), ("x", None), (";", None), ("2", "E-0001"), ("EOF", None)]
+
+
+# ---------------------------------------------------------------- step 6: error recovery and lex_gap
+
+@pytest.mark.parametrize("source,code,line,col,found,span_end,gap_token", [
+    # gap_token = (text, line, col) of the one token that must carry lex_gap = "E-0001"
+    ("x = 5 @ 2;", "LEX-INVALID-CHAR", 1, 7, "@", (1, 7), ("2", 1, 9)),
+    ("$a", "LEX-INVALID-CHAR", 1, 1, "$", (1, 1), ("a", 1, 2)),
+    ("a `b", "LEX-INVALID-CHAR", 1, 3, "`", (1, 3), ("b", 1, 4)),
+    ("a \\ b", "LEX-INVALID-CHAR", 1, 3, "\\", (1, 3), ("b", 1, 5)),
+    ("caf\u00e9 = 1;", "LEX-INVALID-CHAR", 1, 4, "\u00e9", (1, 4), ("=", 1, 6)),
+    ('printf("hi);\nx', "LEX-UNTERMINATED-STRING", 1, 8, '"hi);', (1, 12), ("x", 2, 1)),
+    ('printf("hi);\r\nx', "LEX-UNTERMINATED-STRING", 1, 8, '"hi);', (1, 12), ("x", 2, 1)),
+    ('"abc', "LEX-UNTERMINATED-STRING", 1, 1, '"abc', (1, 4), ("EOF", 1, 1)),
+    ('x "', "LEX-UNTERMINATED-STRING", 1, 3, '"', (1, 3), ("EOF", 1, 2)),
+    ('"abc\\\ny', "LEX-UNTERMINATED-STRING", 1, 1, '"abc\\', (1, 5), ("y", 2, 1)),
+    ("c = 'ab';", "LEX-BAD-CHAR-LITERAL", 1, 5, "'ab'", (1, 8), (";", 1, 9)),
+    ("c = '';", "LEX-BAD-CHAR-LITERAL", 1, 5, "''", (1, 6), (";", 1, 7)),
+    ("c = '\\n\\n';", "LEX-BAD-CHAR-LITERAL", 1, 5, "'\\n\\n'", (1, 10), (";", 1, 11)),
+    ("c = 'a;\nx", "LEX-BAD-CHAR-LITERAL", 1, 5, "'a;", (1, 7), ("x", 2, 1)),
+    ("c = '\\';\nx", "LEX-BAD-CHAR-LITERAL", 1, 5, "'\\';", (1, 8), ("x", 2, 1)),
+    ("c = '", "LEX-BAD-CHAR-LITERAL", 1, 5, "'", (1, 5), ("EOF", 1, 4)),
+    ("c = '\\q';", "LEX-INVALID-ESCAPE", 1, 6, "\\q", (1, 8), (";", 1, 9)),
+    ("x /* never closed\n\n", "LEX-UNTERMINATED-COMMENT", 1, 3, "/*", (1, 17), ("EOF", 1, 2)),
+    ("x\n/* a\r\nb\r\n", "LEX-UNTERMINATED-COMMENT", 2, 1, "/*", (3, 1), ("EOF", 1, 2)),
+    ("/*", "LEX-UNTERMINATED-COMMENT", 1, 1, "/*", (1, 2), ("EOF", 1, 1)),
+    ("n = 12abc;", "LEX-MALFORMED-NUMBER", 1, 5, "12abc", (1, 9), (";", 1, 10)),
+    ("n = 1.2.3;", "LEX-MALFORMED-NUMBER", 1, 5, "1.2.3", (1, 9), (";", 1, 10)),
+    ("n = 12.;", "LEX-MALFORMED-NUMBER", 1, 5, "12.", (1, 7), (";", 1, 8)),
+    ("n = 10x;", "LEX-MALFORMED-NUMBER", 1, 5, "10x", (1, 7), (";", 1, 8)),
+    ("n = 1e5;", "LEX-MALFORMED-NUMBER", 1, 5, "1e5", (1, 7), (";", 1, 8)),
+    ("n = 0x1F;", "LEX-MALFORMED-NUMBER", 1, 5, "0x1F", (1, 8), (";", 1, 9)),
+    ("n = 3_000;", "LEX-MALFORMED-NUMBER", 1, 5, "3_000", (1, 9), (";", 1, 10)),
+    ("n = 1..2;", "LEX-MALFORMED-NUMBER", 1, 5, "1..2", (1, 8), (";", 1, 9)),
+    ("n = 2.5x;", "LEX-MALFORMED-NUMBER", 1, 5, "2.5x", (1, 8), (";", 1, 9)),
+    ("n = 5.", "LEX-MALFORMED-NUMBER", 1, 5, "5.", (1, 6), ("EOF", 1, 4)),
+])
+def test_one_lexical_error_and_lex_gap(source, code, line, col, found, span_end, gap_token):
+    result, records = run(source)
+    [rec] = records
+    assert (rec.id, rec.code, rec.line, rec.column, rec.found) == ("E-0001", code, line, col, found)
+    assert (rec.span_end.line, rec.span_end.column) == span_end
+    assert (rec.phase, rec.severity, rec.caused_by, rec.expected) == ("lexical", "fatal", None, [])
+    gapped = [(t.text, t.line, t.col, t.lex_gap) for t in result.tokens if t.lex_gap is not None]
+    assert gapped == [gap_token + ("E-0001",)]
+
+
+LEX_CASES = [
+    ("LEX-INVALID-CHAR", "@", "token"),
+    ("LEX-UNTERMINATED-STRING", '"a', "STRING_LIT"),
+    ("LEX-BAD-CHAR-LITERAL", "'ab'", "CHAR_LIT"),
+    ("LEX-UNTERMINATED-COMMENT", "/* a", "BLOCK_COMMENT"),
+    ("LEX-MALFORMED-NUMBER", "1x", "number"),
+    ("LEX-INVALID-ESCAPE", '"\\q"', "escape"),
+    ("LEX-UNSUPPORTED-DIRECTIVE", "#define X", "directive"),
+]
+
+
+@pytest.mark.parametrize("code,source,rule_ref", LEX_CASES, ids=[c[0] for c in LEX_CASES])
+def test_every_lex_code_is_reachable(code, source, rule_ref):
+    [rec] = run(source)[1]
+    assert (rec.code, rec.rule_ref, rec.phase) == (code, rule_ref, "lexical")
+
+
+def test_invalid_escape_in_string_keeps_the_token():
+    result, records = run('x = "a\\qb";')
+    [rec] = records
+    assert (rec.code, rec.line, rec.column, rec.found) == ("LEX-INVALID-ESCAPE", 1, 7, "\\q")
+    assert rec.span_end == Position(1, 8)
+    assert rec.message == "Unknown escape sequence '\\q'"
+    s = result.tokens[2]
+    assert (s.kind, s.text, s.value, s.lex_gap) == (TokenKind.STRING_LIT, '"a\\qb"', "ab", None)
+    assert all(t.lex_gap is None for t in result.tokens)
+
+
+def test_string_with_bad_escape_and_no_close_gives_two_records():
+    result, records = run('"a\\q\ny')
+    assert [(r.id, r.code, r.line, r.column) for r in records] == [
+        ("E-0001", "LEX-INVALID-ESCAPE", 1, 3),
+        ("E-0002", "LEX-UNTERMINATED-STRING", 1, 1),
+    ]
+    assert [(t.text, t.lex_gap) for t in result.tokens] == [("y", "E-0002"), ("EOF", None)]
+
+
+def test_lex_gap_is_the_last_record_and_is_used_once():
+    result, records = run("@ $ a b @")
+    assert [r.id for r in records] == ["E-0001", "E-0002", "E-0003"]
+    assert [(t.text, t.lex_gap) for t in result.tokens] == \
+        [("a", "E-0002"), ("b", None), ("EOF", "E-0003")]
+
+
+def test_lexing_continues_after_an_error():
+    result, records = run("int x = 5 @ 2;\nint y;")
+    assert len(records) == 1
+    assert [t.text for t in result.tokens] == ["int", "x", "=", "5", "2", ";", "int", "y", ";", "EOF"]
+
+
+# Traces T5 and T6 of docs/error-recovery.md section 9 (lexical part only).
+T5 = "int main(void) {\n    int x = 5 @ 2;\n    return x;\n}\n"
+T6 = ('#include <stdio.h>\nint main(void) {\n    int count = 0;\n    printf("total\\q\\n", count);\n'
+      "    count = count + 1\n    result = count;\n    return 0;\n}\n")
+
+
+def test_trace_t5_lexical_record():
+    result, records = run(T5)
+    assert [(r.id, r.code, f"{r.line}:{r.column}", r.found, r.caused_by) for r in records] == \
+        [("E-0001", "LEX-INVALID-CHAR", "2:15", "@", None)]
+    assert records[0].snippet == "int main(void) {\n    int x = 5 @ 2;\n    return x;"
+    assert [(t.text, t.line, t.col, t.lex_gap) for t in result.tokens if t.lex_gap] == \
+        [("2", 2, 17, "E-0001")]
+
+
+def test_trace_t6_lexical_record():
+    result, records = run(T6)
+    assert [(r.id, r.code, f"{r.line}:{r.column}", r.found, r.caused_by) for r in records] == \
+        [("E-0001", "LEX-INVALID-ESCAPE", "4:18", "\\q", None)]
+    assert result.stdio_include == Position(1, 1)
+    assert all(t.lex_gap is None for t in result.tokens)
+    strings = [t for t in result.tokens if t.kind is TokenKind.STRING_LIT]
+    assert [(s.line, s.col, s.value) for s in strings] == [(4, 12, "total\n")]
+    assert (result.tokens[-1].line, result.tokens[-1].col) == (8, 2)
+
+
+# ---------------------------------------------------------------- corpus: dev/001-007 and valid/
+
+DEV_LEX = sorted((CORPUS / "dev").glob("00[1-7]-*.c"))
+VALID = sorted((CORPUS / "valid").glob("*.c"))
+
+
+def _read_raw(path):
+    """File text with its newlines untouched (CRLF when git checked it out that way)."""
+    return path.read_bytes().decode("utf-8")
+
+
+def _sidecar(path):
+    return json.loads(path.with_name(path.stem + ".expected.json").read_text(encoding="utf-8"))
+
+
+def test_corpus_files_found():
+    assert len(DEV_LEX) == 7
+    assert len(VALID) >= 10
+
+
+@pytest.mark.parametrize("c_path", DEV_LEX, ids=[p.name for p in DEV_LEX])
+def test_dev_lexical_program_gives_its_root(c_path):
+    _, records = run(_read_raw(c_path))
+    assert [{"code": r.code, "line": r.line} for r in records] == _sidecar(c_path)["roots"]
+
+
+@pytest.mark.parametrize("c_path", VALID, ids=[p.name for p in VALID])
+def test_valid_program_has_no_lexical_record(c_path):
+    text = _read_raw(c_path)
+    result, records = run(text)
+    assert records == []
+    assert result.stdio_include == Position(1, 1)
+    assert result.tokens[-1].line == len(text.splitlines())
+
+
+@pytest.mark.parametrize("c_path", DEV_LEX + VALID, ids=[p.name for p in DEV_LEX + VALID])
+def test_crlf_and_lf_give_the_same_result(c_path):
+    lf = _read_raw(c_path).replace("\r\n", "\n")
+    crlf = lf.replace("\n", "\r\n")
+    (res_lf, rec_lf), (res_crlf, rec_crlf) = run(lf), run(crlf)
+    assert res_lf == res_crlf
+    assert [(r.code, r.line, r.column, r.found, r.span_end, r.snippet) for r in rec_lf] == \
+        [(r.code, r.line, r.column, r.found, r.span_end, r.snippet) for r in rec_crlf]
