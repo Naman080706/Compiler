@@ -84,6 +84,12 @@ class _Lexer:
             ch = src[self.i]
             if ch in _WHITESPACE:
                 self.i += 1
+            elif src.startswith("//", self.i):
+                self._line_comment()
+            elif src.startswith("/*", self.i):
+                self._block_comment()
+            elif ch == "#" and self._at_line_start():
+                self._directive()
             elif ch in _LETTERS:
                 self._ident()
             elif ch in _DIGITS:
@@ -231,3 +237,39 @@ class _Lexer:
                 return
         self._error("LEX-INVALID-CHAR", start, start, found=self.src[start])
         self.i = start + 1
+
+    # ---- comments and directives
+    def _line_comment(self) -> None:
+        self.i = self._eol(self.i)
+
+    def _block_comment(self) -> None:
+        start = self.i
+        close = self.src.find("*/", start + 2)
+        if close == -1:
+            last = self.n - 1
+            while last > start + 1 and self.src[last] in _NEWLINES:
+                last -= 1
+            self._error("LEX-UNTERMINATED-COMMENT", start, last, found="/*")
+            self.i = self.n
+            return
+        self.i = close + 2
+
+    def _at_line_start(self) -> bool:
+        """True if only spaces and tabs precede index i on its line."""
+        k = self.i - 1
+        while k >= 0 and self.src[k] in " \t":
+            k -= 1
+        return k < 0 or self.src[k] in _NEWLINES
+
+    def _directive(self) -> None:
+        start = self.i
+        eol = self._eol(start)
+        text = self.src[start:eol]
+        if _STDIO_INCLUDE.fullmatch(text):
+            if self.stdio_include is None:
+                self.stdio_include = Position(*self.pos[start])
+        else:
+            found = text.rstrip(" \t\f\v")
+            self._error("LEX-UNSUPPORTED-DIRECTIVE", start, start + len(found) - 1, found=found,
+                        sets_gap=False)
+        self.i = eol

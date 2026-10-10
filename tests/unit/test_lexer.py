@@ -119,3 +119,94 @@ def test_exactly_one_eof_token_last():
 
 def test_no_stdio_include_without_directive():
     assert run("int x;")[0].stdio_include is None
+
+
+# ---------------------------------------------------------------- step 5: comments and directives
+
+@pytest.mark.parametrize("source,expected", [
+    # (text, line, col) of every non-EOF token
+    ("a // c\nb", [("a", 1, 1), ("b", 2, 1)]),
+    ("a // c", [("a", 1, 1)]),
+    ("a /* x\ny */ b", [("a", 1, 1), ("b", 2, 6)]),
+    ("a/**/b", [("a", 1, 1), ("b", 1, 6)]),
+    ("/*/ */x", [("x", 1, 7)]),
+    ("/* a /* b */ c */", [("c", 1, 14), ("*", 1, 16), ("/", 1, 17)]),
+    ("a / b", [("a", 1, 1), ("/", 1, 3), ("b", 1, 5)]),
+    ("a /= b", [("a", 1, 1), ("/=", 1, 3), ("b", 1, 6)]),
+    ("x = 1; // done\r\ny", [("x", 1, 1), ("=", 1, 3), ("1", 1, 5), (";", 1, 6), ("y", 2, 1)]),
+])
+def test_comments_are_skipped(source, expected):
+    result, records = run(source)
+    assert records == []
+    assert [(t.text, t.line, t.col) for t in result.tokens[:-1]] == expected
+
+
+@pytest.mark.parametrize("source,stdio", [
+    ("#include <stdio.h>\nint x;", Position(1, 1)),
+    ("#include<stdio.h>", Position(1, 1)),
+    ("#  include   <stdio.h>  \n", Position(1, 1)),
+    ("# include <stdio.h>", Position(1, 1)),
+    ("   #include <stdio.h>\n", Position(1, 4)),
+    ("\t#include <stdio.h>", Position(1, 2)),
+    ("#include <stdio.h>\r\nint x;\r\n", Position(1, 1)),
+    ("int x;\n#include <stdio.h>\n#include <stdio.h>\n", Position(2, 1)),
+    # comments are whitespace: a trailing // comment or a /* */ closed on the line is allowed
+    ("#include <stdio.h> // io", Position(1, 1)),
+    ("#include <stdio.h>// io\nint x;", Position(1, 1)),
+    ("#include <stdio.h> /* io */", Position(1, 1)),
+    ("#include <stdio.h>/* a */ /* b */  // c\r\nint x;", Position(1, 1)),
+])
+def test_accepted_stdio_include(source, stdio):
+    result, records = run(source)
+    assert records == []
+    assert result.stdio_include == stdio
+    assert all(t.text != "#" and t.text != "include" for t in result.tokens)
+
+
+def test_include_alone_gives_only_eof():
+    result, records = run("#include <stdio.h>\n")
+    assert records == []
+    assert [(t.kind, t.line, t.col) for t in result.tokens] == [(TokenKind.EOF, 1, 1)]
+
+
+@pytest.mark.parametrize("source,found,span_end", [
+    ("#include <math.h>\n", "#include <math.h>", Position(1, 17)),
+    ("#define N 10\n", "#define N 10", Position(1, 12)),
+    ('#include "stdio.h"', '#include "stdio.h"', Position(1, 18)),
+    ("#include < stdio.h >", "#include < stdio.h >", Position(1, 20)),
+    ("#include <stdio.h> x", "#include <stdio.h> x", Position(1, 20)),
+    ("#include <stdio.h> /* io */ x", "#include <stdio.h> /* io */ x", Position(1, 29)),
+    ("#include <stdio.h> /* never closed here", "#include <stdio.h> /* never closed here",
+     Position(1, 39)),
+    ("#\n", "#", Position(1, 1)),
+    ("#pragma once   \r\n", "#pragma once", Position(1, 12)),
+])
+def test_unsupported_directive(source, found, span_end):
+    result, records = run(source)
+    [rec] = records
+    assert (rec.code, rec.line, rec.column, rec.found, rec.span_end) == \
+        ("LEX-UNSUPPORTED-DIRECTIVE", 1, 1, found, span_end)
+    assert rec.message == f"Only '#include <stdio.h>' is supported; '{found}' is not"
+    assert result.stdio_include is None
+
+
+def test_unclosed_block_comment_after_include_stays_inside_the_directive():
+    # The directive owns the whole line, so the /* opens no comment: line 2 is lexed normally.
+    result, records = run("#include <stdio.h> /* open\nint x; */")
+    assert [(r.code, r.line, r.column) for r in records] == [("LEX-UNSUPPORTED-DIRECTIVE", 1, 1)]
+    assert [t.text for t in result.tokens] == ["int", "x", ";", "*", "/", "EOF"]
+
+
+def test_unsupported_directive_does_not_set_lex_gap():
+    result, records = run("#define N 10\nint x;")
+    assert [r.code for r in records] == ["LEX-UNSUPPORTED-DIRECTIVE"]
+    assert [(t.text, t.lex_gap) for t in result.tokens] == \
+        [("int", None), ("x", None), (";", None), ("EOF", None)]
+
+
+def test_hash_after_code_is_an_invalid_char():
+    result, records = run("int x; # 2\n")
+    [rec] = records
+    assert (rec.code, rec.line, rec.column, rec.found) == ("LEX-INVALID-CHAR", 1, 8, "#")
+    assert [(t.text, t.lex_gap) for t in result.tokens] == \
+        [("int", None), ("x", None), (";", None), ("2", "E-0001"), ("EOF", None)]
