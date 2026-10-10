@@ -90,6 +90,22 @@ There is one deliberate change in order. The PRD puts the faulty-program test co
 - **Expected results:** each program has a JSON sidecar listing the root causes F2 should show (code + line), not raw error counts. Raw counts depend on recovery details, so we don't predict them.
 - **gcc as an independent check:** `gcc -std=c99 -pedantic-errors -fsyntax-only` runs on every program. Any program we expect to accept must also be accepted by gcc ("accepted => valid C99"). Whether gcc rejects each faulty program is recorded by actually running it, never guessed. Result: gcc rejects 59 of 85 programs and accepts 26. The 26 are all valid programs, warning-only programs, or cases where our subset is deliberately stricter than C99 (a variable-length array, a missing `main`, `const`, pointers, `switch`, `<math.h>`). There are 0 mismatches.
 
+### 1.10 Compiler structure (milestone 1, planned)
+
+```
+source.c --> lexer.py --> parser.py --> semantic.py --> list of ErrorRecord
+                |             |              |
+                +-------------+--------------+--> ErrorSink (diagnostics.py): the single error interceptor
+                                                   ids, severity from catalog, snippet, message
+```
+
+- **One interceptor (PRD F1).** Every phase reports errors only through `ErrorSink.report()`. No module except the command-line front end is allowed to `print`, and a test enforces this by scanning the source.
+- **Severity comes from the catalog, never the AI (PRD F4).** `ErrorSink` looks up each code in `docs/error-catalog.md`, so the compiler cannot report a severity that isn't in the documented table.
+- **Standard library only.** The compiler has no third-party dependencies, so it runs anywhere Python 3.11+ runs.
+- **A fixed interface contract** (`plans/m1-architecture.md`) defines every module, record field and syntax-tree node before any code is written. The lexer, parser and analyser were planned in parallel and must fit together. The contract is what guarantees they do.
+- **Spec gaps were fixed before coding (plan 004, done).** Result: a held-out `switch` program went from 5 displayed root causes to 1. Hand-tracing the test programs found four gaps. Two were real design problems: one unsupported `switch` or pointer showed up as several unrelated "root causes". New rule R9 and an extended R7 now link those cascades. A `switch` example (trace T8) and a pointer example (trace T9) were added as exact-match tests.
+- **Held-out discipline in practice.** The `switch` gap was first seen in a held-out program. We did not tune against that file. We reproduced the problem in a new dev program (`dev/052`) and designed the fix against it.
+
 ---
 
 ## 2. Likely viva questions
@@ -148,6 +164,12 @@ No. The design includes a progress proof: every recovery step consumes at least 
 **Q: Do you reach the PRD's 70% error-reduction target?**
 Our hand traces give 62%. Better recovery leaves fewer cascades to collapse, so we report the real number and proposed measuring on a fixed set of cascading files (1.8).
 
+**Q: How is the compiler organised, and how do you know the parts fit together?**
+Lexer, then parser, then semantic analyser, all reporting through one error interceptor (1.10). The module interfaces, record fields and syntax-tree nodes were fixed in a written contract before coding, and exact-match tests on hand-traced examples check the whole chain.
+
+**Q: What did you do when a test program exposed a flaw in your design?**
+We fixed the design document first (plan 004), added a hand-traced example that reproduces the flaw as a permanent test, and only then planned the code. When the flaw came from a held-out program, we reproduced it in a new dev program instead of tuning against the held-out file.
+
 **Q: How do you avoid overfitting to your test set?**
 The 20 evaluation programs are held out and never used while designing recovery or clustering (1.9).
 
@@ -192,3 +214,5 @@ On a folder of faulty C programs with known injected faults, which also serves a
 | 2026-10-10 | 1.8 (error recovery), 1.9 (test corpus), 4 Q&A | Plans 002 and 003 drafted and cross-reviewed |
 | 2026-10-10 | 1.8 expanded (missing `)` repair, lex links, 8 traces, 62% finding), 2 limitations, 2 Q&A | Plan 002 executed and reviewed |
 | 2026-10-10 | 1.9 updated (85 programs built, traced cascade set, design gaps found, gcc 59/26), 2 Q&A | Plan 003 executed, revised and reviewed |
+| 2026-10-10 | 1.10 (compiler structure, interface contract, plan 004 gap fixes, held-out discipline), 2 Q&A | Milestone 1 planning started |
+| 2026-10-10 | Plan 004 executed: switch cascade 5 roots -> 1 (heldout/020), traces T8/T9 exact | Plan 004 reviewed and merged |
