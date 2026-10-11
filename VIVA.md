@@ -121,12 +121,42 @@ source.c --> lexer.py --> parser.py --> semantic.py --> list of ErrorRecord
 ### 1.11 Milestone 4: verified fixes (F8) and the personalised model (F9)
 
 - **F8 (src/cea/verifier.py):** the agent's patch is applied to a copy of the source string and fully re-compiled. Verified = the original error (matched by code and rule_ref near its location after mapping lines through the difflib diff) is gone, no new fatal error appears, and the guardrails hold (within 3 lines of the error, at most 6 changed lines, no loss of identifiers or statements, no commenting out). Up to 3 attempts, each retry sees why the last one failed, 10 s overall budget. The API, UI and CLI show a fix only when verified; otherwise: "No verified fix found; see explanation".
+- **Real F8 numbers (milestone 5):** llama3.1 8B verifies 12/18 held-out and 24/48 dev fixable roots (1.14).
 - **Honest metric:** tools/metrics_f8.py default (oracle FakeLLM) tests the pipeline only; 43 of 48 fixable dev roots verify. The 5 misses are guardrail rejections of non-local fixes (a prototype far away, renaming `main`) or fixes that replace a variable by a literal. Real numbers need a real LLM (`--llm env`).
 - **F9 (src/cea/profile.py):** SQLite file `.cea_data/profiles.sqlite3` (git-ignored), keyed by a random browser-made id; counts per catalog category, each root once per compile, an error signature (no line number) once per session. Three or more hits: beginner explanation plus a worked example from the fix-patterns corpus; else terse (expert style). The Beginner/Expert toggle overrides; Auto defers to the profile. The id never reaches the LLM (tested).
+
+### 1.12 Milestone 2: clustering (F2), AI agent (F3), API and UI
+
+- **Built:** `cluster.py` turns the parser/analyser `caused_by` links into one cluster per root (rule-based, no AI); `src/cea/llm/` is one OpenAI-compatible client with Gemini as primary and local Ollama as fallback, an on-disk explanation cache keyed by error signature, and a scripted `FakeLLM` so no test touches the network; `agent.py` explains (short = at most two sentences) and refuses off-topic questions; FastAPI backend and a React + Monaco UI.
+- **Decisions:** the agent sees only the error record, a few source lines and the rule text, never the filename or a student id. Every reply must be JSON matching a schema; invalid output gets one retry and then a deterministic fallback from the catalog message. The F2 percentage is measured on single-fault cascading files, with the all-cascade figure reported beside it (the PRD wording was unreachable).
+- **Limits:** clustering is heuristic (see section 3); the cache is a JSON file, not a database.
+
+### 1.13 Milestone 3: verbosity (F5), per-error Q&A (F6), RAG grounding (F7)
+
+- **Built:** beginner/expert prompt templates; a chat thread per error with history capped at the last 6 turns; a retrieval corpus in `docs/rag/` (one chunk per grammar/semantic rule, one fix pattern per error code) and citations shown in the UI.
+- **Decisions:** retrieval is a **keyed index** (rule_ref, code, phase, expected tokens), not Chroma with embeddings: the corpus is small, a lookup is exact, deterministic and needs no model download. Citations the model invents are dropped (`validate_citations`); if the model cites nothing valid the explanation is attributed to its own rule chunk.
+- **Limits:** that attribution makes the "after validation" grounding figure 100% by construction; the honest figure is how often the model cites a rule itself (section 1.14).
+
+### 1.14 Milestone 5: evaluation (`tools/evaluate.py`, `docs/evaluation/evaluation.md`)
+
+- **Setup:** held-out split (20 programs) read once with `--i-am-milestone-5`; dev run for comparison. Real model: llama3.1 8B through Ollama on an RTX 3050 laptop; no Gemini. Latency: 50 cold requests of the default short explanation.
+- **Held-out results:** F2 single-fault 69.6% (target 70%; all-cascade 64.0%; dev 72.5%); root accuracy 95.0% exact (85%); verified fixes 66.7%, 12/18 (80%; dev real 50%, dev oracle 89.6% = pipeline only); the model itself cites a retrieved rule in 47.8% (90%), 100% after validation; 0 non-existent citations; latency median 5.8 s, p90 6.7 s (5 s). Learner study: protocol written, not run.
+- **Bug the evaluation found:** the explanation JSON schema did not list `citations`, so Ollama's constrained decoding could never emit one (0/23 cited, 37 s per request). Fixed by adding an optional `citations` array; the as-found run is kept in `docs/evaluation/run1-as-found/`.
+- **Honesty points:** the 70% miss is 0.4 points on 7 files, and we did not tune to reach it; oracle numbers are not model numbers; one 8B model on one laptop; the study has not been run.
 
 ---
 
 ## 2. Likely viva questions
+
+**Q: What were your results?**
+On the 20 held-out programs with a local llama3.1 8B: root-cause accuracy 95% (met), no invented citations (met), clustering 69.6% on single-fault cascades (just short of 70%; 64.0% across all cascades), verified fixes 66.7% (short of 80%), the model cites a retrieved rule itself in 47.8% (short of 90%; 100% after validation, which is by construction), and median latency 5.8 s (short of 5 s). The user study is designed but not yet run. I would say the compiler-side metrics hold up and the LLM-side metrics depend on the model.
+
+**Q: Did you meet the 70% / 85% / 80% / 90% / 5 s targets?**
+70%: no, 69.6% on held-out single-fault cascades (72.5% on dev); the target is also very sensitive to how many 2-error cascades are in the set. 85%: yes, 95%. 80%: no, 66.7% with a real 8B model (the 89.6% oracle figure only tests the pipeline). 90%: not for what the model cites itself (47.8%); yes if you count validated attribution (100%), but I say that is by construction. 5 s: no, 5.8 s median locally; a hosted model might pass but I have not measured it.
+
+**Q: Why not tune until you hit the targets?**
+Because the held-out set only means something if it stays unseen. We found one real defect (the missing `citations` field in the schema) and fixed it, and said so; we did not change recovery rules or the corpus after looking at held-out results.
+
 
 **Q: Why build your own compiler instead of using gcc?**
 The project's novelty needs data gcc doesn't expose: per-phase errors, parser recovery points for clustering, and a rule name for each error to ground the AI. Building the front end ourselves is also the compiler-design part of the course.
@@ -247,3 +277,4 @@ On a folder of faulty C programs with known injected faults, which also serves a
 | 2026-10-10 | 1.10 updated (parser built, recovery layers, robustness evidence, stray-`}` message limitation), 2 Q&A | Plan 006 executed, reviewed and merged |
 | 2026-10-10 | 1.10: milestone 1 complete (analyser, pipeline, CLI, F1/F4 met, return-path fix) | Plan 007 executed, reviewed and merged |
 | 2026-10-11 | 1.11 (milestone 4: F8 verifier, F9 profile) | Implemented from the PRD, no plan |
+| 2026-10-11 | 1.12-1.14 (milestones 2, 3, 5), real evaluation numbers, 3 Q&A | Milestone 5: tools/evaluate.py, docs/evaluation/ |

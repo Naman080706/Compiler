@@ -1,0 +1,1841 @@
+{
+ "meta": {
+  "date": "2026-10-11",
+  "llm_kind": "env",
+  "llm_description": "OpenAICompatClient(name='fallback', base_url='http://localhost:11434/v1', model='llama3.1', api_key=none)",
+  "latency_requests": 50,
+  "f8_unit_timeout_s": 180.0,
+  "python": "3.13.1",
+  "machine": "AMD64 Family 25 Model 116 Stepping 1, AuthenticAMD",
+  "pipeline_only": false,
+  "wall_clock_s": 2416.7
+ },
+ "splits": {
+  "heldout": {
+   "llm_kind": "env",
+   "programs": 20,
+   "f2": {
+    "single_fault": {
+     "programs": 7,
+     "raw": 23,
+     "displayed": 7,
+     "reduction_pct": 69.6,
+     "programs_displayed_as_expected": 7
+    },
+    "all_cascade": {
+     "programs": 8,
+     "raw": 25,
+     "displayed": 9,
+     "reduction_pct": 64.0,
+     "programs_displayed_as_expected": 8
+    },
+    "rows": [
+     {
+      "program": "002-sort-three-swaps.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "003-gpa-calculator.c",
+      "raw": 3,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "004-digit-sum-letter-o.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "010-quiz-unclosed-message.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "012-palindrome-scope.c",
+      "raw": 4,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "018-factorial-table-open-comment.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "019-attendance-two-call-faults.c",
+      "raw": 2,
+      "displayed": 2,
+      "expected_displayed": 2,
+      "single_fault": false
+     },
+     {
+      "program": "020-menu-switch.c",
+      "raw": 8,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     }
+    ]
+   },
+   "root_accuracy": {
+    "programs": 20,
+    "program_exact_pct": 95.0,
+    "root_precision_pct": 95.7,
+    "root_recall_pct": 100.0,
+    "mismatches": [
+     {
+      "program": "016-guess-check-empty-condition.c",
+      "displayed": [
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        7
+       ],
+       [
+        "WRN-UNREACHABLE-CODE",
+        10
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 2,
+      "n_expected": 1,
+      "exact": false
+     }
+    ],
+    "rows": [
+     {
+      "program": "001-bank-balance-interest.c",
+      "displayed": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        4
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        4
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "002-sort-three-swaps.c",
+      "displayed": [
+       [
+        "SYN-UNBALANCED-BRACKET",
+        23
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNBALANCED-BRACKET",
+        23
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "003-gpa-calculator.c",
+      "displayed": [
+       [
+        "SEM-UNDECLARED-VAR",
+        13
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-UNDECLARED-VAR",
+        13
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "004-digit-sum-letter-o.c",
+      "displayed": [
+       [
+        "LEX-MALFORMED-NUMBER",
+        7
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-MALFORMED-NUMBER",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "005-leap-year-assignment.c",
+      "displayed": [
+       [
+        "WRN-ASSIGN-IN-CONDITION",
+        20
+       ]
+      ],
+      "expected": [
+       [
+        "WRN-ASSIGN-IN-CONDITION",
+        20
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "006-triangle-bare-return.c",
+      "displayed": [
+       [
+        "SEM-RETURN-TYPE",
+        5
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-RETURN-TYPE",
+        5
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "007-power-repeated-declaration.c",
+      "displayed": [
+       [
+        "SEM-REDECLARED",
+        15
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-REDECLARED",
+        15
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "008-readings-extra-argument.c",
+      "displayed": [
+       [
+        "SEM-ARG-COUNT",
+        25
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-ARG-COUNT",
+        25
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "009-countdown-stray-break.c",
+      "displayed": [
+       [
+        "SEM-BREAK-OUTSIDE-LOOP",
+        11
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-BREAK-OUTSIDE-LOOP",
+        11
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "010-quiz-unclosed-message.c",
+      "displayed": [
+       [
+        "LEX-UNTERMINATED-STRING",
+        15
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-UNTERMINATED-STRING",
+        15
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "011-celsius-if-missing-paren.c",
+      "displayed": [
+       [
+        "SYN-EXPECTED-TOKEN",
+        9
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-EXPECTED-TOKEN",
+        9
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "012-palindrome-scope.c",
+      "displayed": [
+       [
+        "SEM-UNDECLARED-VAR",
+        12
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-UNDECLARED-VAR",
+        12
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "013-reverse-array-double-index.c",
+      "displayed": [
+       [
+        "SEM-INDEX-NOT-INT",
+        19
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-INDEX-NOT-INT",
+        19
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "014-series-sum-bad-increment.c",
+      "displayed": [
+       [
+        "SYN-INVALID-ASSIGN-TARGET",
+        9
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-INVALID-ASSIGN-TARGET",
+        9
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "015-simple-interest-two-warnings.c",
+      "displayed": [
+       [
+        "WRN-IMPLICIT-NARROWING",
+        9
+       ],
+       [
+        "WRN-UNUSED-VAR",
+        8
+       ]
+      ],
+      "expected": [
+       [
+        "WRN-IMPLICIT-NARROWING",
+        9
+       ],
+       [
+        "WRN-UNUSED-VAR",
+        8
+       ]
+      ],
+      "matched": 2,
+      "n_displayed": 2,
+      "n_expected": 2,
+      "exact": true
+     },
+     {
+      "program": "016-guess-check-empty-condition.c",
+      "displayed": [
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        7
+       ],
+       [
+        "WRN-UNREACHABLE-CODE",
+        10
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 2,
+      "n_expected": 1,
+      "exact": false
+     },
+     {
+      "program": "017-odd-even-backtick.c",
+      "displayed": [
+       [
+        "LEX-INVALID-CHAR",
+        9
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-INVALID-CHAR",
+        9
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "018-factorial-table-open-comment.c",
+      "displayed": [
+       [
+        "LEX-UNTERMINATED-COMMENT",
+        15
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-UNTERMINATED-COMMENT",
+        15
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "019-attendance-two-call-faults.c",
+      "displayed": [
+       [
+        "SEM-ARG-TYPE",
+        24
+       ],
+       [
+        "SEM-VOID-VALUE",
+        23
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-ARG-TYPE",
+        24
+       ],
+       [
+        "SEM-VOID-VALUE",
+        23
+       ]
+      ],
+      "matched": 2,
+      "n_displayed": 2,
+      "n_expected": 2,
+      "exact": true
+     },
+     {
+      "program": "020-menu-switch.c",
+      "displayed": [
+       [
+        "SYN-UNSUPPORTED-FEATURE",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNSUPPORTED-FEATURE",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     }
+    ]
+   },
+   "f7": {
+    "explanations": 23,
+    "model_cited": 0,
+    "model_cited_pct": 0.0,
+    "attributed": 23,
+    "attributed_pct": 100.0,
+    "nonexistent_citations": 0,
+    "llm_failed_fallback_used": 1
+   },
+   "latency": {
+    "requests": 50,
+    "distinct_errors": 23,
+    "median_s": 36.95,
+    "p90_s": 37.72,
+    "max_s": 37.94,
+    "min_s": 7.47,
+    "first_request_s": 37.73,
+    "median_excl_first_s": 36.94,
+    "under_5s_pct": 0.0,
+    "fallback_text_used": 34
+   },
+   "f8": {
+    "mode": "llm",
+    "units": 18,
+    "verified": 12,
+    "verified_pct": 66.7,
+    "attempts_histogram": {
+     "1": 11,
+     "2": 1
+    },
+    "median_seconds_per_unit": 5.19,
+    "verified_within_10s_budget": 8,
+    "failures": [
+     {
+      "program": "001-bank-balance-interest.c",
+      "reason": "the patch introduces a new error (SEM-UNDECLARED-VAR at line 4)"
+     },
+     {
+      "program": "009-countdown-stray-break.c",
+      "reason": "the original error is still there"
+     },
+     {
+      "program": "012-palindrome-scope.c",
+      "reason": "the patch touches lines more than 3 lines away from the error (line 12)"
+     },
+     {
+      "program": "013-reverse-array-double-index.c",
+      "reason": "the patch deletes code (fewer identifiers or statements in the changed region)"
+     },
+     {
+      "program": "016-guess-check-empty-condition.c",
+      "reason": "the patch introduces a new error (SYN-MISSING-SEMICOLON at line 7)"
+     },
+     {
+      "program": "020-menu-switch.c",
+      "reason": "the patch comments code out"
+     }
+    ]
+   }
+  },
+  "dev": {
+   "llm_kind": "fake",
+   "programs": 54,
+   "f2": {
+    "single_fault": {
+     "programs": 11,
+     "raw": 40,
+     "displayed": 11,
+     "reduction_pct": 72.5,
+     "programs_displayed_as_expected": 11
+    },
+    "all_cascade": {
+     "programs": 15,
+     "raw": 50,
+     "displayed": 20,
+     "reduction_pct": 60.0,
+     "programs_displayed_as_expected": 15
+    },
+    "rows": [
+     {
+      "program": "002-unclosed-printf-string.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "003-two-char-literal.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "005-number-with-letters.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "012-param-without-type.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "041-missing-brace-before-next-function.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "043-loop-counter-never-declared.c",
+      "raw": 9,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "046-unclosed-string-mid-function.c",
+      "raw": 2,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "047-helper-called-before-defined.c",
+      "raw": 4,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "049-pointer-declaration-uses.c",
+      "raw": 6,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "051-for-header-missing-semicolon.c",
+      "raw": 3,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "052-switch-grade-menu.c",
+      "raw": 6,
+      "displayed": 1,
+      "expected_displayed": 1,
+      "single_fault": true
+     },
+     {
+      "program": "060-one-per-phase.c",
+      "raw": 3,
+      "displayed": 3,
+      "expected_displayed": 3,
+      "single_fault": false
+     },
+     {
+      "program": "061-two-semantic-faults.c",
+      "raw": 2,
+      "displayed": 2,
+      "expected_displayed": 2,
+      "single_fault": false
+     },
+     {
+      "program": "062-syntax-and-semantic.c",
+      "raw": 3,
+      "displayed": 2,
+      "expected_displayed": 2,
+      "single_fault": false
+     },
+     {
+      "program": "063-fault-plus-warning.c",
+      "raw": 2,
+      "displayed": 2,
+      "expected_displayed": 2,
+      "single_fault": false
+     }
+    ]
+   },
+   "root_accuracy": {
+    "programs": 54,
+    "program_exact_pct": 100.0,
+    "root_precision_pct": 100.0,
+    "root_recall_pct": 100.0,
+    "mismatches": [],
+    "rows": [
+     {
+      "program": "001-stray-at-sign.c",
+      "displayed": [
+       [
+        "LEX-INVALID-CHAR",
+        12
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-INVALID-CHAR",
+        12
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "002-unclosed-printf-string.c",
+      "displayed": [
+       [
+        "LEX-UNTERMINATED-STRING",
+        11
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-UNTERMINATED-STRING",
+        11
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "003-two-char-literal.c",
+      "displayed": [
+       [
+        "LEX-BAD-CHAR-LITERAL",
+        5
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-BAD-CHAR-LITERAL",
+        5
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "004-unclosed-todo-comment.c",
+      "displayed": [
+       [
+        "LEX-UNTERMINATED-COMMENT",
+        11
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-UNTERMINATED-COMMENT",
+        11
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "005-number-with-letters.c",
+      "displayed": [
+       [
+        "LEX-MALFORMED-NUMBER",
+        4
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-MALFORMED-NUMBER",
+        4
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "006-windows-path-escape.c",
+      "displayed": [
+       [
+        "LEX-INVALID-ESCAPE",
+        10
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-INVALID-ESCAPE",
+        10
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "007-unsupported-include.c",
+      "displayed": [
+       [
+        "LEX-UNSUPPORTED-DIRECTIVE",
+        2
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-UNSUPPORTED-DIRECTIVE",
+        2
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "008-missing-semicolon-assign.c",
+      "displayed": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        8
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        8
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "009-if-missing-close-paren.c",
+      "displayed": [
+       [
+        "SYN-UNBALANCED-BRACKET",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNBALANCED-BRACKET",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "010-while-missing-open-paren.c",
+      "displayed": [
+       [
+        "SYN-EXPECTED-TOKEN",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-EXPECTED-TOKEN",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "011-empty-right-hand-side.c",
+      "displayed": [
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        12
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        12
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "012-param-without-type.c",
+      "displayed": [
+       [
+        "SYN-EXPECTED-TYPE",
+        3
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-EXPECTED-TYPE",
+        3
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "013-missing-final-brace.c",
+      "displayed": [
+       [
+        "SYN-UNEXPECTED-EOF",
+        12
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNEXPECTED-EOF",
+        12
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "014-reversed-assignment.c",
+      "displayed": [
+       [
+        "SYN-INVALID-ASSIGN-TARGET",
+        12
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-INVALID-ASSIGN-TARGET",
+        12
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "015-const-qualifier.c",
+      "displayed": [
+       [
+        "SYN-UNSUPPORTED-FEATURE",
+        4
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNSUPPORTED-FEATURE",
+        4
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "016-typo-in-variable.c",
+      "displayed": [
+       [
+        "SEM-UNDECLARED-VAR",
+        7
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-UNDECLARED-VAR",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "017-call-before-definition.c",
+      "displayed": [
+       [
+        "SEM-UNDECLARED-FUNC",
+        7
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-UNDECLARED-FUNC",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "018-redeclared-loop-var.c",
+      "displayed": [
+       [
+        "SEM-REDECLARED",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-REDECLARED",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "019-prototype-disagrees.c",
+      "displayed": [
+       [
+        "SEM-CONFLICTING-TYPES",
+        11
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-CONFLICTING-TYPES",
+        11
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "020-string-into-int.c",
+      "displayed": [
+       [
+        "SEM-TYPE-MISMATCH",
+        4
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-TYPE-MISMATCH",
+        4
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "021-void-result-used.c",
+      "displayed": [
+       [
+        "SEM-VOID-VALUE",
+        8
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-VOID-VALUE",
+        8
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "022-variable-called-like-function.c",
+      "displayed": [
+       [
+        "SEM-NOT-CALLABLE",
+        14
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-NOT-CALLABLE",
+        14
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "023-arg-count-too-few.c",
+      "displayed": [
+       [
+        "SEM-ARG-COUNT",
+        11
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-ARG-COUNT",
+        11
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "024-string-argument.c",
+      "displayed": [
+       [
+        "SEM-ARG-TYPE",
+        12
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-ARG-TYPE",
+        12
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "025-value-from-void-function.c",
+      "displayed": [
+       [
+        "SEM-RETURN-TYPE",
+        8
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-RETURN-TYPE",
+        8
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "026-index-plain-int.c",
+      "displayed": [
+       [
+        "SEM-NOT-ARRAY",
+        14
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-NOT-ARRAY",
+        14
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "027-double-index.c",
+      "displayed": [
+       [
+        "SEM-INDEX-NOT-INT",
+        10
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-INDEX-NOT-INT",
+        10
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "028-variable-array-size.c",
+      "displayed": [
+       [
+        "SEM-BAD-ARRAY-SIZE",
+        5
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-BAD-ARRAY-SIZE",
+        5
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "029-break-in-if.c",
+      "displayed": [
+       [
+        "SEM-BREAK-OUTSIDE-LOOP",
+        8
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-BREAK-OUTSIDE-LOOP",
+        8
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "030-global-from-global.c",
+      "displayed": [
+       [
+        "SEM-NONCONST-GLOBAL-INIT",
+        4
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-NONCONST-GLOBAL-INIT",
+        4
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "031-printf-int-first.c",
+      "displayed": [
+       [
+        "SEM-PRINTF-FORMAT",
+        9
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-PRINTF-FORMAT",
+        9
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "032-main-misspelled.c",
+      "displayed": [
+       [
+        "SEM-MISSING-MAIN",
+        11
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-MISSING-MAIN",
+        11
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "033-unused-temp.c",
+      "displayed": [
+       [
+        "WRN-UNUSED-VAR",
+        5
+       ]
+      ],
+      "expected": [
+       [
+        "WRN-UNUSED-VAR",
+        5
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "034-printf-after-return.c",
+      "displayed": [
+       [
+        "WRN-UNREACHABLE-CODE",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "WRN-UNREACHABLE-CODE",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "035-average-into-int.c",
+      "displayed": [
+       [
+        "WRN-IMPLICIT-NARROWING",
+        7
+       ]
+      ],
+      "expected": [
+       [
+        "WRN-IMPLICIT-NARROWING",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "036-sign-no-final-return.c",
+      "displayed": [
+       [
+        "WRN-MISSING-RETURN",
+        3
+       ]
+      ],
+      "expected": [
+       [
+        "WRN-MISSING-RETURN",
+        3
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "037-assign-in-if.c",
+      "displayed": [
+       [
+        "WRN-ASSIGN-IN-CONDITION",
+        5
+       ]
+      ],
+      "expected": [
+       [
+        "WRN-ASSIGN-IN-CONDITION",
+        5
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "040-missing-semicolon-decl-cascade.c",
+      "displayed": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        5
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        5
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "041-missing-brace-before-next-function.c",
+      "displayed": [
+       [
+        "SYN-UNBALANCED-BRACKET",
+        10
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNBALANCED-BRACKET",
+        10
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "042-missing-loop-brace-at-eof.c",
+      "displayed": [
+       [
+        "SYN-UNEXPECTED-EOF",
+        12
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNEXPECTED-EOF",
+        12
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "043-loop-counter-never-declared.c",
+      "displayed": [
+       [
+        "SEM-UNDECLARED-VAR",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-UNDECLARED-VAR",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "044-empty-initializer-then-uses.c",
+      "displayed": [
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "045-while-missing-paren-cascade.c",
+      "displayed": [
+       [
+        "SYN-EXPECTED-TOKEN",
+        7
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-EXPECTED-TOKEN",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "046-unclosed-string-mid-function.c",
+      "displayed": [
+       [
+        "LEX-UNTERMINATED-STRING",
+        8
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-UNTERMINATED-STRING",
+        8
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "047-helper-called-before-defined.c",
+      "displayed": [
+       [
+        "SEM-UNDECLARED-FUNC",
+        7
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-UNDECLARED-FUNC",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "048-global-missing-semicolon.c",
+      "displayed": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        3
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        3
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "049-pointer-declaration-uses.c",
+      "displayed": [
+       [
+        "SYN-UNSUPPORTED-FEATURE",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNSUPPORTED-FEATURE",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "050-for-missing-close-paren.c",
+      "displayed": [
+       [
+        "SYN-UNBALANCED-BRACKET",
+        7
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNBALANCED-BRACKET",
+        7
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "051-for-header-missing-semicolon.c",
+      "displayed": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-MISSING-SEMICOLON",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "052-switch-grade-menu.c",
+      "displayed": [
+       [
+        "SYN-UNSUPPORTED-FEATURE",
+        6
+       ]
+      ],
+      "expected": [
+       [
+        "SYN-UNSUPPORTED-FEATURE",
+        6
+       ]
+      ],
+      "matched": 1,
+      "n_displayed": 1,
+      "n_expected": 1,
+      "exact": true
+     },
+     {
+      "program": "060-one-per-phase.c",
+      "displayed": [
+       [
+        "LEX-INVALID-CHAR",
+        4
+       ],
+       [
+        "SEM-UNDECLARED-VAR",
+        19
+       ],
+       [
+        "SYN-MISSING-SEMICOLON",
+        8
+       ]
+      ],
+      "expected": [
+       [
+        "LEX-INVALID-CHAR",
+        4
+       ],
+       [
+        "SEM-UNDECLARED-VAR",
+        19
+       ],
+       [
+        "SYN-MISSING-SEMICOLON",
+        8
+       ]
+      ],
+      "matched": 3,
+      "n_displayed": 3,
+      "n_expected": 3,
+      "exact": true
+     },
+     {
+      "program": "061-two-semantic-faults.c",
+      "displayed": [
+       [
+        "SEM-ARG-COUNT",
+        14
+       ],
+       [
+        "SEM-RETURN-TYPE",
+        9
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-ARG-COUNT",
+        14
+       ],
+       [
+        "SEM-RETURN-TYPE",
+        9
+       ]
+      ],
+      "matched": 2,
+      "n_displayed": 2,
+      "n_expected": 2,
+      "exact": true
+     },
+     {
+      "program": "062-syntax-and-semantic.c",
+      "displayed": [
+       [
+        "SEM-NOT-ARRAY",
+        14
+       ],
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        4
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-NOT-ARRAY",
+        14
+       ],
+       [
+        "SYN-EXPECTED-EXPRESSION",
+        4
+       ]
+      ],
+      "matched": 2,
+      "n_displayed": 2,
+      "n_expected": 2,
+      "exact": true
+     },
+     {
+      "program": "063-fault-plus-warning.c",
+      "displayed": [
+       [
+        "SEM-TYPE-MISMATCH",
+        9
+       ],
+       [
+        "WRN-IMPLICIT-NARROWING",
+        4
+       ]
+      ],
+      "expected": [
+       [
+        "SEM-TYPE-MISMATCH",
+        9
+       ],
+       [
+        "WRN-IMPLICIT-NARROWING",
+        4
+       ]
+      ],
+      "matched": 2,
+      "n_displayed": 2,
+      "n_expected": 2,
+      "exact": true
+     }
+    ]
+   },
+   "f7": {
+    "explanations": 59,
+    "model_cited": 59,
+    "model_cited_pct": 100.0,
+    "attributed": 59,
+    "attributed_pct": 100.0,
+    "nonexistent_citations": 0,
+    "llm_failed_fallback_used": 0
+   },
+   "latency": {
+    "requests": 50,
+    "distinct_errors": 59,
+    "median_s": 0.0,
+    "p90_s": 0.0,
+    "max_s": 0.0,
+    "min_s": 0.0,
+    "first_request_s": 0.0,
+    "median_excl_first_s": 0.0,
+    "under_5s_pct": 100.0,
+    "fallback_text_used": 0
+   },
+   "f8": {
+    "mode": "oracle",
+    "units": 48,
+    "verified": 43,
+    "verified_pct": 89.6,
+    "attempts_histogram": {
+     "1": 43
+    },
+    "median_seconds_per_unit": 0.0,
+    "verified_within_10s_budget": null,
+    "failures": [
+     {
+      "program": "017-call-before-definition.c",
+      "reason": "the patch introduces a new error (SYN-UNBALANCED-BRACKET at line 4)"
+     },
+     {
+      "program": "028-variable-array-size.c",
+      "reason": "the patch deletes code (fewer identifiers or statements in the changed region)"
+     },
+     {
+      "program": "030-global-from-global.c",
+      "reason": "the patch deletes code (fewer identifiers or statements in the changed region)"
+     },
+     {
+      "program": "032-main-misspelled.c",
+      "reason": "the patch touches lines more than 3 lines away from the error (line 11)"
+     },
+     {
+      "program": "047-helper-called-before-defined.c",
+      "reason": "the patch introduces a new error (SYN-UNBALANCED-BRACKET at line 4)"
+     }
+    ]
+   }
+  }
+ }
+}

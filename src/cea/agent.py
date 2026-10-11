@@ -34,7 +34,7 @@ from cea.records import ErrorRecord
 from cea.retrieval import Chunk, retrieve
 from cea.rules import RuleText, rule_text
 
-PROMPT_VERSION = 2          # part of every cache signature: bump it when a prompt or schema changes
+PROMPT_VERSION = 3          # part of every cache signature: bump it when a prompt or schema changes
 MODES = ("short", "expand")
 VERBOSITIES = ("beginner", "expert")    # PRD F5: two prompt templates, one agent
 MAX_HISTORY = 6                         # PRD F6: most recent question/answer pairs sent to the model
@@ -53,7 +53,9 @@ SYSTEM_PROMPT = (
 
 EXPLAIN_SCHEMA = {
     "type": "object",
-    "properties": {"explanation": {"type": "string"}},
+    # "citations" must be in the schema: a schema-constrained decoder (Ollama) cannot emit a field the
+    # schema does not list, so without it a local model never cites (found by the milestone-5 evaluation).
+    "properties": {"explanation": {"type": "string"}, "citations": {"type": "array"}},
     "required": ["explanation"],
 }
 FIX_SCHEMA = {
