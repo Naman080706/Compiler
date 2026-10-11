@@ -8,7 +8,7 @@ never a column. A tab counts as one column.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from cea.diagnostics import ErrorSink
 from cea.records import Position
@@ -27,18 +27,25 @@ _NUMBER_RUN = _IDENT_CHARS | {"."}          # the maximal run skipped for LEX-MA
 _SYMBOLS = sorted(OPERATORS | UNSUPPORTED_OPS | PUNCTUATORS, key=lambda s: (-len(s), s))
 # After the header name only blanks and comments may follow (comments are whitespace,
 # language-spec section 1). A /* comment must be closed on the same line.
-_STDIO_INCLUDE = re.compile(r"#[ \t]*include[ \t]*<stdio\.h>(?:[ \t]|/\*.*?\*/)*(?://.*)?")
+_INCLUDE = re.compile(r"#[ \t]*include[ \t]*<([A-Za-z0-9_]+\.h)>(?:[ \t]|/\*.*?\*/)*(?://.*)?")
+_DEFINE = re.compile(r"#[ \t]*define[ \t]+([A-Za-z_][A-Za-z0-9_]*)(\()?(.*)")
+SUPPORTED_HEADERS = frozenset({"stdio.h", "stdlib.h", "string.h", "math.h", "ctype.h", "stdbool.h"})
+MAX_MACRO_TOKENS = 200
+_HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
+_INT_SUFFIX = re.compile(r"(?:[uU](?:ll|LL|l|L)?|(?:ll|LL|l|L)[uU]?)?")
+_FLOAT_SUFFIX = re.compile(r"[fFlL]?")
 
 
 @dataclass
 class LexResult:
     tokens: list[Token]                 # always ends with exactly one EOF token
     stdio_include: Position | None      # the '#' of the first accepted '#include <stdio.h>', else None
+    includes: list[tuple[str, Position]] = field(default_factory=list)   # (header, '#') of each header's first include
 
 
 def lex(source: str, sink: ErrorSink) -> LexResult:
     """Tokenise the whole of `source`, reporting lexical errors to `sink`. Never raises on bad input."""
-    return _Lexer(source, sink).run()
+    return _Lexer(source, sink, {}).run()
 
 
 def _positions(source: str) -> list[tuple[int, int]]:
@@ -67,7 +74,7 @@ def _positions(source: str) -> list[tuple[int, int]]:
 
 
 class _Lexer:
-    def __init__(self, source: str, sink: ErrorSink):
+    def __init__(self, source: str, sink: ErrorSink, macros: dict[str, list[Token]]):
         self.src = source
         self.n = len(source)
         self.sink = sink
@@ -76,6 +83,8 @@ class _Lexer:
         self.tokens: list[Token] = []
         self.pending_gap: str | None = None
         self.stdio_include: Position | None = None
+        self.includes: list[tuple[str, Position]] = []
+        self.macros = macros                    # object-like #define NAME body -> replacement tokens
 
     # ---- driver
     def run(self) -> LexResult:
@@ -101,7 +110,7 @@ class _Lexer:
             else:
                 self._symbol()
         self._emit_eof()
-        return LexResult(self.tokens, self.stdio_include)
+        return LexResult(self.tokens, self.stdio_include, self.includes)
 
     # ---- helpers
     def _eol(self, i: int) -> int:
@@ -147,28 +156,64 @@ class _Lexer:
             kind = TokenKind.UNSUPPORTED_KEYWORD
         else:
             kind = TokenKind.IDENT
-        self._emit(kind, start, j)
         self.i = j
+        if kind is TokenKind.IDENT and text in self.macros:
+            self._expand(text, start, j)
+            return
+        self._emit(kind, start, j)
+
+    def _expand(self, name: str, start: int, end: int) -> None:
+        """Simple object-like macro substitution: the body's tokens all take the use site's position."""
+        line, col = self.pos[start]
+        end_line, end_col = self.pos[end - 1]
+        for tok in self.macros[name]:
+            self.tokens.append(Token(tok.kind, tok.text, line, col, end_line, end_col,
+                                     self.pending_gap, tok.value))
+            self.pending_gap = None
 
     def _number(self) -> None:
         src, n = self.src, self.n
         start = j = self.i
-        while j < n and src[j] in _DIGITS:
-            j += 1
-        kind = TokenKind.INT_LIT
-        if j + 1 < n and src[j] == "." and src[j + 1] in _DIGITS:
-            j += 2
+        kind, value = TokenKind.INT_LIT, 0
+        if src[j] == "0" and j + 1 < n and src[j + 1] in "xX":              # hexadecimal
+            k = j + 2
+            while k < n and src[k] in _HEX_DIGITS:
+                k += 1
+            body_end = k
+            value = int(src[j + 2:k], 16) if k > j + 2 else None
+        else:
             while j < n and src[j] in _DIGITS:
                 j += 1
-            kind = TokenKind.FLOAT_LIT
-        if j < n and src[j] in _NUMBER_RUN:
-            # A letter, '_' or a second '.' directly after the number: 12abc, 1.2.3, 12.
+            if j + 1 < n and src[j] == "." and src[j + 1] in _DIGITS:
+                j += 2
+                while j < n and src[j] in _DIGITS:
+                    j += 1
+                kind = TokenKind.FLOAT_LIT
+            if j < n and src[j] in "eE":                                    # exponent: 1e5, 2.5E-3
+                k = j + 1
+                if k < n and src[k] in "+-":
+                    k += 1
+                if k < n and src[k] in _DIGITS:
+                    while k < n and src[k] in _DIGITS:
+                        k += 1
+                    j, kind = k, TokenKind.FLOAT_LIT
+            body_end = j
+            text = src[start:j]
+            if kind is TokenKind.FLOAT_LIT:
+                value = float(text)
+            elif len(text) > 1 and text[0] == "0":                          # octal
+                value = int(text, 8) if all(c in "01234567" for c in text) else None
+            else:
+                value = int(text)
+        suffix = (_FLOAT_SUFFIX if kind is TokenKind.FLOAT_LIT else _INT_SUFFIX).match(src, body_end)
+        j = suffix.end()
+        if value is None or (j < n and src[j] in _NUMBER_RUN):
+            # A letter, '_' or a second '.' directly after the number: 12abc, 1.2.3, 12., 0x, 089
             while j < n and src[j] in _NUMBER_RUN:
                 j += 1
             self._error("LEX-MALFORMED-NUMBER", start, j - 1, found=src[start:j])
         else:
-            text = src[start:j]
-            self._emit(kind, start, j, int(text) if kind is TokenKind.INT_LIT else float(text))
+            self._emit(kind, start, j, value)
         self.i = j
 
     def _string(self) -> None:
@@ -265,11 +310,35 @@ class _Lexer:
         start = self.i
         eol = self._eol(start)
         text = self.src[start:eol]
-        if _STDIO_INCLUDE.fullmatch(text):
-            if self.stdio_include is None:
+        m = _INCLUDE.fullmatch(text)
+        if m and m.group(1) in SUPPORTED_HEADERS:
+            header = m.group(1)
+            if all(h != header for h, _ in self.includes):
+                self.includes.append((header, Position(*self.pos[start])))
+            if header == "stdio.h" and self.stdio_include is None:
                 self.stdio_include = Position(*self.pos[start])
-        else:
-            found = text.rstrip(" \t\f\v")
+        elif not self._define(text):
+            found = text.rstrip(" 	")
             self._error("LEX-UNSUPPORTED-DIRECTIVE", start, start + len(found) - 1, found=found,
                         sets_gap=False)
         self.i = eol
+
+    def _define(self, text: str) -> bool:
+        """Accept '#define NAME value' (object-like only). False if the directive is not of that shape."""
+        m = _DEFINE.fullmatch(text.rstrip(" 	"))
+        if not m or m.group(2) is not None:                     # not a define, or function-like
+            return False
+        name, rest = m.group(1), m.group(3)
+        if rest and rest[0] not in " 	":
+            return False
+        if name in KEYWORDS or name in UNSUPPORTED_KEYWORDS or "\\" in rest:
+            return False
+        scratch = ErrorSink(rest)
+        sub = _Lexer(rest, scratch, self.macros).run()
+        body = sub.tokens[:-1]
+        if scratch.records or len(body) > MAX_MACRO_TOKENS:
+            return False
+        if any(t.kind in (TokenKind.UNSUPPORTED_KEYWORD, TokenKind.UNSUPPORTED_OP) for t in body):
+            return False
+        self.macros[name] = body
+        return True

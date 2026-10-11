@@ -19,18 +19,20 @@ class TokenKind(Enum):
     EOF = auto()
 
 
-TYPE_KEYWORDS = frozenset({"int", "float", "double", "char", "void"})
-KEYWORDS = TYPE_KEYWORDS | frozenset({"if", "else", "while", "for", "return", "break", "continue"})
-UNSUPPORTED_KEYWORDS = frozenset({
-    "struct", "union", "enum", "typedef", "switch", "case", "default", "do", "goto",
-    "sizeof", "long", "short", "unsigned", "signed", "const", "static", "extern",
-    "auto", "register", "volatile",
+# Words that can start a declaration (type specifiers, qualifiers, storage classes, user-type introducers).
+BASIC_TYPE_KEYWORDS = frozenset({"int", "float", "double", "char", "void", "long", "short", "unsigned", "signed"})
+DECL_KEYWORDS = frozenset({"struct", "union", "enum", "typedef", "const", "static", "extern"})
+TYPE_KEYWORDS = BASIC_TYPE_KEYWORDS | DECL_KEYWORDS
+KEYWORDS = TYPE_KEYWORDS | frozenset({
+    "if", "else", "while", "for", "return", "break", "continue", "switch", "case", "default", "do", "sizeof",
 })
+UNSUPPORTED_KEYWORDS = frozenset({"goto", "auto", "register", "volatile"})
 OPERATORS = frozenset({
     "+", "-", "*", "/", "%", "=", "+=", "-=", "*=", "/=", "%=", "++", "--",
     "==", "!=", "<", "<=", ">", ">=", "&&", "||", "!",
+    "&", "|", "^", "~", "<<", ">>", "&=", "|=", "^=", "<<=", ">>=", "->", ".", "?", ":",
 })
-UNSUPPORTED_OPS = frozenset({"&", "|", "^", "~", "<<", ">>", "->", ".", "?", ":"})
+UNSUPPORTED_OPS = frozenset({"..."})
 PUNCTUATORS = frozenset({";", ",", "(", ")", "{", "}", "[", "]"})
 # escape = "\" , ( "n" | "t" | "0" | "'" | '"' | "\" ) ; key = the character after the backslash
 ESCAPES = {"n": "\n", "t": "\t", "0": "\0", "'": "'", '"': '"', "\\": "\\"}
