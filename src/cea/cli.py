@@ -1,22 +1,33 @@
-"""Command-line interface: ``python -m cea FILE.c [--json] [--all]`` (plans 007, 009).
+"""Command-line interface: ``python -m cea FILE.c [--json] [--all] [--explain [short|expand]] [--fix]``.
 
 This is the only module allowed to print (plans/m1-architecture.md §1, PRD F1).
 By default it shows one line per F2 root cause, with a "+N related" count of
 the symptoms grouped under it (plan 009). ``--all`` lists every record.
 ``--json`` prints every record plus a ``clusters`` array.
+``--explain`` and ``--fix`` (plan 011, PRD F3) ask the AI agent about every
+root: an explanation (``short`` by default, or ``expand``) and/or a suggested
+fix printed as a unified diff under an UNVERIFIED header (fixes are not
+re-checked by the compiler until F8, milestone 4). The LLM comes from
+``cea.llm.client_from_env()``; ``--no-cache`` skips the explanation cache.
 Exit status: 0 when the file compiles (no fatal record, PRD F4), 1 when at
-least one record is fatal, 2 for a usage error or an unreadable file.
+least one record is fatal, 2 for a usage error, an unreadable file, or
+``--explain``/``--fix`` with no LLM configured.
 """
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import sys
 from pathlib import Path
 
+from cea.agent import Agent
 from cea.cluster import Cluster
+from cea.llm import ExplanationCache, LLMError, client_from_env
 from cea.pipeline import compile_source
 from cea.records import ErrorRecord
+
+UNVERIFIED_HEADER = "--- UNVERIFIED fix suggestion (not re-checked by the compiler) ---"
 
 
 def format_record(filename: str, rec: ErrorRecord) -> str:
@@ -35,6 +46,10 @@ def format_cluster(filename: str, cluster: Cluster) -> str:
     return text
 
 
+def _indent(text: str, prefix: str = "    ") -> list[str]:
+    return [prefix + line for line in text.splitlines()]
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -45,7 +60,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("file", help="path to a .c file")
     ap.add_argument("--json", action="store_true", help="print the error records and clusters as JSON")
     ap.add_argument("--all", action="store_true", help="list every record, not just one root per cluster")
+    ap.add_argument("--explain", nargs="?", const="short", choices=("short", "expand"),
+                    help="AI explanation of every root error (default: short)")
+    ap.add_argument("--fix", action="store_true", help="AI fix suggestion (UNVERIFIED diff) for every root error")
+    ap.add_argument("--no-cache", action="store_true", help="do not read or write the explanation cache")
     args = ap.parse_args(argv)
+    if args.all and (args.explain or args.fix):
+        ap.error("--all cannot be combined with --explain or --fix (the agent explains roots only)")
     path = Path(args.file)
     try:
         source = path.read_text(encoding="utf-8")
@@ -53,11 +74,26 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: cannot read {path}: {exc}", file=sys.stderr)
         return 2
     result = compile_source(source, path.name)
+    agent = None
+    if args.explain or args.fix:
+        try:
+            llm = client_from_env()
+        except LLMError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        agent = Agent(llm, cache=None if args.no_cache else ExplanationCache())
     if args.json:
         payload = {"file": path.name, "ok": result.ok, "summary": result.summary(),
                    "errors": [r.to_dict() for r in result.errors],
                    "clusters": [{"root_id": c.root.id, "symptom_ids": [s.id for s in c.symptoms]}
                                 for c in result.clusters]}
+        if agent is not None:
+            payload["agent"] = [
+                {"root_id": c.root.id,
+                 "explanation": dataclasses.asdict(agent.explain(c.root, source, args.explain))
+                 if args.explain else None,
+                 "fix": dataclasses.asdict(agent.suggest_fix(c.root, source)) if args.fix else None}
+                for c in result.clusters]
         print(json.dumps(payload, indent=2))
     else:
         if args.all:
@@ -66,5 +102,15 @@ def main(argv: list[str] | None = None) -> int:
         else:
             for cluster in result.clusters:
                 print(format_cluster(path.name, cluster))
+                if agent is None:
+                    continue
+                if args.explain:
+                    exp = agent.explain(cluster.root, source, args.explain)
+                    print(f"    Explanation ({exp.mode}, rule {exp.cited_rule or exp.rule_ref}):")
+                    print("\n".join(_indent(exp.text, "      ")))
+                if args.fix:
+                    fix = agent.suggest_fix(cluster.root, source)
+                    print("    " + UNVERIFIED_HEADER)
+                    print("\n".join(_indent(fix.diff)) if fix.diff else "    (no fix suggested)")
         print(result.summary())
     return 0 if result.ok else 1
