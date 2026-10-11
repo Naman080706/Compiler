@@ -32,16 +32,17 @@ class SpyAgent:
     def __init__(self):
         self.calls = []
 
-    def explain(self, record, source, mode="short"):
-        self.calls.append(("explain", record, source, mode))
-        return Explanation(text=f"why {record.id}", rule_ref=record.rule_ref, cited_rule=None, mode=mode)
+    def explain(self, record, source, mode="short", verbosity="beginner"):
+        self.calls.append(("explain", record, source, mode, verbosity))
+        return Explanation(text=f"why {record.id}", rule_ref=record.rule_ref, cited_rule=None, mode=mode,
+                           verbosity=verbosity, citations=["rule:" + record.rule_ref])
 
     def suggest_fix(self, record, source):
         self.calls.append(("fix", record, source))
         return FixSuggestion(diff="--- a/input.c\n+++ b/input.c\n", patched_source=source + "\n")
 
-    def ask(self, record, source, question):
-        self.calls.append(("ask", record, source, question))
+    def ask(self, record, source, question, history=None):
+        self.calls.append(("ask", record, source, question, history))
         return Answer(text=f"answer to {question}", refused=False)
 
 
@@ -222,8 +223,8 @@ def test_explain(client, spy, mode):
     resp = client.post("/api/explain", json=body("/api/explain", SRC_UNDECLARED, record_id="E-0002", mode=mode))
     assert resp.status_code == 200
     assert resp.json() == {"text": "why E-0002", "rule_ref": "sem.declare_before_use", "cited_rule": None,
-                           "mode": mode}
-    ((name, record, source, got_mode),) = spy.calls
+                           "mode": mode, "verbosity": "beginner", "citations": ["rule:sem.declare_before_use"]}
+    ((name, record, source, got_mode, _verbosity),) = spy.calls
     assert (name, record.id, source, got_mode) == ("explain", "E-0002", SRC_UNDECLARED, mode)
 
 
@@ -263,7 +264,7 @@ def test_filename_and_extra_fields_never_reach_the_agent(client, spy, path):
     (call,) = spy.calls
     record, source = call[1], call[2]
     assert isinstance(record, ErrorRecord) and source == SRC_UNDECLARED
-    assert len(call) == (3 if path == "/api/fix" else 4)                 # no extra arguments
+    assert len(call) == (3 if path == "/api/fix" else 5)                 # no extra arguments
     seen = repr(call) + repr(record.to_dict())
     for value in PRIVATE.values():
         assert value not in seen
@@ -278,7 +279,7 @@ def fake_agent():
     return llm
 
 
-@pytest.mark.parametrize("path,keys", [("/api/explain", {"text", "rule_ref", "cited_rule", "mode"}),
+@pytest.mark.parametrize("path,keys", [("/api/explain", {"text", "rule_ref", "cited_rule", "mode", "verbosity", "citations"}),
                                        ("/api/fix", {"diff", "patched_source", "verified"}),
                                        ("/api/ask", {"text", "refused"})])
 def test_real_agent_over_fake_llm(client, fake_agent, path, keys):

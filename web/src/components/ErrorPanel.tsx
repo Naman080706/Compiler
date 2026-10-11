@@ -1,22 +1,23 @@
 // The error panel (PRD F2/F3/F4): one card per root cause, a fatal/warning
 // badge, a collapsed "+N related" list of symptoms, and the per-root
 // Explain / Expand / Suggest fix / Ask actions.
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ask, explain, suggestFix } from "../api";
 import { relatedLabel, type ClusterView } from "../clusters";
-import type { Answer, Explanation, FixSuggestion } from "../types";
+import type { ChatTurn, Explanation, FixSuggestion, Verbosity } from "../types";
 import FixDiff from "./FixDiff";
 
 interface PanelProps {
   views: ClusterView[];
   source: string; // the source these records came from (the server is stateless)
+  verbosity?: Verbosity; // F5: session-wide explanation style
 }
 
-export default function ErrorPanel({ views, source }: PanelProps) {
+export default function ErrorPanel({ views, source, verbosity = "beginner" }: PanelProps) {
   return (
     <ol className="clusters" aria-label="Root causes">
       {views.map((v) => (
-        <RootCard key={v.root.id} view={v} source={source} />
+        <RootCard key={v.root.id} view={v} source={source} verbosity={verbosity} />
       ))}
     </ol>
   );
@@ -25,14 +26,15 @@ export default function ErrorPanel({ views, source }: PanelProps) {
 interface CardProps {
   view: ClusterView;
   source: string;
+  verbosity?: Verbosity;
 }
 
-export function RootCard({ view, source }: CardProps) {
+export function RootCard({ view, source, verbosity = "beginner" }: CardProps) {
   const { root, symptoms } = view;
   const [open, setOpen] = useState(false);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [fix, setFix] = useState<FixSuggestion | null>(null);
-  const [answer, setAnswer] = useState<Answer | null>(null);
+  const [thread, setThread] = useState<ChatTurn[]>([]); // F6: this error's own chat history
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,10 +51,25 @@ export function RootCard({ view, source }: CardProps) {
     }
   }
 
+  // F5: switching the toggle re-renders an explanation already on screen in the new style (same mode).
+  useEffect(() => {
+    if (explanation && explanation.verbosity !== verbosity) {
+      void run(() => explain(source, root.id, explanation.mode, verbosity), setExplanation);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verbosity]);
+
   function onAsk(e: FormEvent) {
     e.preventDefault();
     const q = question.trim();
-    if (q) void run(() => ask(source, root.id, q), setAnswer);
+    if (!q) return;
+    void run(
+      () => ask(source, root.id, q, thread),
+      (a) => {
+        setThread((t) => [...t, { question: q, answer: a.text, refused: a.refused }]);
+        setQuestion("");
+      },
+    );
   }
 
   return (
@@ -80,10 +97,10 @@ export function RootCard({ view, source }: CardProps) {
         </ul>
       )}
       <div className="actions">
-        <button type="button" disabled={busy} onClick={() => run(() => explain(source, root.id, "short"), setExplanation)}>
+        <button type="button" disabled={busy} onClick={() => run(() => explain(source, root.id, "short", verbosity), setExplanation)}>
           Explain
         </button>
-        <button type="button" disabled={busy} onClick={() => run(() => explain(source, root.id, "expand"), setExplanation)}>
+        <button type="button" disabled={busy} onClick={() => run(() => explain(source, root.id, "expand", verbosity), setExplanation)}>
           Expand
         </button>
         <button type="button" disabled={busy} onClick={() => run(() => suggestFix(source, root.id), setFix)}>
@@ -101,14 +118,41 @@ export function RootCard({ view, source }: CardProps) {
         </p>
       )}
       {explanation && (
-        <div className="explanation" data-mode={explanation.mode}>
+        <div className="explanation" data-mode={explanation.mode} data-verbosity={explanation.verbosity}>
           <p>{explanation.text}</p>
           <p className="rule">
             Rule: <code>{explanation.rule_ref}</code>
           </p>
+          {explanation.citations && explanation.citations.length > 0 && (
+            <p className="citations" aria-label="Cited sources">
+              Grounded in:{" "}
+              {explanation.citations.map((id, i) => (
+                <span key={id}>
+                  {i > 0 && ", "}
+                  <code>{id}</code>
+                </span>
+              ))}
+            </p>
+          )}
         </div>
       )}
       {fix && <FixDiff original={source} fix={fix} />}
+      {thread.length > 0 && (
+        <ol className="thread" aria-label={`Conversation about ${root.id}`}>
+          {thread.map((t, i) => (
+            <li key={i}>
+              <p className="q">
+                <strong>You: </strong>
+                {t.question}
+              </p>
+              <p className={t.refused ? "answer refused" : "answer"}>
+                {t.refused && <strong>Out of scope: </strong>}
+                {t.answer}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
       <form className="ask" onSubmit={onAsk}>
         <input
           aria-label={`Question about ${root.id}`}
@@ -121,12 +165,6 @@ export function RootCard({ view, source }: CardProps) {
           Ask
         </button>
       </form>
-      {answer && (
-        <p className={answer.refused ? "answer refused" : "answer"}>
-          {answer.refused && <strong>Out of scope: </strong>}
-          {answer.text}
-        </p>
-      )}
     </li>
   );
 }

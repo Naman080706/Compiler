@@ -79,7 +79,8 @@ def test_json_includes_agent_results(fake, src_file, capsys):
     (item,) = data["agent"]
     assert item["root_id"] == "E-0001"
     assert item["explanation"] == {"text": "A ';' is missing at the end of line 3. Add it.",
-                                   "rule_ref": "expr_stmt", "cited_rule": "expr_stmt", "mode": "short"}
+                                   "rule_ref": "expr_stmt", "cited_rule": "expr_stmt", "mode": "short",
+                                   "verbosity": "beginner", "citations": ["rule:expr_stmt"]}
     assert item["fix"]["verified"] is False and item["fix"]["diff"].startswith("--- original\n")
 
 

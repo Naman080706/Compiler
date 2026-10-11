@@ -5,7 +5,26 @@ import { clusterViews } from "./clusters";
 import CodeEditor from "./components/CodeEditor";
 import ErrorPanel from "./components/ErrorPanel";
 import { SAMPLE_SOURCE } from "./sample";
-import type { CompileResponse, Health } from "./types";
+import type { CompileResponse, Health, Verbosity } from "./types";
+
+const VERBOSITY_KEY = "cea.verbosity";
+
+// F5: the choice lasts for the browser session. Storage can be blocked, so every access is guarded.
+function loadVerbosity(): Verbosity {
+  try {
+    return window.sessionStorage.getItem(VERBOSITY_KEY) === "expert" ? "expert" : "beginner";
+  } catch {
+    return "beginner";
+  }
+}
+
+function saveVerbosity(v: Verbosity) {
+  try {
+    window.sessionStorage.setItem(VERBOSITY_KEY, v);
+  } catch {
+    // ignore: the toggle still works for this page load
+  }
+}
 
 interface Compiled {
   source: string;
@@ -19,6 +38,12 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [llm, setLlm] = useState<Health["llm"] | "offline" | null>(null);
+  const [verbosity, setVerbosity] = useState<Verbosity>(loadVerbosity);
+
+  function chooseVerbosity(v: Verbosity) {
+    setVerbosity(v);
+    saveVerbosity(v);
+  }
 
   useEffect(() => {
     health()
@@ -48,6 +73,13 @@ export default function App() {
       <header className="top">
         <h1>Compiler Error Assistant</h1>
         <span className="llm">AI: {llm ?? "..."}</span>
+        <div className="verbosity" role="group" aria-label="Explanation style">
+          {(["beginner", "expert"] as const).map((v) => (
+            <button key={v} type="button" aria-pressed={verbosity === v} onClick={() => chooseVerbosity(v)}>
+              {v === "beginner" ? "Beginner" : "Expert"}
+            </button>
+          ))}
+        </div>
         <button type="button" className="primary" onClick={onCompile} disabled={busy}>
           {busy ? "Compiling..." : "Compile"}
         </button>
@@ -83,7 +115,7 @@ export default function App() {
               {views.length === 0 ? (
                 <p className="note">No errors. The program compiles.</p>
               ) : (
-                <ErrorPanel key={compiled.run} views={views} source={compiled.source} />
+                <ErrorPanel key={compiled.run} views={views} source={compiled.source} verbosity={verbosity} />
               )}
             </>
           )}

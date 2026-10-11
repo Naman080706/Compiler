@@ -26,14 +26,18 @@ import difflib
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from cea.llm import ExplanationCache, LLMClient, LLMError
 from cea.records import ErrorRecord
+from cea.retrieval import Chunk, retrieve
 from cea.rules import RuleText, rule_text
 
-PROMPT_VERSION = 1          # part of every cache signature: bump it when a prompt or schema changes
+PROMPT_VERSION = 2          # part of every cache signature: bump it when a prompt or schema changes
 MODES = ("short", "expand")
+VERBOSITIES = ("beginner", "expert")    # PRD F5: two prompt templates, one agent
+MAX_HISTORY = 6                         # PRD F6: most recent question/answer pairs sent to the model
+MAX_HISTORY_CHARS = 600
 
 SYSTEM_PROMPT = (
     "You are the error assistant of a teaching compiler for a small subset of C99. "
@@ -80,10 +84,23 @@ TASKS = {
     "fix": ("Suggest the smallest edit that fixes only this error. Lines are numbered from 1. Lines "
             "start_line to end_line (inclusive) are replaced by the replacement lines (no line numbers). "
             "Reply as JSON: {\"start_line\": N, \"end_line\": M, \"replacement\": [\"...\"]}"),
-    "ask": ("Answer the student's question below about this error in at most four sentences. If it is not "
+    "ask": ("Answer the student's question below about this error in at most four sentences, using only the "
+            "error record, source lines, language rule, reference chunks and earlier conversation above. "
+            "If it is not "
             "about this error, this program or the course C subset, refuse. "
             "Reply as JSON: {\"answer\": \"...\", \"refused\": false}"),
 }
+# PRD F5: the expert templates ask for the same facts in one terse line plus the rule name or error code.
+CITE_FORMAT = 'Reply as JSON: {"explanation": "...", "citations": ["<chunk id>"]}'
+EXPERT_TASKS = {
+    "short": ("Expert mode. Reply with ONE terse line (no analogy, no greeting): the fault and its "
+              "line:column, then the grammar rule or error code in parentheses. " + CITE_FORMAT),
+    "expand": ("Expert mode. Reply with one terse line stating the fault, then the grammar rule text or the "
+               "semantic rule it violates; at most three short lines in all, no analogy. " + CITE_FORMAT),
+}
+BEGINNER_NOTE = (" Beginner mode: use plain language, add a short everyday analogy where it helps, and name "
+                 "the rule that was violated. Put the ids of the reference chunks you used in \"citations\": "
+                 'e.g. {"explanation": "...", "citations": ["<chunk id>"]}.')
 MAX_TOKENS = {"short": 300, "expand": 900, "fix": 900, "ask": 500}
 
 
@@ -93,6 +110,9 @@ class Explanation:
     rule_ref: str
     cited_rule: str | None
     mode: str           # "short" | "expand"
+    verbosity: str = "beginner"      # "beginner" | "expert" (PRD F5)
+    # F7: ids of the retrieved chunks the explanation cites (model citations outside the retrieved set are dropped)
+    citations: list[str] = field(default_factory=list, compare=False)
 
 
 @dataclass
@@ -106,6 +126,16 @@ class FixSuggestion:
 class Answer:
     text: str
     refused: bool
+
+
+def clip_history(history: list[dict] | None) -> list[dict]:
+    """The last MAX_HISTORY well-formed {question, answer} turns, each text clipped (F6 history cap)."""
+    turns = []
+    for turn in history or []:
+        q, a = turn.get("question"), turn.get("answer")
+        if isinstance(q, str) and isinstance(a, str):
+            turns.append({"question": q.strip()[:MAX_HISTORY_CHARS], "answer": a.strip()[:MAX_HISTORY_CHARS]})
+    return turns[-MAX_HISTORY:]
 
 
 # ---------------------------------------------------------------- sentences (short mode)
@@ -142,18 +172,20 @@ _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _C_PUNCT = re.compile(r"[;{}()\[\]=]")
 
 
-def is_off_topic(question: str, record: ErrorRecord | None = None) -> bool:
+def is_off_topic(question: str, record: ErrorRecord | None = None, in_thread: bool = False) -> bool:
     """Cheap local pre-check (F3 scope guard). True = refuse without calling the LLM.
 
     Refuses an empty question, one that names a clearly unrelated topic, and one
     that has no compiler or C vocabulary, no C punctuation and no identifier
-    from the error's snippet. Borderline questions pass and the model decides.
+    from the error's snippet. Borderline questions pass and the model decides. Inside a thread
+    that already has turns (``in_thread``), a short follow-up such as "and then?" is not refused
+    for lacking vocabulary; only an empty or clearly unrelated question is.
     """
     q = question.strip()
     if not q or OFF_TOPIC.search(q):
         return True
     words = {w.lower() for w in _WORD.findall(q)}
-    if words & ON_TOPIC_WORDS or _C_PUNCT.search(q):
+    if in_thread or words & ON_TOPIC_WORDS or _C_PUNCT.search(q):
         return False
     if record is not None:
         names = {w.lower() for w in _WORD.findall(record.snippet + " " + record.found)}
@@ -207,7 +239,8 @@ class Agent:
         lines = text.splitlines() or [""]
         return "\n".join(f"{n:>4} | {line}" for n, line in enumerate(lines, first_line))
 
-    def _context(self, record: ErrorRecord, rule: RuleText | None, mode: str, source_block: str) -> str:
+    def _context(self, record: ErrorRecord, rule: RuleText | None, mode: str, source_block: str,
+                 chunks: list[Chunk] | None = None) -> str:
         expected = ", ".join(record.expected) if record.expected else "(none)"
         parts = [
             f"Mode: {mode}",
@@ -226,15 +259,28 @@ class Agent:
             parts.extend("  " + line for line in rule.text.splitlines())
         else:
             parts.append(f"Language rule {record.rule_ref}: (not found in the specification)")
+        if chunks:
+            parts.append("Reference chunks (cite the ids you use):")
+            for chunk in chunks:
+                body = "(the language rule above)" if chunk.id == f"rule:{record.rule_ref}" else chunk.text
+                parts.append(f"  [{chunk.id}]")
+                parts.extend("    " + line for line in body.splitlines())
         parts.append(source_block)
         return "\n".join(parts)
 
     def _snippet_block(self, record: ErrorRecord) -> str:
         return "Source lines:\n" + self._numbered(record.snippet, max(1, record.line - 1))
 
-    def _messages(self, record: ErrorRecord, mode: str, source_block: str, extra: str = "") -> list[dict]:
+    def _messages(self, record: ErrorRecord, mode: str, source_block: str, extra: str = "",
+                  verbosity: str = "beginner", chunks: list[Chunk] | None = None) -> list[dict]:
         rule = rule_text(record.rule_ref)
-        user = self._context(record, rule, mode, source_block) + "\nTask: " + TASKS[mode] + extra
+        explaining = mode in MODES
+        if explaining and verbosity == "expert":
+            task = EXPERT_TASKS[mode]
+        else:
+            task = TASKS[mode] + (BEGINNER_NOTE if explaining else "")
+        user = (self._context(record, rule, mode, source_block, chunks)
+                + (f"\nVerbosity: {verbosity}" if explaining else "") + "\nTask: " + task + extra)
         return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
 
     def _call_json(self, messages: list[dict], schema: dict, mode: str, check=None) -> dict | None:
@@ -259,9 +305,11 @@ class Agent:
 
     # -- explain
     @staticmethod
-    def fallback_text(record: ErrorRecord, mode: str) -> str:
+    def fallback_text(record: ErrorRecord, mode: str, verbosity: str = "beginner") -> str:
         """Deterministic explanation from the catalog message (used when the model fails)."""
         message = record.message.rstrip()
+        if verbosity == "expert":
+            return f"{record.line}:{record.column} {record.code}: {message} ({record.rule_ref})"
         if not message.endswith((".", "!", "?")):
             message += "."
         text = f"Line {record.line}, column {record.column}: {message}"
@@ -272,26 +320,51 @@ class Agent:
                 text += "\n\n" + rule.text
         return text
 
-    def explain(self, record: ErrorRecord, source: str, mode: str = "short") -> Explanation:
+    @staticmethod
+    def validate_citations(raw: object, chunks: list[Chunk], record: ErrorRecord) -> list[str]:
+        """F7: keep only citations that are ids of the retrieved chunks (order kept, no duplicates).
+
+        If the model cites nothing valid, the explanation is attributed to the chunk it was grounded
+        on: the record's own rule chunk, else the first retrieved chunk. Nothing outside the
+        retrieved set can ever be returned.
+        """
+        retrieved = [c.id for c in chunks]
+        kept: list[str] = []
+        for item in raw if isinstance(raw, list) else []:
+            if isinstance(item, str) and item in retrieved and item not in kept:
+                kept.append(item)
+        if not kept and retrieved:
+            own = f"rule:{record.rule_ref}"
+            kept = [own if own in retrieved else retrieved[0]]
+        return kept
+
+    def explain(self, record: ErrorRecord, source: str, mode: str = "short",
+                verbosity: str = "beginner") -> Explanation:
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
+        if verbosity not in VERBOSITIES:
+            raise ValueError(f"verbosity must be one of {VERBOSITIES}, got {verbosity!r}")
         rule = rule_text(record.rule_ref)
         cited = rule.rule_ref if rule is not None else None
+        chunks = retrieve(record)
+        key = f"{verbosity}/{mode}"
         sig = self._signature(record)
-        hit = self.cache.get(sig, mode) if self.cache is not None else None
+        hit = self.cache.get(sig, key) if self.cache is not None else None
         if hit is not None and isinstance(hit.get("text"), str):
-            return Explanation(hit["text"], record.rule_ref, cited, mode)
-        obj = self._call_json(self._messages(record, mode, self._snippet_block(record)), EXPLAIN_SCHEMA, mode,
-                              check=lambda o: bool(o["explanation"].strip()))
+            return Explanation(hit["text"], record.rule_ref, cited, mode, verbosity,
+                               self.validate_citations(hit.get("citations"), chunks, record))
+        messages = self._messages(record, mode, self._snippet_block(record), verbosity=verbosity, chunks=chunks)
+        obj = self._call_json(messages, EXPLAIN_SCHEMA, mode, check=lambda o: bool(o["explanation"].strip()))
         if obj is None:
-            text = self.fallback_text(record, mode)
+            text = self.fallback_text(record, mode, verbosity)
         else:
             text = obj["explanation"].strip()
         if mode == "short":
-            text = first_sentences(text, 2)
+            text = first_sentences(text, 1 if verbosity == "expert" else 2)
+        citations = self.validate_citations(obj.get("citations") if obj is not None else None, chunks, record)
         if obj is not None and self.cache is not None:
-            self.cache.put(sig, mode, {"text": text})
-        return Explanation(text, record.rule_ref, cited, mode)
+            self.cache.put(sig, key, {"text": text, "citations": citations})
+        return Explanation(text, record.rule_ref, cited, mode, verbosity, citations)
 
     # -- suggest_fix
     @staticmethod
@@ -334,12 +407,23 @@ class Agent:
         return FixSuggestion(diff=self.unified_diff(source, patched), patched_source=patched, verified=False)
 
     # -- ask
-    def ask(self, record: ErrorRecord, source: str, question: str) -> Answer:
-        if is_off_topic(question, record):
+    def ask(self, record: ErrorRecord, source: str, question: str, history: list[dict] | None = None) -> Answer:
+        """Answer one follow-up about this error from its record, snippet, retrieved docs and prior turns.
+
+        ``history`` is the client's list of ``{"question", "answer"}`` turns for this error; only the
+        last MAX_HISTORY are used.
+        """
+        turns = clip_history(history)
+        if is_off_topic(question, record, in_thread=bool(turns)):
             return Answer(REFUSAL_TEXT, refused=True)
-        extra = '\nStudent question: """' + question.strip().replace('"""', "'''") + '"""'
-        obj = self._call_json(self._messages(record, "ask", self._snippet_block(record), extra), ASK_SCHEMA, "ask",
-                              check=lambda o: bool(o["answer"].strip()) or o["refused"])
+        extra = ""
+        if turns:
+            extra += "\nEarlier conversation about this error:"
+            for t in turns:
+                extra += f'\n  Student: {t["question"]}\n  Assistant: {t["answer"]}'
+        extra += '\nStudent question: """' + question.strip().replace('"""', "'''") + '"""'
+        messages = self._messages(record, "ask", self._snippet_block(record), extra, chunks=retrieve(record))
+        obj = self._call_json(messages, ASK_SCHEMA, "ask", check=lambda o: bool(o["answer"].strip()) or o["refused"])
         if obj is None:
             return Answer(NO_ANSWER_TEXT.format(message=record.message), refused=False)
         if obj["refused"]:
