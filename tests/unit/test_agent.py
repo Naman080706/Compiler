@@ -109,27 +109,27 @@ def test_invalid_twice_falls_back_to_catalog_message(rec):
     fake = FakeLLM(["nope", "still nope", reply("never asked")])
     exp = Agent(fake).explain(rec, SRC, "short")
     assert len(fake.calls) == 2
-    assert exp.text == "Line 3, column 22: Expected ';' after the expression statement but found 'return'."
+    assert exp.text == "Syntax phase: Line 3, column 22: Expected ';' after the expression statement but found 'return'."
     assert (exp.rule_ref, exp.cited_rule) == ("expr_stmt", "expr_stmt")
 
 
 def test_expand_fallback_includes_the_rule(rec):
     exp = Agent(FakeLLM(default="nope")).explain(rec, SRC, "expand")
-    assert exp.text.startswith("Line 3, column 22: Expected ';'")
+    assert exp.text.startswith("Syntax phase: Line 3, column 22: Expected ';'")
     assert "This breaks the language rule 'expr_stmt'.\n\nexpr_stmt      = expression" in exp.text
 
 
 def test_llm_error_falls_back_without_retry(rec):
     fake = FakeLLM([LLMError("network down")])
     exp = Agent(fake).explain(rec, SRC)
-    assert len(fake.calls) == 1 and exp.text.startswith("Line 3, column 22: ")
+    assert len(fake.calls) == 1 and exp.text.startswith("Syntax phase: Line 3, column 22: ")
 
 
 def test_fallback_short_text_is_at_most_two_sentences():
     src = "int main(void) {\n    char c = 'ab';\n    return 0;\n}\n"
     r = next(e for e in compile_source(src, "t.c").errors if e.code == "LEX-BAD-CHAR-LITERAL")
     exp = Agent(FakeLLM(default="nope")).explain(r, src)
-    assert exp.text == f"Line 2, column 14: {r.message}."
+    assert exp.text == f"Lexical phase: Line 2, column 14: {r.message}."
     assert len(AG.sentences(exp.text)) <= 2
 
 

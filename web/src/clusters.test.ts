@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clusterViews, MarkerSeverity, relatedLabel, toMarkers } from "./clusters";
+import { clusterViews, groupByPhase, MarkerSeverity, phaseSummary, relatedLabel, toMarkers } from "./clusters";
 import { SAMPLE_COMPILE } from "./test/fixtures";
 
 describe("clusterViews", () => {
@@ -58,5 +58,17 @@ describe("toMarkers", () => {
   it("points symptoms at their root", () => {
     expect(markers[2].message).toBe("Variable 'i' is used before it is declared (related to E-0002)");
     expect(markers[1].message).toBe("Variable 'i' is used before it is declared");
+  });
+});
+
+describe("groupByPhase / phaseSummary", () => {
+  it("orders groups lexical, syntax, semantic and omits empty ones", () => {
+    const groups = groupByPhase(clusterViews(SAMPLE_COMPILE));
+    expect(groups.map((g) => [g.phase, g.views.length])).toEqual([["syntax", 1], ["semantic", 2]]);
+  });
+
+  it("counts records per phase", () => {
+    expect(phaseSummary(SAMPLE_COMPILE.records)).toBe("Syntax 1 · Semantic 6");
+    expect(phaseSummary([])).toBe("");
   });
 });

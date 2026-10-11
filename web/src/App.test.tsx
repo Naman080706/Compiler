@@ -62,15 +62,33 @@ describe("App", () => {
     ]);
   });
 
-  it("shows one card per root cause, not one per record", async () => {
+  it("shows one card per root cause, grouped by phase", async () => {
     await compileSample();
-    const list = screen.getByRole("list", { name: "Root causes" });
-    const cards = within(list).getAllByRole("listitem");
+    const cards = screen.getAllByRole("listitem").filter((c) => /at line \d+$/.test(c.getAttribute("aria-label") ?? ""));
     expect(cards.map((c) => c.getAttribute("aria-label"))).toEqual([
+      "SYN-MISSING-SEMICOLON at line 9",
       "WRN-UNUSED-VAR at line 5",
       "SEM-UNDECLARED-VAR at line 6",
-      "SYN-MISSING-SEMICOLON at line 9",
     ]);
+  });
+
+  it("has phase headings with counts, no empty groups, and a phase summary", async () => {
+    await compileSample();
+    expect(screen.getByRole("heading", { name: "Syntax errors (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Semantic errors (2)" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Lexical/ })).toBeNull();
+    expect(screen.getByTestId("phase-summary")).toHaveTextContent("Syntax 1 · Semantic 6");
+  });
+
+  it("shows a phase badge on each card and a gcc tag only for engine gcc", async () => {
+    const records = SAMPLE_COMPILE.records.map((r) => (r.id === "E-0001" ? { ...r, engine: "gcc" as const } : r));
+    await compileSample({ "POST /api/compile": () => ({ json: { ...SAMPLE_COMPILE, records } }) });
+    const syn = screen.getByRole("listitem", { name: "SYN-MISSING-SEMICOLON at line 9" });
+    expect(within(syn).getByText("syntax", { selector: ".badge.phase" })).toBeInTheDocument();
+    expect(within(syn).getByText("via gcc")).toBeInTheDocument();
+    const sem = screen.getByRole("listitem", { name: "SEM-UNDECLARED-VAR at line 6" });
+    expect(within(sem).getByText("semantic", { selector: ".badge.phase" })).toBeInTheDocument();
+    expect(within(sem).queryByText("via gcc")).toBeNull();
   });
 
   it("labels each root fatal or warning", async () => {
@@ -186,7 +204,7 @@ describe("App", () => {
     });
     expect(screen.getByText("Compiles")).toBeInTheDocument();
     expect(screen.getByText("No errors. The program compiles.")).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: "Root causes" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /errors \(/ })).toBeNull();
   });
 
   it("after an edit, warns that results are stale and still sends the compiled source", async () => {

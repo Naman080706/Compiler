@@ -3,7 +3,7 @@
 // Explain / Expand / Suggest fix / Ask actions.
 import { useEffect, useState, type FormEvent } from "react";
 import { ask, explain, suggestFix } from "../api";
-import { relatedLabel, type ClusterView } from "../clusters";
+import { groupByPhase, PHASE_TITLES, relatedLabel, type ClusterView } from "../clusters";
 import type { ChatTurn, Explanation, FixSuggestion, Verbosity } from "../types";
 import FixDiff from "./FixDiff";
 
@@ -15,11 +15,20 @@ interface PanelProps {
 
 export default function ErrorPanel({ views, source, verbosity }: PanelProps) {
   return (
-    <ol className="clusters" aria-label="Root causes">
-      {views.map((v) => (
-        <RootCard key={v.root.id} view={v} source={source} verbosity={verbosity} />
+    <div>
+      {groupByPhase(views).map((g) => (
+        <section key={g.phase} className="phase-group" aria-label={`${PHASE_TITLES[g.phase]} errors`}>
+          <h3 className="phase-heading">
+            {PHASE_TITLES[g.phase]} errors ({g.views.length})
+          </h3>
+          <ol className="clusters" aria-label={`${PHASE_TITLES[g.phase]} root causes`}>
+            {g.views.map((v) => (
+              <RootCard key={v.root.id} view={v} source={source} verbosity={verbosity} />
+            ))}
+          </ol>
+        </section>
       ))}
-    </ol>
+    </div>
   );
 }
 
@@ -76,6 +85,8 @@ export function RootCard({ view, source, verbosity }: CardProps) {
     <li className={`card ${root.severity}`} aria-label={`${root.code} at line ${root.line}`}>
       <div className="card-head">
         <span className={`badge ${root.severity}`}>{root.severity}</span>
+        <span className={`badge phase ${root.phase}`}>{root.phase}</span>
+        {root.engine === "gcc" && <span className="badge engine">via gcc</span>}
         <code className="code">{root.code}</code>
         <span className="pos">
           line {root.line}, col {root.column}

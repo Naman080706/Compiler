@@ -18,6 +18,7 @@ export interface ErrorRecord {
   caused_by: string | null;
   span_end: { line: number; column: number };
   message: string;
+  engine?: "cea" | "gcc"; // which front end produced the record (may be absent)
 }
 
 export interface ClusterRef {

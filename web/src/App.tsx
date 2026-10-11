@@ -1,7 +1,7 @@
 // The demo page: Monaco editor on the left, the F2 error panel on the right.
 import { useEffect, useState } from "react";
 import { compile, health } from "./api";
-import { clusterViews } from "./clusters";
+import { clusterViews, phaseSummary } from "./clusters";
 import CodeEditor from "./components/CodeEditor";
 import ErrorPanel from "./components/ErrorPanel";
 import { SAMPLE_SOURCE } from "./sample";
@@ -107,6 +107,11 @@ export default function App() {
                 </span>
                 <span data-testid="summary">{compiled.resp.summary}</span>
               </p>
+              {count > 0 && (
+                <p className="note" data-testid="phase-summary">
+                  {phaseSummary(compiled.resp.records)}
+                </p>
+              )}
               <p className="note">
                 {views.length} root {views.length === 1 ? "cause" : "causes"} shown for {count}{" "}
                 {count === 1 ? "error" : "errors"}
