@@ -2,9 +2,9 @@
 
 Endpoints (all JSON):
     POST /api/compile  {source}                      -> {ok, summary, records, clusters}
-    POST /api/explain  {source, record_id, mode}     -> Explanation
+    POST /api/explain  {source, record_id, mode, verbosity} -> Explanation (with citations)
     POST /api/fix      {source, record_id}           -> {diff, patched_source, verified}
-    POST /api/ask      {source, record_id, question} -> {text, refused}
+    POST /api/ask      {source, record_id, question, history} -> {text, refused}
     GET  /api/health                                 -> {status, llm}
 
 The server is stateless: every request re-compiles ``source``, so a record id
@@ -39,6 +39,7 @@ from cea.records import ErrorRecord
 
 MAX_SOURCE_BYTES = 64 * 1024          # contract section 3: "The source is size-limited (64 KB)"
 MAX_QUESTION_CHARS = 1000
+MAX_HISTORY_TURNS = 50                # request-size bound; the agent itself keeps only the last few
 DEV_ORIGIN = "http://localhost:5173"  # the Vite dev server; the only CORS origin allowed
 DISPLAY_NAME = "input.c"              # the client's filename is never accepted
 
@@ -61,10 +62,19 @@ class FixRequest(CompileRequest):
 
 class ExplainRequest(FixRequest):
     mode: Literal["short", "expand"] = "short"
+    verbosity: Literal["beginner", "expert"] = "beginner"
+
+
+class HistoryTurn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    question: str = Field(max_length=MAX_QUESTION_CHARS)
+    answer: str = Field(max_length=4000)
 
 
 class AskRequest(FixRequest):
     question: str = Field(min_length=1, max_length=MAX_QUESTION_CHARS)
+    # the client's thread for this one error; the agent uses only the last MAX_HISTORY turns
+    history: list[HistoryTurn] = Field(default_factory=list, max_length=MAX_HISTORY_TURNS)
 
 
 @lru_cache(maxsize=1)
@@ -141,8 +151,9 @@ def compile_endpoint(req: CompileRequest) -> dict:
 @app.post("/api/explain")
 def explain_endpoint(req: ExplainRequest, agent: AgentDep) -> dict:
     record = _record(_compile(req.source), req.record_id)
-    exp = _call_agent(agent.explain, record, req.source, req.mode)
-    return {"text": exp.text, "rule_ref": exp.rule_ref, "cited_rule": exp.cited_rule, "mode": exp.mode}
+    exp = _call_agent(agent.explain, record, req.source, req.mode, req.verbosity)
+    return {"text": exp.text, "rule_ref": exp.rule_ref, "cited_rule": exp.cited_rule, "mode": exp.mode,
+            "verbosity": exp.verbosity, "citations": list(exp.citations)}
 
 
 @app.post("/api/fix")
@@ -155,7 +166,8 @@ def fix_endpoint(req: FixRequest, agent: AgentDep) -> dict:
 @app.post("/api/ask")
 def ask_endpoint(req: AskRequest, agent: AgentDep) -> dict:
     record = _record(_compile(req.source), req.record_id)
-    answer = _call_agent(agent.ask, record, req.source, req.question)
+    history = [t.model_dump() for t in req.history]
+    answer = _call_agent(agent.ask, record, req.source, req.question, history)
     return {"text": answer.text, "refused": bool(answer.refused)}
 
 
