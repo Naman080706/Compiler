@@ -123,7 +123,7 @@ def test_expert_short_is_one_sentence_and_expert_fallback_is_terse(rec):
     long = json.dumps({"explanation": "First. Second. Third."})
     assert Agent(FakeLLM([long])).explain(rec, SRC, "short", "expert").text == "First."
     fb = Agent(FakeLLM()).explain(rec, SRC, "short", "expert")
-    assert fb.text.startswith("3:22 SYN-MISSING-SEMICOLON") and fb.text.endswith("(expr_stmt)")
+    assert fb.text.startswith("Syntax phase: 3:22 SYN-MISSING-SEMICOLON") and fb.text.endswith("(expr_stmt)")
 
 
 def test_cache_is_keyed_by_verbosity(rec, tmp_path):

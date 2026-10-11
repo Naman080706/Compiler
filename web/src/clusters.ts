@@ -21,6 +21,23 @@ export function clusterViews(resp: CompileResponse): ClusterView[] {
   return views;
 }
 
+export type Phase = ErrorRecord["phase"];
+export const PHASES: Phase[] = ["lexical", "syntax", "semantic"];
+export const PHASE_TITLES: Record<Phase, string> = { lexical: "Lexical", syntax: "Syntax", semantic: "Semantic" };
+
+/** PRD F1: root causes grouped by the phase that caught them, in compiler order; empty groups are omitted. */
+export function groupByPhase(views: ClusterView[]): { phase: Phase; views: ClusterView[] }[] {
+  return PHASES.map((phase) => ({ phase, views: views.filter((v) => v.root.phase === phase) })).filter((g) => g.views.length > 0);
+}
+
+/** "Lexical 1 · Syntax 2 · Semantic 1": records per phase; phases with none are left out. */
+export function phaseSummary(records: ErrorRecord[]): string {
+  return PHASES.map((p) => [p, records.filter((r) => r.phase === p).length] as const)
+    .filter(([, n]) => n > 0)
+    .map(([p, n]) => `${PHASE_TITLES[p]} ${n}`)
+    .join(" · ");
+}
+
 /** "+N related" for a cluster with N symptoms; "" for none. */
 export function relatedLabel(count: number): string {
   return count > 0 ? `+${count} related` : "";

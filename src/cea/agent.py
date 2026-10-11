@@ -34,7 +34,7 @@ from cea.records import ErrorRecord
 from cea.retrieval import Chunk, retrieve
 from cea.rules import RuleText, rule_text
 
-PROMPT_VERSION = 3          # part of every cache signature: bump it when a prompt or schema changes
+PROMPT_VERSION = 4          # part of every cache signature: bump it when a prompt or schema changes
 MODES = ("short", "expand")
 VERBOSITIES = ("beginner", "expert")    # PRD F5: two prompt templates, one agent
 MAX_HISTORY = 6                         # PRD F6: most recent question/answer pairs sent to the model
@@ -80,9 +80,9 @@ REFUSAL_TEXT = ("I can only help with this compiler error: what it means, where 
 NO_ANSWER_TEXT = "The assistant could not answer right now. The compiler says: {message}"
 
 TASKS = {
-    "short": ("Explain this error to a beginner in at most two sentences: say what is wrong and where "
-              "(line and column). Reply as JSON: {\"explanation\": \"...\"}"),
-    "expand": ("Explain this error fully to a beginner: what is wrong, where, why the language rule above "
+    "short": ("Explain this error to a beginner in at most two sentences: say which compiler phase "
+              "(lexical, syntax or semantic) caught it, what is wrong and where (line and column). Reply as JSON: {\"explanation\": \"...\"}"),
+    "expand": ("Explain this error fully to a beginner: which compiler phase (lexical, syntax or semantic) caught it, what is wrong, where, why the language rule above "
                "forbids it, and how to fix it. Do not include a diff. Reply as JSON: {\"explanation\": \"...\"}"),
     "fix": ("Suggest the smallest edit that fixes only this error. Lines are numbered from 1. Lines "
             "start_line to end_line (inclusive) are replaced by the replacement lines (no line numbers). "
@@ -96,7 +96,7 @@ TASKS = {
 # PRD F5: the expert templates ask for the same facts in one terse line plus the rule name or error code.
 CITE_FORMAT = 'Reply as JSON: {"explanation": "...", "citations": ["<chunk id>"]}'
 EXPERT_TASKS = {
-    "short": ("Expert mode. Reply with ONE terse line (no analogy, no greeting): the fault and its "
+    "short": ("Expert mode. Reply with ONE terse line (no analogy, no greeting): the compiler phase that caught it, the fault and its "
               "line:column, then the grammar rule or error code in parentheses. " + CITE_FORMAT),
     "expand": ("Expert mode. Reply with one terse line stating the fault, then the grammar rule text or the "
                "semantic rule it violates; at most three short lines in all, no analogy. " + CITE_FORMAT),
@@ -314,11 +314,12 @@ class Agent:
     def fallback_text(record: ErrorRecord, mode: str, verbosity: str = "beginner") -> str:
         """Deterministic explanation from the catalog message (used when the model fails)."""
         message = record.message.rstrip()
+        phase = f"{record.phase.capitalize()} phase: "
         if verbosity == "expert":
-            return f"{record.line}:{record.column} {record.code}: {message} ({record.rule_ref})"
+            return f"{phase}{record.line}:{record.column} {record.code}: {message} ({record.rule_ref})"
         if not message.endswith((".", "!", "?")):
             message += "."
-        text = f"Line {record.line}, column {record.column}: {message}"
+        text = f"{phase}Line {record.line}, column {record.column}: {message}"
         if mode == "expand":
             text += f" This breaks the language rule '{record.rule_ref}'."
             rule = rule_text(record.rule_ref)

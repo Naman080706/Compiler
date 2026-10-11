@@ -60,6 +60,12 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .badge.fatal { background: var(--fatal-bg); color: var(--fatal); }
 .badge.warning { background: var(--warning-bg); color: var(--warning); }
 
+.badge.phase.lexical { background: #e8f0fe; color: #1a4fb4; }
+.badge.phase.syntax { background: #f1e8fb; color: #6b2fb3; }
+.badge.phase.semantic { background: #e0f5f2; color: #0f6b5f; }
+.badge.engine { background: var(--bg); color: var(--muted); text-transform: none; font-weight: 600; }
+.phase-heading { font-size: 14px; margin: 14px 0 6px; }
+
 .badge.verified { background: #e3f6e8; color: #1a7f37; }
 
 .related { border: none; background: none; color: var(--accent); padding: 0; }
