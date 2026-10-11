@@ -118,6 +118,14 @@ source.c --> lexer.py --> parser.py --> semantic.py --> list of ErrorRecord
 
 ---
 
+### 1.11 Milestone 4: verified fixes (F8) and the personalised model (F9)
+
+- **F8 (src/cea/verifier.py):** the agent's patch is applied to a copy of the source string and fully re-compiled. Verified = the original error (matched by code and rule_ref near its location after mapping lines through the difflib diff) is gone, no new fatal error appears, and the guardrails hold (within 3 lines of the error, at most 6 changed lines, no loss of identifiers or statements, no commenting out). Up to 3 attempts, each retry sees why the last one failed, 10 s overall budget. The API, UI and CLI show a fix only when verified; otherwise: "No verified fix found; see explanation".
+- **Honest metric:** tools/metrics_f8.py default (oracle FakeLLM) tests the pipeline only; 43 of 48 fixable dev roots verify. The 5 misses are guardrail rejections of non-local fixes (a prototype far away, renaming `main`) or fixes that replace a variable by a literal. Real numbers need a real LLM (`--llm env`).
+- **F9 (src/cea/profile.py):** SQLite file `.cea_data/profiles.sqlite3` (git-ignored), keyed by a random browser-made id; counts per catalog category, each root once per compile, an error signature (no line number) once per session. Three or more hits: beginner explanation plus a worked example from the fix-patterns corpus; else terse (expert style). The Beginner/Expert toggle overrides; Auto defers to the profile. The id never reaches the LLM (tested).
+
+---
+
 ## 2. Likely viva questions
 
 **Q: Why build your own compiler instead of using gcc?**
@@ -238,3 +246,4 @@ On a folder of faulty C programs with known injected faults, which also serves a
 | 2026-10-10 | 1.10 updated (foundation + lexer built, lexer details, validation, message quoting), no-print Q&A | Plan 005 executed, reviewed and merged |
 | 2026-10-10 | 1.10 updated (parser built, recovery layers, robustness evidence, stray-`}` message limitation), 2 Q&A | Plan 006 executed, reviewed and merged |
 | 2026-10-10 | 1.10: milestone 1 complete (analyser, pipeline, CLI, F1/F4 met, return-path fix) | Plan 007 executed, reviewed and merged |
+| 2026-10-11 | 1.11 (milestone 4: F8 verifier, F9 profile) | Implemented from the PRD, no plan |

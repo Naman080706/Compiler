@@ -34,6 +34,7 @@ export interface CompileResponse {
 
 export type ExplainMode = "short" | "expand";
 export type Verbosity = "beginner" | "expert";
+export type VerbosityChoice = Verbosity | "auto"; // F5 toggle; "auto" lets the F9 profile choose the depth
 
 export interface Explanation {
   text: string;
@@ -42,12 +43,36 @@ export interface Explanation {
   mode: ExplainMode;
   verbosity: Verbosity;
   citations: string[]; // ids of the retrieved rule / fix-pattern chunks the explanation is grounded in (F7)
+  personalised?: Personalised;
 }
 
+// F8: the server sends a diff only when the patch was re-compiled and verified; otherwise diff is "".
 export interface FixSuggestion {
   diff: string;
   patched_source: string;
   verified: boolean;
+  attempts: number;
+  reason: string;
+}
+
+// F9: how the student's profile shaped one explanation (only present when a student id was sent).
+export interface Personalised {
+  category: string | null;
+  hits: number;
+  depth: "terse" | "full";
+  override: boolean; // true when the manual F5 toggle chose the style
+}
+
+export interface ProfileCategory {
+  category: string;
+  hits: number;
+  depth: "terse" | "full";
+}
+
+export interface ProfileView {
+  student_id: string;
+  threshold: number;
+  categories: ProfileCategory[];
 }
 
 export interface Answer {

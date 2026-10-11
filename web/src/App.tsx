@@ -5,20 +5,23 @@ import { clusterViews } from "./clusters";
 import CodeEditor from "./components/CodeEditor";
 import ErrorPanel from "./components/ErrorPanel";
 import { SAMPLE_SOURCE } from "./sample";
-import type { CompileResponse, Health, Verbosity } from "./types";
+import type { CompileResponse, Health, VerbosityChoice } from "./types";
+import ProfilePanel from "./components/ProfilePanel";
 
 const VERBOSITY_KEY = "cea.verbosity";
 
-// F5: the choice lasts for the browser session. Storage can be blocked, so every access is guarded.
-function loadVerbosity(): Verbosity {
+// F5: the choice lasts for the browser session; the default "auto" lets the F9 profile pick the depth,
+// and Beginner / Expert always override it. Storage can be blocked, so every access is guarded.
+function loadVerbosity(): VerbosityChoice {
   try {
-    return window.sessionStorage.getItem(VERBOSITY_KEY) === "expert" ? "expert" : "beginner";
+    const v = window.sessionStorage.getItem(VERBOSITY_KEY);
+    return v === "expert" || v === "beginner" ? v : "auto";
   } catch {
-    return "beginner";
+    return "auto";
   }
 }
 
-function saveVerbosity(v: Verbosity) {
+function saveVerbosity(v: VerbosityChoice) {
   try {
     window.sessionStorage.setItem(VERBOSITY_KEY, v);
   } catch {
@@ -38,9 +41,9 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [llm, setLlm] = useState<Health["llm"] | "offline" | null>(null);
-  const [verbosity, setVerbosity] = useState<Verbosity>(loadVerbosity);
+  const [verbosity, setVerbosity] = useState<VerbosityChoice>(loadVerbosity);
 
-  function chooseVerbosity(v: Verbosity) {
+  function chooseVerbosity(v: VerbosityChoice) {
     setVerbosity(v);
     saveVerbosity(v);
   }
@@ -74,9 +77,9 @@ export default function App() {
         <h1>Compiler Error Assistant</h1>
         <span className="llm">AI: {llm ?? "..."}</span>
         <div className="verbosity" role="group" aria-label="Explanation style">
-          {(["beginner", "expert"] as const).map((v) => (
+          {(["auto", "beginner", "expert"] as const).map((v) => (
             <button key={v} type="button" aria-pressed={verbosity === v} onClick={() => chooseVerbosity(v)}>
-              {v === "beginner" ? "Beginner" : "Expert"}
+              {v === "auto" ? "Auto" : v === "beginner" ? "Beginner" : "Expert"}
             </button>
           ))}
         </div>
@@ -94,6 +97,7 @@ export default function App() {
               {error}
             </p>
           )}
+          <ProfilePanel refreshKey={compiled?.run ?? 0} />
           {!compiled && !error && <p className="note">Press Compile to check your program.</p>}
           {compiled && (
             <>
@@ -115,7 +119,7 @@ export default function App() {
               {views.length === 0 ? (
                 <p className="note">No errors. The program compiles.</p>
               ) : (
-                <ErrorPanel key={compiled.run} views={views} source={compiled.source} verbosity={verbosity} />
+                <ErrorPanel key={compiled.run} views={views} source={compiled.source} verbosity={verbosity === "auto" ? undefined : verbosity} />
               )}
             </>
           )}
