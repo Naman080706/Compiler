@@ -98,8 +98,11 @@ def check_guardrails(record: ErrorRecord, old: str, new: str) -> str | None:
     changed = 0
     for i1, i2, j1, j2 in blocks:
         changed += max(i2 - i1, j2 - j1)
-        touched = range(i1 + 1, i2 + 1) if i2 > i1 else [max(1, i1), min(max(n_old, 1), i1 + 1)]   # insert: neighbours
-        if any(not lo <= line <= hi for line in touched):
+        if i2 > i1:
+            outside = any(not lo <= line <= hi for line in range(i1 + 1, i2 + 1))
+        else:                                   # a pure insertion sits between line i1 and line i1 + 1
+            outside = not (lo <= i1 <= hi or lo <= i1 + 1 <= hi)
+        if outside:
             return f"the patch touches lines more than {GUARD_LINES} lines away from the error (line {record.line})"
     if changed > MAX_CHANGED_LINES:
         return f"the patch changes {changed} lines (at most {MAX_CHANGED_LINES} allowed)"
