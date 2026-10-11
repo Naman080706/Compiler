@@ -13,7 +13,7 @@ function routes(extra: Routes = {}): Routes {
   return {
     "GET /api/health": () => ({ json: { status: "ok", llm: "none" } }),
     "POST /api/compile": () => ({ json: SAMPLE_COMPILE }),
-    "POST /api/explain": (b) => ({ json: { text: `${b.mode} text for ${b.record_id}`, rule_ref: "sem.declare_before_use", cited_rule: null, mode: b.mode } }),
+    "POST /api/explain": (b) => ({ json: { text: `${b.verbosity} ${b.mode} text for ${b.record_id}`, rule_ref: "sem.declare_before_use", cited_rule: null, mode: b.mode, verbosity: b.verbosity, citations: ["rule:sem.declare_before_use", "fix:SEM-UNDECLARED-VAR"] } }),
     "POST /api/fix": () => ({ json: { diff: "--- a\n+++ b\n", patched_source: PATCHED, verified: false } }),
     "POST /api/ask": () => ({ json: { text: "I only answer questions about your compiler errors.", refused: true } }),
     ...extra,
@@ -100,13 +100,13 @@ describe("App", () => {
     const { fetchFn, user } = await compileSample();
     const root = card("SEM-UNDECLARED-VAR", 6);
     await user.click(within(root).getByRole("button", { name: "Explain" }));
-    expect(await within(root).findByText("short text for E-0002")).toBeInTheDocument();
+    expect(await within(root).findByText("beginner short text for E-0002")).toBeInTheDocument();
     await user.click(within(root).getByRole("button", { name: "Expand" }));
-    expect(await within(root).findByText("expand text for E-0002")).toBeInTheDocument();
+    expect(await within(root).findByText("beginner expand text for E-0002")).toBeInTheDocument();
     expect(within(root).getByText("sem.declare_before_use")).toBeInTheDocument();
     expect(bodiesFor(fetchFn, "/api/explain")).toEqual([
-      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "short" },
-      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "expand" },
+      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "short", verbosity: "beginner" },
+      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "expand", verbosity: "beginner" },
     ]);
   });
 
@@ -142,7 +142,7 @@ describe("App", () => {
     await user.click(askButton);
     expect(await within(root).findByText("Out of scope:")).toBeInTheDocument();
     expect(bodiesFor(fetchFn, "/api/ask")).toEqual([
-      { source: SAMPLE_SOURCE, record_id: "E-0002", question: "What is the capital of France?" },
+      { source: SAMPLE_SOURCE, record_id: "E-0002", question: "What is the capital of France?", history: [] },
     ]);
   });
 
@@ -177,7 +177,95 @@ describe("App", () => {
     await user.type(screen.getByTestId("editor"), "// edited");
     expect(screen.getByText("The code changed since the last compile. Compile again to update.")).toBeInTheDocument();
     await user.click(within(card("SEM-UNDECLARED-VAR", 6)).getByRole("button", { name: "Explain" }));
-    await screen.findByText("short text for E-0002");
+    await screen.findByText("beginner short text for E-0002");
     expect(bodiesFor(fetchFn, "/api/explain")[0].source).toBe(SAMPLE_SOURCE);
   });
+
+  // ---- milestone 3: F5 verbosity, F6 per-error threads, F7 cited rule
+  it("shows the retrieved chunks an explanation is grounded in", async () => {
+    const { user } = await compileSample();
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    await user.click(within(root).getByRole("button", { name: "Explain" }));
+    const cited = await within(root).findByLabelText("Cited sources");
+    expect(cited).toHaveTextContent("Grounded in: rule:sem.declare_before_use, fix:SEM-UNDECLARED-VAR");
+  });
+
+  it("the verbosity toggle re-renders an existing explanation in the same mode", async () => {
+    const { fetchFn, user } = await compileSample();
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    const beginner = screen.getByRole("button", { name: "Beginner" });
+    expect(beginner).toHaveAttribute("aria-pressed", "true");
+    await user.click(within(root).getByRole("button", { name: "Expand" }));
+    await within(root).findByText("beginner expand text for E-0002");
+    await user.click(screen.getByRole("button", { name: "Expert" }));
+    expect(await within(root).findByText("expert expand text for E-0002")).toBeInTheDocument();
+    expect(within(root).queryByText("beginner expand text for E-0002")).toBeNull();
+    expect(bodiesFor(fetchFn, "/api/explain").map((b) => [b.mode, b.verbosity])).toEqual([
+      ["expand", "beginner"],
+      ["expand", "expert"],
+    ]);
+    // a card with no explanation yet makes no request on toggle; its next Explain uses the new style
+    const other = card("SYN-MISSING-SEMICOLON", 9);
+    await user.click(within(other).getByRole("button", { name: "Explain" }));
+    expect(await within(other).findByText("expert short text for E-0001")).toBeInTheDocument();
+  });
+
+  it("the verbosity choice persists for the session", async () => {
+    const first = await compileSample();
+    await first.user.click(screen.getByRole("button", { name: "Expert" }));
+    cleanupRender();
+    mockFetch(routes());
+    render(<App />);
+    expect(screen.getByRole("button", { name: "Expert" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Beginner" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("each error card has its own chat thread and sends only its own history", async () => {
+    const answers: Record<string, string> = { "q one": "a one", "q two": "a two", "q other": "a other" };
+    const { fetchFn, user } = await compileSample({
+      "POST /api/ask": (b) => ({ json: { text: answers[b.question as string], refused: false } }),
+    });
+    const a = card("SEM-UNDECLARED-VAR", 6);
+    const b = card("SYN-MISSING-SEMICOLON", 9);
+    for (const q of ["q one", "q two"]) {
+      await user.type(within(a).getByRole("textbox", { name: "Question about E-0002" }), q);
+      await user.click(within(a).getByRole("button", { name: "Ask" }));
+      await within(a).findByText(answers[q]);
+    }
+    await user.type(within(b).getByRole("textbox", { name: /Question about/ }), "q other");
+    await user.click(within(b).getByRole("button", { name: "Ask" }));
+    await within(b).findByText("a other");
+    const thread = within(a).getByRole("list", { name: "Conversation about E-0002" });
+    expect(within(thread).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(b).getByRole("list", { name: /Conversation about/ })).not.toBe(thread);
+    expect(within(b).queryByText("a one")).toBeNull();
+    const bodies = bodiesFor(fetchFn, "/api/ask");
+    expect(bodies[0].history).toEqual([]);
+    expect(bodies[1].history).toEqual([{ question: "q one", answer: "a one" }]);
+    expect(bodies[2].history).toEqual([]);
+  });
+
+  it("caps the history it sends and leaves refused turns out of it", async () => {
+    let n = 0;
+    const { fetchFn, user } = await compileSample({
+      "POST /api/ask": () => {
+        n += 1;
+        return { json: { text: `answer ${n}`, refused: n === 2 } };
+      },
+    });
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    for (let i = 1; i <= 10; i++) {
+      await user.type(within(root).getByRole("textbox", { name: "Question about E-0002" }), `question ${i}`);
+      await user.click(within(root).getByRole("button", { name: "Ask" }));
+      await within(root).findByText(`answer ${i}`);
+    }
+    const last = bodiesFor(fetchFn, "/api/ask")[9].history as { question: string }[];
+    expect(last).toHaveLength(6);
+    expect(last[0].question).toBe("question 4");
+    expect(last.map((t) => t.question)).not.toContain("question 2");
+  });
 });
+
+function cleanupRender() {
+  document.body.innerHTML = "";
+}

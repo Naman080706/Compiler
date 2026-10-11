@@ -33,12 +33,15 @@ export interface CompileResponse {
 }
 
 export type ExplainMode = "short" | "expand";
+export type Verbosity = "beginner" | "expert";
 
 export interface Explanation {
   text: string;
   rule_ref: string;
   cited_rule: string | null;
   mode: ExplainMode;
+  verbosity: Verbosity;
+  citations: string[]; // ids of the retrieved rule / fix-pattern chunks the explanation is grounded in (F7)
 }
 
 export interface FixSuggestion {
@@ -49,6 +52,13 @@ export interface FixSuggestion {
 
 export interface Answer {
   text: string;
+  refused: boolean;
+}
+
+// One question/answer exchange in a card's own thread (F6); kept per error on the client.
+export interface ChatTurn {
+  question: string;
+  answer: string;
   refused: boolean;
 }
 
