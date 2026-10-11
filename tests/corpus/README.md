@@ -180,11 +180,13 @@ The sidecars record only `line`. Columns are not recorded.
 - Records also carry the PRD fields `found`, `expected`, `snippet` and
   `rule_ref`, plus the additions `language`, `span_end` and `message`. The test
   does not check them.
-- Today `tests/test_corpus_compile.py` checks only that every expected root and
-  warning appears as a record with the same `(code, line)`, and that `valid/`
-  programs have no fatal records. Exact equality between expected roots and
-  reported roots is deferred to the F2 clustering milestone. The test is
-  skipped until `cea.pipeline` exists.
+- `tests/test_corpus_compile.py` checks that every expected root and warning
+  appears as a record with the same `(code, line)`, and that `valid/` programs
+  have no fatal records. Since plan 009 (F2 clustering) it also checks, for
+  `dev/` and `valid/`, that the `(code, line)` list of fatal roots (records
+  with `root_id == id` and severity `fatal`) equals the sidecar `roots`
+  exactly. Warnings keep the subset check, and `heldout/` keeps only the
+  subset check until milestone 5.
 
 ## 7. How to run
 

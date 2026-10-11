@@ -1,7 +1,9 @@
-"""Corpus-versus-compiler contract test (plan 003).
+"""Corpus-versus-compiler contract test (plans 003, 009).
 
-Skipped until milestone 1 provides ``cea.pipeline.compile_source``. The full
-interface contract is written in tests/corpus/README.md.
+The full interface contract is written in tests/corpus/README.md §6.
+Since plan 009 (F2 clustering), dev and valid programs are checked EXACTLY:
+the (code, line) list of fatal roots (records with root_id == id) must equal
+the sidecar's ``roots``. Warnings keep the subset check.
 """
 import pytest
 
@@ -10,6 +12,7 @@ pipeline = pytest.importorskip("cea.pipeline")
 import corpus_lib as cl  # noqa: E402
 
 RECORD_ATTRS = ("id", "code", "line", "column", "severity", "phase", "root_id", "caused_by")
+EXACT_ROOT_SPLITS = ("dev", "valid")   # heldout keeps the subset check until milestone 5
 
 
 def _cases():
@@ -30,12 +33,16 @@ def test_expected_diagnostics_are_reported(c_path):
         for attr in RECORD_ATTRS:
             assert hasattr(rec, attr), f"error record lacks attribute {attr!r}: {rec!r}"
     got = {(rec.code, rec.line) for rec in result.errors}
-    # Deliberately a SUBSET check: every expected root and warning must be
-    # reported with the same (code, line). Exact equality between the expected
-    # roots and the records the compiler marks as roots (root_id == id) is
-    # deferred to the F2 clustering milestone, which will tighten this test.
+    # Every expected root and warning must be reported with the same (code, line).
     missing = [e for e in side["roots"] + side["warnings"] if (e["code"], e["line"]) not in got]
     assert not missing, f"not reported as (code, line): {missing}; got {sorted(got)}"
+    if side["split"] in EXACT_ROOT_SPLITS:
+        # F2 (plan 009): the fatal roots the compiler displays are exactly the sidecar roots.
+        # Compared as sorted lists, so a duplicated (code, line) root would also be caught.
+        fatal_roots = sorted((r.code, r.line) for r in result.errors if r.root_id == r.id and r.severity == "fatal")
+        expected = sorted((e["code"], e["line"]) for e in side["roots"])
+        detail = [(r.id, r.code, r.line, r.found, r.caused_by, r.root_id) for r in result.errors]
+        assert fatal_roots == expected, f"fatal roots {fatal_roots} != sidecar roots {expected}; records {detail}"
     if side["split"] == "valid":
         fatal = [(r.code, r.line) for r in result.errors if r.severity == "fatal"]
         assert not fatal, f"valid program produced fatal errors: {fatal}"

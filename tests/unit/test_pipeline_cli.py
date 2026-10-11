@@ -54,7 +54,8 @@ def test_compile_result_shape():
                                     "int x = ;", "void main(void) { return 1; }", "for while if ; ) ] }"])
 def test_compile_source_never_raises(source):
     result = compile_source(source, "junk.c")
-    assert all(r.root_id == r.id for r in result.errors)
+    by_id = {r.id: r for r in result.errors}
+    assert all(by_id[r.root_id].root_id == r.root_id and r.root_id <= r.id for r in result.errors)
     ids = [r.id for r in result.errors]
     assert ids == [f"E-{n:04d}" for n in range(1, len(ids) + 1)]
     assert all(r.caused_by is None or r.caused_by < r.id for r in result.errors)
@@ -96,6 +97,38 @@ def test_cli_json_with_fatal_error_exits_1():
                 "rule_ref", "language", "caused_by", "span_end", "message"):
         assert key in first
     assert first["span_end"].keys() == {"line", "column"}
+
+
+def test_cli_json_has_clusters_array():
+    proc = _run_cli(str(CORPUS / "dev" / "043-loop-counter-never-declared.c"), "--json")
+    assert proc.returncode == 1, proc.stderr
+    data = json.loads(proc.stdout)
+    assert len(data["errors"]) == 9                                    # --json stays complete
+    assert data["clusters"] == [{"root_id": "E-0001",
+                                 "symptom_ids": [f"E-{n:04d}" for n in range(2, 10)]}]
+
+
+def test_cli_text_shows_roots_with_related_count():
+    proc = _run_cli(str(CORPUS / "dev" / "043-loop-counter-never-declared.c"))
+    assert proc.returncode == 1, proc.stderr
+    lines = proc.stdout.strip().splitlines()
+    assert len(lines) == 2
+    assert lines[0].startswith("E-0001 043-loop-counter-never-declared.c:6:10: fatal [SEM-UNDECLARED-VAR]")
+    assert lines[0].endswith("(+8 related)")
+    assert lines[-1] == "9 fatal, 0 warnings"
+
+
+def test_cli_all_lists_every_record():
+    proc = _run_cli(str(CORPUS / "dev" / "043-loop-counter-never-declared.c"), "--all")
+    lines = proc.stdout.strip().splitlines()
+    assert len(lines) == 10 and not any("related" in ln for ln in lines)
+
+
+def test_cli_root_without_symptoms_has_no_count():
+    proc = _run_cli(str(CORPUS / "dev" / "063-fault-plus-warning.c"))
+    lines = proc.stdout.strip().splitlines()
+    assert [ln.split()[0] for ln in lines[:-1]] == ["E-0001", "E-0002"]
+    assert not any("related" in ln for ln in lines)
 
 
 def test_cli_warnings_only_exits_0():
