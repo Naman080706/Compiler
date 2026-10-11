@@ -23,7 +23,7 @@ from cea import ast as A
 from cea.diagnostics import ErrorSink
 from cea.lexer import LexResult
 from cea.records import Position
-from cea.tokens import TYPE_KEYWORDS, Token, TokenKind
+from cea.tokens import BASIC_TYPE_KEYWORDS, TYPE_KEYWORDS, Token, TokenKind
 
 # Each nesting level of an expression costs about 30 Python frames (11 rule methods
 # plus their decorator wrappers), so parse() raises the recursion limit to this
@@ -39,9 +39,15 @@ SYMBOLIC = (K.KEYWORD, K.OP, K.PUNCT)
 EXPR = "expression"      # expected-set class: the start of an expression (catalog rule 4)
 TYPE = "type"            # expected-set class: a type_spec (catalog rule 4)
 IDENT = "identifier"     # expected-set class: an IDENT (falls to catalog rule 5)
-ASSIGN_OPS = ("=", "+=", "-=", "*=", "/=", "%=")
+ASSIGN_OPS = ("=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=")
 OPENER_OF = {")": "(", "]": "[", "}": "{"}
-STMT_KEYWORDS = ("if", "while", "for", "return", "break", "continue")
+STMT_KEYWORDS = ("if", "while", "for", "return", "break", "continue", "switch", "do", "case", "default")
+STMT_METHODS = {"if": "if_stmt", "while": "while_stmt", "for": "for_stmt", "return": "return_stmt",
+                "break": "break_stmt", "continue": "continue_stmt", "switch": "switch_stmt",
+                "do": "do_while_stmt", "case": "case_label", "default": "default_label"}
+# typedef names that a standard header provides (the parser needs them to tell declarations from expressions)
+HEADER_TYPEDEFS = {"stdio.h": ("size_t", "FILE"), "stdlib.h": ("size_t",), "string.h": ("size_t",),
+                   "stdbool.h": ("bool",)}
 SYNC_STMT_STOP = frozenset({"}", "{", *STMT_KEYWORDS, *TYPE_KEYWORDS})   # plus EOF (checked by kind)
 # Codes whose catalog rule_ref is "<production>": the parser passes the current grammar rule.
 PRODUCTION_CODES = frozenset({
@@ -58,9 +64,13 @@ RULE_PHRASES = {
     "while_stmt": "the while loop", "for_stmt": "the for loop header", "for_init": "the for loop header",
     "return_stmt": "the return statement", "break_stmt": "the break statement",
     "continue_stmt": "the continue statement", "expr_stmt": "the expression statement",
+    "switch_stmt": "the switch statement", "do_while_stmt": "the do-while loop", "case_label": "the case label",
+    "default_label": "the default label", "struct_spec": "the struct definition", "member_decl": "the struct member",
+    "enum_spec": "the enum definition", "init_list": "the initialiser list", "type_name": "the type",
 }
-EXPRESSION_RULES = ("expression", "assignment", "logic_or", "logic_and", "equality", "comparison",
-                    "term", "factor", "unary", "postfix", "primary", "arg_list")
+EXPRESSION_RULES = ("expression", "assignment", "conditional", "logic_or", "logic_and", "bit_or", "bit_xor",
+                    "bit_and", "equality", "comparison", "shift", "term", "factor", "unary", "sizeof_expr", "cast",
+                    "postfix", "primary", "arg_list", "initializer")
 
 
 class ParseError(Exception):
@@ -112,7 +122,40 @@ def rule(name: str) -> Callable[[F], F]:
 
 
 def is_type_kw(tok: Token) -> bool:
+    """A keyword that can start a declaration (type word, qualifier, storage class, struct/union/enum/typedef)."""
     return tok.kind is K.KEYWORD and tok.text in TYPE_KEYWORDS
+
+
+def canonical_type(words: list[str]) -> str | None:
+    """Combine basic type keywords ('unsigned', 'long', 'int', ...) into one canonical name; None if invalid."""
+    n = {w: words.count(w) for w in set(words)}
+    unsigned, signed = n.pop("unsigned", 0), n.pop("signed", 0)
+    if unsigned > 1 or signed > 1 or (unsigned and signed):
+        return None
+    longs, shorts, ints = n.pop("long", 0), n.pop("short", 0), n.pop("int", 0)
+    if ints > 1 or longs > 2 or shorts > 1 or (longs and shorts):
+        return None
+    sign = "unsigned " if unsigned else ""
+    if n:                                           # char, float, double, void
+        (kind, count), = n.items() if len(n) == 1 else ((None, 0),)
+        if kind is None or count != 1 or ints or shorts:
+            return None
+        if kind == "char":
+            return None if longs else ("unsigned char" if unsigned else "signed char" if signed else "char")
+        if unsigned or signed:
+            return None
+        if kind == "double":
+            return "long double" if longs == 1 else (None if longs else "double")
+        return None if longs else kind               # float, void
+    if longs == 2:
+        return sign + "long long"
+    if longs == 1:
+        return sign + "long"
+    if shorts:
+        return sign + "short"
+    if ints or unsigned or signed:
+        return sign + "int"
+    return None
 
 
 def parse(lex_result: LexResult, sink: ErrorSink) -> A.Program:
@@ -120,14 +163,14 @@ def parse(lex_result: LexResult, sink: ErrorSink) -> A.Program:
     old = sys.getrecursionlimit()
     sys.setrecursionlimit(max(old, RECURSION_LIMIT))
     try:
-        return Parser(lex_result.tokens, sink).program()
+        return Parser(lex_result.tokens, sink, lex_result.includes).program()
     finally:
         sys.setrecursionlimit(old)
 
 
 class Parser:
     # ======================================================= core (step 2)
-    def __init__(self, tokens: list[Token], sink: ErrorSink) -> None:
+    def __init__(self, tokens: list[Token], sink: ErrorSink, includes: list | tuple = ()) -> None:
         self.toks = tokens
         self.pos = 0
         self.sink = sink
@@ -142,6 +185,10 @@ class Parser:
         self.name_index: dict[int, int] = {}     # id(VarDecl) -> its IDENT token index
         self.top_ctx = _TopCtx()
         self.paren: dict[int, A.Expr] = {}       # parenthesised expressions (not lvalues); keeps them alive
+        self.typedefs: set[str] = set()          # names that act as type_spec (typedef declarators, header typedefs)
+        for header, _ in includes:
+            self.typedefs.update(HEADER_TYPEDEFS.get(header, ()))
+        self.feature_override: str | None = None  # text for {feature} of the next SYN-UNSUPPORTED-FEATURE
 
     @property
     def cur(self) -> Token:
@@ -204,10 +251,23 @@ class Parser:
         """Span from token `start` to the last consumed token."""
         return self.span(start, self.pos - 1)
 
+    def starts_decl(self, tok: Token) -> bool:
+        """Can `tok` start a type_spec? A type word, qualifier, struct/union/enum, or a typedef name."""
+        return is_type_kw(tok) or (tok.kind is K.IDENT and tok.text in self.typedefs)
+
+    def fail_unsupported(self, feature: str) -> NoReturn:
+        """SYN-UNSUPPORTED-FEATURE (rule 0) at the current token, naming `feature`."""
+        tok = self.cur
+        self.feature_override = feature
+        try:
+            rid = self.report("SYN-UNSUPPORTED-FEATURE", tok, [])
+        finally:
+            self.feature_override = None
+        raise ParseError(rid, "SYN-UNSUPPORTED-FEATURE")
+
     def select_code(self, tok: Token, expected: list[str]) -> str:
         """Catalog "Choosing among syntax codes", rules 0-5, in order."""
-        if tok.kind in (K.UNSUPPORTED_KEYWORD, K.UNSUPPORTED_OP) or (
-                self.is_(tok, "*") and self.pos > 0 and is_type_kw(self.prev)):
+        if tok.kind in (K.UNSUPPORTED_KEYWORD, K.UNSUPPORTED_OP):
             return "SYN-UNSUPPORTED-FEATURE"                                   # rule 0
         if tok.kind is K.EOF:
             return "SYN-UNEXPECTED-EOF"                                        # rule 1
@@ -242,8 +302,10 @@ class Parser:
         if code == "SYN-UNBALANCED-BRACKET":
             return {"detail": self.bracket_detail(tok, expected)}
         if code == "SYN-UNSUPPORTED-FEATURE":
-            if tok.text == "*":
-                return {"feature": "A pointer ('*' after a type)"}
+            if self.feature_override is not None:
+                return {"feature": self.feature_override}
+            if tok.text == "...":
+                return {"feature": "Variadic functions ('...')"}
             if tok.kind is K.UNSUPPORTED_OP:
                 return {"feature": f"The operator '{tok.text}'"}
             return {"feature": f"'{tok.text}'"}
@@ -316,8 +378,22 @@ class Parser:
 
     def check_missing_brace(self) -> None:
         """4.7: `type IDENT (` at the start of a statement proves a missing '}'."""
-        t0, t1, t2 = self.cur, self.peek(1), self.peek(2)
-        if is_type_kw(t0) and t1.kind is K.IDENT and self.is_(t2, "("):
+        t0 = self.cur
+        if not self.starts_decl(t0) or t0.text == "typedef":
+            return
+        j, saw_type = self.pos, False
+        while True:
+            t = self.toks[j]
+            if t.kind is K.KEYWORD and t.text in TYPE_KEYWORDS:
+                saw_type = True
+                if t.text in ("struct", "union", "enum") and self.toks[j + 1].kind is K.IDENT:
+                    j += 1
+            elif t.kind is K.IDENT and t.text in self.typedefs and not self.is_(self.toks[j + 1], "("):
+                saw_type = True
+            elif not self.is_(t, "*"):
+                break
+            j += 1
+        if saw_type and self.toks[j].kind is K.IDENT and self.is_(self.toks[min(j + 1, len(self.toks) - 1)], "("):
             code = self.select_code(t0, ["}"])                                # rule 3
             raise BlockRepair(self.report(code, t0, ["}"]))
 
@@ -327,12 +403,18 @@ class Parser:
 
     def panic_stmt(self) -> str | None:
         """Statement-level panic (4.4). Returns stopped_before (None if a ';' was consumed)."""
+        depth = 0                                  # '(' nesting: a type word inside parentheses is a cast or parameter
         while True:
             tok = self.cur
-            if tok.kind is K.EOF or (tok.kind in SYMBOLIC and tok.text in SYNC_STMT_STOP):
+            if tok.kind is K.EOF or (tok.kind in SYMBOLIC and tok.text in SYNC_STMT_STOP
+                                     and not (depth > 0 and tok.text in TYPE_KEYWORDS)):
                 self.stop_index = self.pos
                 return tok.text
             self.consume()
+            if self.is_(tok, "("):
+                depth += 1
+            elif self.is_(tok, ")"):
+                depth = max(0, depth - 1)
             if self.is_(tok, ";"):
                 self.recovering = None                                        # 4.5 (i)
                 return None
@@ -357,15 +439,16 @@ class Parser:
     def first_on_line(self, i: int) -> bool:
         return i == 0 or self.toks[i - 1].line < self.toks[i].line
 
-    def panic_top(self) -> str:
-        """Top-level panic (4.4). Returns the text of the token it stopped before."""
-        depth = 0
+    def panic_top(self, depth: int = 0) -> str:
+        """Top-level panic (4.4). Returns the text of the token it stopped before.
+
+        `depth` is the number of '{' still open when the error happened (inside a struct body)."""
         while True:
             tok = self.cur
             if tok.kind is K.EOF:
                 self.stop_index = self.pos
                 return tok.text
-            if is_type_kw(tok) and depth == 0 and self.first_on_line(self.pos):
+            if self.starts_decl(tok) and depth == 0 and self.first_on_line(self.pos):
                 self.recovering = None                                        # 4.5 (ii)
                 self.stop_index = self.pos
                 return tok.text
@@ -375,8 +458,7 @@ class Parser:
             elif self.is_(tok, "}"):
                 depth = max(0, depth - 1)
 
-    @staticmethod
-    def kind_hint(tok: Token) -> str:
+    def kind_hint(self, tok: Token) -> str:
         if tok.kind is K.UNSUPPORTED_KEYWORD:
             return "unsupported"
         if tok.kind is K.KEYWORD:
@@ -384,6 +466,8 @@ class Parser:
                 return "decl"
             if tok.text in STMT_KEYWORDS:
                 return tok.text
+        if self.starts_decl(tok):
+            return "decl"
         return "expr"
 
     def idents(self, i: int, j: int) -> set[str]:
@@ -423,8 +507,18 @@ class Parser:
                 tok, before, after = self.toks[i], self.toks[i - 1], self.toks[i + 1]
                 if (tok.kind is K.IDENT
                         and (is_type_kw(before) or self.is_(before, "*") or before.kind is K.IDENT)
-                        and after.kind in SYMBOLIC and after.text in ("=", ";", ",", "[")):
+                        and after.kind in SYMBOLIC and after.text in ("=", ";", ",", "[", ")")
+                        and (after.text != ")" or self.is_(before, "*"))):
                     found.append((i, tok.text, "<unsupported>"))
+        for i in range(start, end - 2):                      # 'struct Tag {' : the tag a failed definition lost
+            if (self.toks[i].kind is K.KEYWORD and self.toks[i].text in ("struct", "union", "enum")
+                    and self.toks[i + 1].kind is K.IDENT and self.is_(self.toks[i + 2], "{")):
+                found.append((i + 1, f"{self.toks[i].text} {self.toks[i + 1].text}", "<type>"))
+        if code == "SYN-UNSUPPORTED-FEATURE":                # 'typedef struct {...} Name;' : the typedef name
+            for i in range(max(start, 1), end):
+                if (self.toks[i].kind is K.IDENT and self.is_(self.toks[i - 1], "}")
+                        and self.toks[i + 1].kind in SYMBOLIC and self.toks[i + 1].text in (";", ",")):
+                    found.append((i, self.toks[i].text, "<unsupported>"))
         out: list[tuple[str, str]] = []
         for _, name, typ in sorted(found):
             if name not in [n for n, _ in out]:
@@ -451,9 +545,9 @@ class Parser:
     def is_lvalue(self, e: A.Expr) -> bool:
         if id(e) in self.paren:
             return False
-        if isinstance(e, A.Name):
+        if isinstance(e, (A.Name, A.Member, A.Index)):
             return True
-        return isinstance(e, A.Index) and isinstance(e.base, A.Name) and id(e.base) not in self.paren
+        return isinstance(e, A.Unary) and e.op == "*" and not e.postfix
 
     def invalid_target(self, op: Token) -> NoReturn:
         """SYN-INVALID-ASSIGN-TARGET at the assignment/increment operator."""
@@ -476,29 +570,53 @@ class Parser:
         saved_ctx, saved_partial = self.top_ctx, self.partial_decl
         self.top_ctx, self.partial_decl = _TopCtx(), None
         try:
-            type_tok = self.type_spec()
-            if self.cur.kind is K.IDENT and self.is_(self.peek(1), "("):
-                return self.function_def(type_tok, start)
-            return self.global_decl(type_tok, start)
+            info = self.type_spec()
+            j = self.pos
+            while self.is_(self.toks[j], "*") or self.is_(self.toks[j], "const"):
+                j += 1
+            if (info.storage != "typedef" and self.toks[j].kind is K.IDENT
+                    and self.is_(self.toks[min(j + 1, len(self.toks) - 1)], "(")):
+                return self.function_def(info, start)
+            return self.global_decl(info, start)
         except ParseError as e:                                            # catch point (c)
+            open_braces = sum(1 for b in self.brackets[depth:] if b.text == "{")
             del self.brackets[depth:]
             self.open_region(e.error_id)
-            stopped = self.panic_top()
+            stopped = self.panic_top(open_braces)
             return self.recover_top(e, start, first, stopped)
         finally:
             self.top_ctx, self.partial_decl = saved_ctx, saved_partial
 
+    def stars(self) -> tuple[int, bool]:
+        """`{ "*" [const] }` of a declarator: (number of stars, const after the last star)."""
+        n, const = 0, False
+        while self.at("*"):
+            self.consume()
+            n += 1
+            const = False
+            while self.at("const"):
+                self.consume()
+                const = True
+        return n, const
+
     @rule("function_def")
-    def function_def(self, type_tok: Token, start: int) -> A.FunctionDecl:
+    def function_def(self, info: A.TypeInfo, start: int) -> A.FunctionDecl:
+        ret_ptr, _ = self.stars()
         name = self.consume()                               # IDENT (checked by top_decl)
         self.top_ctx.func_name, self.top_ctx.func_name_index = name, self.pos - 1
         self.match("(")
         params = self.params()
         self.expect(")")
-        node = A.FunctionDecl(type_tok.text, name.text, Position(name.line, name.col), params, None,
-                              self.span_from(start))
+        node = A.FunctionDecl(info.base, name.text, Position(name.line, name.col), params, None,
+                              self.span_from(start), ret_ptr=ret_ptr, ret_const=info.const,
+                              storage=info.storage, type_def=info.type_def)
         self.top_ctx.func_node = node
         if self.at("{"):
+            for p in params:
+                if p.name == "":                            # a definition needs parameter names
+                    tok = next(t for t in self.toks if (t.line, t.col) == (p.name_pos.line, p.name_pos.column))
+                    self.report("SYN-EXPECTED-TOKEN", tok, [IDENT])
+                    break
             try:
                 node.body = self.block()
             except BlockRepair as r:                        # 4.7: body closed by the repair
@@ -531,62 +649,235 @@ class Parser:
 
     @rule("param")
     def param(self) -> A.Param:
-        t = self.type_spec()
-        name = self.expect_ident()
-        return A.Param(t.text, name.text, Position(name.line, name.col),
-                       A.Span(t.line, t.col, name.end_line, name.end_col))
+        start = self.pos
+        info = self.type_spec()
+        ptr, ptr_const = self.stars()
+        if self.at("("):
+            self.fail_unsupported("Function pointers")
+        if self.cur.kind is K.IDENT:
+            name = self.consume()
+            name_text, name_pos = name.text, Position(name.line, name.col)
+        elif self.at(",") or self.at(")") or self.at("["):       # unnamed parameter (prototype)
+            name_text, name_pos = "", Position(self.cur.line, self.cur.col)
+        else:
+            self.fail([IDENT])
+        dims: list = []
+        while self.at("["):
+            self.match("[")
+            dims.append(None if self.at("]") else self.assignment())
+            self.expect("]")
+        return A.Param(info.base, name_text, name_pos, self.span_from(start), ptr=ptr, dims=dims, const=info.const,
+                       ptr_const=ptr_const)
 
     @rule("global_decl")
-    def global_decl(self, type_tok: Token, start: int) -> A.VarDeclStmt:
-        stmt = A.VarDeclStmt([], self.span_from(start))
+    def global_decl(self, info: A.TypeInfo, start: int) -> A.VarDeclStmt:
+        stmt = A.VarDeclStmt([], self.span_from(start), type_def=info.type_def,
+                             is_typedef=info.storage == "typedef", base=info.base)
         self.partial_decl = stmt
-        self.declarator(type_tok.text, stmt, is_global=True)
-        while self.at(","):
-            self.consume()
-            self.declarator(type_tok.text, stmt, is_global=True)
+        if not self.at(";") or info.type_def is None and not info.base.startswith(("struct ", "union ", "enum ")):
+            self.declarator(info, stmt, is_global=True)
+            while self.at(","):
+                self.consume()
+                self.declarator(info, stmt, is_global=True)
         self.expect_semi()                                  # site S2
         stmt.span = self.span_from(start)
         return stmt
 
     @rule("type_spec")
-    def type_spec(self) -> Token:
-        if is_type_kw(self.cur):
-            return self.consume()
-        self.fail([TYPE])
+    def type_spec(self) -> A.TypeInfo:
+        if not self.starts_decl(self.cur):
+            self.fail([TYPE])
+        const, storage, words = False, None, []
+        named: str | None = None
+        type_def = None
+        while True:
+            t = self.cur
+            if t.kind is K.KEYWORD and t.text == "const":
+                self.consume()
+                const = True
+            elif t.kind is K.KEYWORD and t.text in ("static", "extern", "typedef"):
+                self.consume()
+                storage = t.text
+            elif t.kind is K.KEYWORD and t.text in BASIC_TYPE_KEYWORDS and named is None:
+                self.consume()
+                words.append(t.text)
+            elif t.kind is K.KEYWORD and t.text in ("struct", "union") and named is None and not words:
+                named, type_def = self.struct_spec()
+            elif t.kind is K.KEYWORD and t.text == "enum" and named is None and not words:
+                named, type_def = self.enum_spec()
+            elif t.kind is K.IDENT and t.text in self.typedefs and named is None and not words:
+                self.consume()
+                named = t.text
+            else:
+                break
+        if named is None:
+            named = canonical_type(words) if words else None
+            if named is None:
+                if words:
+                    self.fail_unsupported("This combination of type keywords")
+                self.fail([TYPE])
+        return A.TypeInfo(named, const, storage, type_def)
+
+    @rule("struct_spec")
+    def struct_spec(self) -> tuple[str, A.StructDef | None]:
+        kw = self.consume()                                  # 'struct' | 'union'
+        tag = self.consume() if self.cur.kind is K.IDENT else None
+        if tag is None and not self.at("{"):
+            self.fail([IDENT, "{"])
+        base = f"{kw.text} {tag.text}" if tag else f"{kw.text} <anonymous {kw.line}:{kw.col}>"
+        if not self.at("{"):
+            return base, None
+        self.match("{")
+        members: list[A.StructMember] = []
+        while not self.at("}"):
+            if self.cur.kind is K.EOF:
+                self.fail(["}"])
+            members.extend(self.member_decl())
+        close = self.match("}")
+        return base, A.StructDef(kw.text, tag.text if tag else None, members,
+                                 A.Span(kw.line, kw.col, close.end_line, close.end_col),
+                                 Position(tag.line, tag.col) if tag else None)
+
+    @rule("member_decl")
+    def member_decl(self) -> list[A.StructMember]:
+        start = self.pos
+        info = self.type_spec()
+        out: list[A.StructMember] = []
+        if self.at(";"):
+            self.match(";")
+            return out
+        while True:
+            ptr, _ = self.stars()
+            if self.at("("):
+                self.fail_unsupported("Function pointers")
+            name = self.expect_ident()
+            dims: list = []
+            while self.at("["):
+                self.match("[")
+                dims.append(self.assignment())
+                self.expect("]")
+            if self.at(":"):
+                self.fail_unsupported("Bit-fields")
+            out.append(A.StructMember(info.base, name.text, Position(name.line, name.col), ptr, dims, info.const,
+                                      self.span(start, self.pos - 1), info.type_def if not out else None))
+            if self.at(","):
+                self.consume()
+                continue
+            break
+        self.expect_semi()                                   # site S11
+        return out
+
+    @rule("enum_spec")
+    def enum_spec(self) -> tuple[str, A.EnumDef | None]:
+        kw = self.consume()                                  # 'enum'
+        tag = self.consume() if self.cur.kind is K.IDENT else None
+        if tag is None and not self.at("{"):
+            self.fail([IDENT, "{"])
+        base = f"enum {tag.text}" if tag else f"enum <anonymous {kw.line}:{kw.col}>"
+        if not self.at("{"):
+            return base, None
+        self.match("{")
+        items: list[A.EnumItem] = []
+        while True:
+            name = self.expect_ident()
+            value = None
+            if self.at("="):
+                self.consume()
+                value = self.assignment()
+            items.append(A.EnumItem(name.text, Position(name.line, name.col), value))
+            if self.at(","):
+                self.consume()
+                if self.at("}"):
+                    break
+            else:
+                break
+        if not self.at("}"):
+            self.fail([",", "}"])
+        close = self.match("}")
+        return base, A.EnumDef(tag.text if tag else None, items, A.Span(kw.line, kw.col, close.end_line, close.end_col),
+                               Position(tag.line, tag.col) if tag else None)
 
     @rule("declarator")
-    def declarator(self, type_name: str, stmt: A.VarDeclStmt, is_global: bool) -> A.VarDecl:
+    def declarator(self, info: A.TypeInfo, stmt: A.VarDeclStmt, is_global: bool) -> A.VarDecl:
+        ptr, ptr_const = self.stars()
+        if self.at("("):
+            if stmt.is_typedef and self.is_(self.peek(1), "*") and self.peek(2).kind is K.IDENT:
+                self.typedefs.add(self.peek(2).text)        # later uses of the name still parse as declarations
+            self.fail_unsupported("Function pointers")
         name = self.expect_ident()
         name_i = self.pos - 1
-        node = A.VarDecl(type_name, name.text, Position(name.line, name.col), None, None, is_global,
-                         self.span(name_i, name_i))
+        node = A.VarDecl(info.base, name.text, Position(name.line, name.col), None, None, is_global,
+                         self.span(name_i, name_i), ptr=ptr, const=info.const, storage=info.storage,
+                         ptr_const=ptr_const)
         stmt.decls.append(node)
-        self.decl_log.append((name_i, name.text, type_name))
+        self.decl_log.append((name_i, name.text, info.base))
         self.name_index[id(node)] = name_i
-        if self.at("["):
+        if stmt.is_typedef:
+            self.typedefs.add(name.text)
+        while self.at("["):
             self.array_suffix(node)
         if self.at("="):
             self.consume()
-            node.init = self.guarded_expression(node, "init")       # CP-INIT
+            self.guarded_expression(node, "init")                   # CP-INIT
         node.span = self.span_from(name_i)
         return node
 
     @rule("array_suffix")
     def array_suffix(self, node: A.VarDecl) -> None:
         self.match("[")
-        node.array_size = self.guarded_expression(node, "array_size")   # CP-SIZE
+        if not node.is_array:
+            node.is_array = True
+            if not self.at("]"):
+                self.guarded_expression(node, "array_size")              # CP-SIZE
+        elif self.at("]"):
+            node.more_dims.append(None)
+        else:
+            self.guarded_expression(node, "more_dims")
         self.expect("]")
 
-    def guarded_expression(self, node: A.VarDecl, field: str) -> A.Expr:
+    def guarded_expression(self, node: A.VarDecl, field: str) -> None:
         """CP-INIT / CP-SIZE (4.4 b): the failed expression becomes an ErrorExpr on the
         declaration; the ParseError is re-raised so the enclosing statement()/top_decl()
         runs the panic and returns the (broken) declaration."""
         start = self.pos
         try:
-            return self.expression()
-        except ParseError as e:
-            setattr(node, field, A.ErrorExpr(self.span(start, self.pos - 1), e.error_id))
+            e = self.initializer() if field == "init" else self.assignment()
+        except ParseError as err:
+            e = A.ErrorExpr(self.span(start, self.pos - 1), err.error_id)
+            self.store(node, field, e)
             raise
+        self.store(node, field, e)
+
+    @staticmethod
+    def store(node: A.VarDecl, field: str, e: A.Expr) -> None:
+        if field == "more_dims":
+            node.more_dims.append(e)
+        else:
+            setattr(node, field, e)
+
+    @rule("initializer")
+    def initializer(self) -> A.Expr:
+        return self.init_list() if self.at("{") else self.assignment()
+
+    @rule("init_list")
+    def init_list(self) -> A.InitList:
+        start = self.pos
+        self.match("{")
+        items: list = []
+        while True:
+            if self.at(".") or self.at("["):
+                self.fail_unsupported("Designated initialisers")
+            items.append(self.initializer())
+            if self.at(","):
+                self.consume()
+                if self.at("}"):
+                    break
+            else:
+                break
+        if not self.at("}"):
+            self.fail([",", "}"])
+        self.match("}")
+        return A.InitList(items, self.span_from(start))
 
     @rule("block")
     def block(self) -> A.Block:
@@ -643,14 +934,16 @@ class Parser:
         t = self.cur
         if t.kind is K.UNSUPPORTED_KEYWORD:
             self.fail([])                                                  # rule 0
-        if is_type_kw(t):
-            return self.var_decl()
         if t.kind is K.KEYWORD and t.text in STMT_KEYWORDS:
-            return getattr(self, t.text + "_stmt")()
+            return getattr(self, STMT_METHODS[t.text])()
+        if self.starts_decl(t):
+            return self.var_decl()
         if self.at("{"):
             return self.block()
         if self.at(";"):
             return self.empty_stmt()
+        if t.kind is K.IDENT and self.is_(self.peek(1), ":"):
+            self.fail_unsupported("Labels (goto targets)")
         return self.expr_stmt()
 
     @rule("var_decl")
@@ -664,14 +957,16 @@ class Parser:
     @rule("var_core")
     def var_core(self, register: bool) -> A.VarDeclStmt:
         start = self.pos
-        type_tok = self.type_spec()
-        stmt = A.VarDeclStmt([], self.span_from(start))
+        info = self.type_spec()
+        stmt = A.VarDeclStmt([], self.span_from(start), type_def=info.type_def,
+                             is_typedef=info.storage == "typedef", base=info.base)
         if register:
             self.partial_decl = stmt
-        self.declarator(type_tok.text, stmt, is_global=False)
-        while self.at(","):
-            self.consume()
-            self.declarator(type_tok.text, stmt, is_global=False)
+        if not self.at(";") or info.type_def is None and not info.base.startswith(("struct ", "union ", "enum ")):
+            self.declarator(info, stmt, is_global=False)
+            while self.at(","):
+                self.consume()
+                self.declarator(info, stmt, is_global=False)
         stmt.span = self.span_from(start)
         return stmt
 
@@ -713,6 +1008,53 @@ class Parser:
             raise
         return A.While(cond, body, self.span_from(start))
 
+    @rule("do_while_stmt")
+    def do_while_stmt(self) -> A.DoWhile:
+        start = self.pos
+        self.consume()                                                     # 'do'
+        try:
+            body = self.statement()
+        except BlockRepair as r:
+            if r.node is not None:
+                r.node = A.Block([r.node], self.span_from(start))
+            raise
+        self.expect("while")
+        self.expect("(")
+        cond = self.expression()
+        self.expect_header_close()
+        self.expect_semi()                                                 # site S12
+        return A.DoWhile(body, cond, self.span_from(start))
+
+    @rule("switch_stmt")
+    def switch_stmt(self) -> A.Switch:
+        start = self.pos
+        self.consume()                                                     # 'switch'
+        self.expect("(")
+        cond = self.expression()
+        self.expect_header_close()
+        try:
+            body = self.statement()
+        except BlockRepair as r:
+            if r.node is not None:
+                r.node = A.Switch(cond, r.node, self.span_from(start))
+            raise
+        return A.Switch(cond, body, self.span_from(start))
+
+    @rule("case_label")
+    def case_label(self) -> A.Case:
+        start = self.pos
+        self.consume()                                                     # 'case'
+        value = self.conditional()
+        self.expect(":")
+        return A.Case(value, self.span_from(start))
+
+    @rule("default_label")
+    def default_label(self) -> A.Default:
+        start = self.pos
+        self.consume()                                                     # 'default'
+        self.expect(":")
+        return A.Default(self.span_from(start))
+
     @rule("for_stmt")
     def for_stmt(self) -> A.For:
         start = self.pos
@@ -738,7 +1080,7 @@ class Parser:
 
     @rule("for_init")
     def for_init(self) -> A.VarDeclStmt | A.Expr:
-        if is_type_kw(self.cur):
+        if self.starts_decl(self.cur):
             return self.var_core(register=False)
         return self.expression()
 
@@ -779,11 +1121,16 @@ class Parser:
 
     @rule("expression")
     def expression(self) -> A.Expr:
-        return self.assignment()
+        e = self.assignment()
+        while self.at(","):
+            op = self.consume()
+            right = self.assignment()
+            e = A.Binary(",", e, right, Position(op.line, op.col), self.join(e.span, right.span))
+        return e
 
     @rule("assignment")
     def assignment(self) -> A.Expr:
-        left = self.logic_or()
+        left = self.conditional()
         if self.at_any(ASSIGN_OPS):
             op = self.cur
             if not self.is_lvalue(left):
@@ -792,6 +1139,17 @@ class Parser:
             value = self.assignment()
             return A.Assign(op.text, left, value, Position(op.line, op.col), self.join(left.span, value.span))
         return left
+
+    @rule("conditional")
+    def conditional(self) -> A.Expr:
+        cond = self.logic_or()
+        if self.at("?"):
+            self.consume()
+            then = self.expression()
+            self.expect(":")
+            els = self.conditional()
+            return A.Ternary(cond, then, els, self.join(cond.span, els.span))
+        return cond
 
     def binary(self, ops: tuple[str, ...], sub: Callable[[], A.Expr]) -> A.Expr:
         left = sub()
@@ -807,7 +1165,19 @@ class Parser:
 
     @rule("logic_and")
     def logic_and(self) -> A.Expr:
-        return self.binary(("&&",), self.equality)
+        return self.binary(("&&",), self.bit_or)
+
+    @rule("bit_or")
+    def bit_or(self) -> A.Expr:
+        return self.binary(("|",), self.bit_xor)
+
+    @rule("bit_xor")
+    def bit_xor(self) -> A.Expr:
+        return self.binary(("^",), self.bit_and)
+
+    @rule("bit_and")
+    def bit_and(self) -> A.Expr:
+        return self.binary(("&",), self.equality)
 
     @rule("equality")
     def equality(self) -> A.Expr:
@@ -815,7 +1185,11 @@ class Parser:
 
     @rule("comparison")
     def comparison(self) -> A.Expr:
-        return self.binary(("<", "<=", ">", ">="), self.term)
+        return self.binary(("<", "<=", ">", ">="), self.shift)
+
+    @rule("shift")
+    def shift(self) -> A.Expr:
+        return self.binary(("<<", ">>"), self.term)
 
     @rule("term")
     def term(self) -> A.Expr:
@@ -827,14 +1201,49 @@ class Parser:
 
     @rule("unary")
     def unary(self) -> A.Expr:
-        if self.at_any(("!", "-", "+", "++", "--")):
+        if self.at_any(("!", "-", "+", "~", "*", "&", "++", "--")):
             op = self.consume()
             operand = self.unary()
             if op.text in ("++", "--") and not self.is_lvalue(operand):
                 self.invalid_target(op)
             return A.Unary(op.text, operand, False,
                            A.Span(op.line, op.col, operand.span.end_line, operand.span.end_col))
+        if self.at("sizeof"):
+            return self.sizeof_expr()
+        if self.at("(") and self.starts_decl(self.peek(1)):
+            return self.cast()
         return self.postfix()
+
+    @rule("sizeof_expr")
+    def sizeof_expr(self) -> A.SizeOf:
+        kw = self.consume()                                                # 'sizeof'
+        if self.at("(") and self.starts_decl(self.peek(1)):
+            self.match("(")
+            tn = self.type_name()
+            close = self.expect(")")
+            return A.SizeOf(tn, A.Span(kw.line, kw.col, close.end_line, close.end_col))
+        operand = self.unary()
+        return A.SizeOf(operand, A.Span(kw.line, kw.col, operand.span.end_line, operand.span.end_col))
+
+    @rule("cast")
+    def cast(self) -> A.Cast:
+        open_ = self.match("(")
+        tn = self.type_name()
+        self.expect(")")
+        operand = self.unary()
+        return A.Cast(tn, operand, A.Span(open_.line, open_.col, operand.span.end_line, operand.span.end_col))
+
+    @rule("type_name")
+    def type_name(self) -> A.TypeName:
+        start = self.pos
+        info = self.type_spec()
+        ptr, _ = self.stars()
+        dims: list = []
+        while self.at("["):
+            self.match("[")
+            dims.append(self.assignment())
+            self.expect("]")
+        return A.TypeName(info.base, ptr, dims, info.const, self.span_from(start))
 
     @rule("postfix")
     def postfix(self) -> A.Expr:
@@ -850,6 +1259,11 @@ class Parser:
                 idx = self.expression()
                 close = self.expect("]")
                 e = A.Index(e, idx, A.Span(e.span.start_line, e.span.start_col, close.end_line, close.end_col))
+            elif self.at(".") or self.at("->"):
+                op = self.consume()
+                name = self.expect_ident()
+                e = A.Member(e, name.text, op.text == "->", Position(name.line, name.col),
+                             A.Span(e.span.start_line, e.span.start_col, name.end_line, name.end_col))
             else:
                 break
         if self.at_any(("++", "--")):
@@ -876,6 +1290,13 @@ class Parser:
     def primary(self) -> A.Expr:
         t = self.cur
         lit = {K.INT_LIT: A.IntLit, K.FLOAT_LIT: A.FloatLit, K.CHAR_LIT: A.CharLit, K.STRING_LIT: A.StringLit}
+        if t.kind is K.STRING_LIT:                      # adjacent string literals are concatenated
+            self.consume()
+            value, end = t.value, t
+            while self.cur.kind is K.STRING_LIT:
+                end = self.consume()
+                value += end.value
+            return A.StringLit(value, A.Span(t.line, t.col, end.end_line, end.end_col))
         if t.kind in lit:
             self.consume()
             return lit[t.kind](t.value, A.Span(t.line, t.col, t.end_line, t.end_col))

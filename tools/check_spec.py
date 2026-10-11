@@ -13,9 +13,9 @@ CATALOG = (ROOT / "docs" / "error-catalog.md").read_text(encoding="utf-8")
 CATEGORIES = {
     "malformed-token", "unclosed-delimiter", "missing-semicolon", "syntax-structure",
     "undeclared-identifier", "redeclaration", "type-mismatch", "function-misuse",
-    "control-flow", "unused-code",
+    "control-flow", "unused-code", "gcc-diagnostic",
 }
-PREFIX_PHASE = {"LEX": "lexical", "SYN": "syntax", "SEM": "semantic", "WRN": "semantic"}
+PREFIX_PHASE = {"LEX": "lexical", "SYN": "syntax", "SEM": "semantic", "WRN": "semantic", "GCC": None}  # GCC: any phase
 
 
 def defined_names():
@@ -32,7 +32,7 @@ def main():
     rows = [
         [c.strip().strip("`") for c in line.strip().strip("|").split("|")]
         for line in CATALOG.splitlines()
-        if re.match(r"^\|\s*(LEX|SYN|SEM|WRN)-", line)
+        if re.match(r"^\|\s*(LEX|SYN|SEM|WRN|GCC)-", line)
     ]
     for row in rows:
         if len(row) != 7:
@@ -43,9 +43,12 @@ def main():
         if code in seen:
             errors.append(f"duplicate code {code}")
         seen.add(code)
-        if PREFIX_PHASE[prefix] != phase:
+        if PREFIX_PHASE[prefix] is None:
+            if phase not in ("lexical", "syntax", "semantic"):
+                errors.append(f"{code}: unknown phase {phase}")
+        elif PREFIX_PHASE[prefix] != phase:
             errors.append(f"{code}: phase {phase} does not match prefix {prefix}")
-        if severity != ("warning" if prefix == "WRN" else "fatal"):
+        if severity != ("warning" if prefix == "WRN" or code in ("GCC-WARNING", "GCC-NOTE") else "fatal"):
             errors.append(f"{code}: wrong severity {severity}")
         if category not in CATEGORIES:
             errors.append(f"{code}: unknown category {category}")

@@ -34,18 +34,18 @@ digit               = "0".."9" ;
 kind: lexical
 
 ~~~text
-KEYWORD             = "int" | "float" | "double" | "char" | "void" | "if" | "else"
-                    | "while" | "for" | "return" | "break" | "continue" ;
+KEYWORD             = "int" | "float" | "double" | "char" | "void" | "long" | "short"
+                    | "unsigned" | "signed" | "const" | "static" | "extern"
+                    | "struct" | "union" | "enum" | "typedef" | "sizeof"
+                    | "if" | "else" | "while" | "for" | "do" | "switch" | "case"
+                    | "default" | "return" | "break" | "continue" ;
 ~~~
 
 ## rule: UNSUPPORTED_KEYWORD
 kind: lexical
 
 ~~~text
-UNSUPPORTED_KEYWORD = "struct" | "union" | "enum" | "typedef" | "switch" | "case"
-                    | "default" | "do" | "goto" | "sizeof" | "long" | "short"
-                    | "unsigned" | "signed" | "const" | "static" | "extern"
-                    | "auto" | "register" | "volatile" ;
+UNSUPPORTED_KEYWORD = "goto" | "auto" | "register" | "volatile" ;
 ~~~
 
 ## rule: number
@@ -59,14 +59,50 @@ number              = INT_LIT | FLOAT_LIT ;
 kind: lexical
 
 ~~~text
-INT_LIT             = digit , { digit } ;
+INT_LIT             = ( decimal | octal | hex ) , [ int_suffix ] ;
+~~~
+
+## rule: decimal
+kind: lexical
+
+~~~text
+decimal             = digit , { digit } ;
+~~~
+
+## rule: octal
+kind: lexical
+
+~~~text
+octal               = "0" , { digit } ;
+~~~
+
+## rule: hex
+kind: lexical
+
+~~~text
+hex                 = "0" , ( "x" | "X" ) , hex_digit , { hex_digit } ;
+~~~
+
+## rule: int_suffix
+kind: lexical
+
+~~~text
+int_suffix          = ( "u" | "U" ) , [ "l" | "L" | "ll" | "LL" ]
+                    | ( "l" | "L" | "ll" | "LL" ) , [ "u" | "U" ] ;
 ~~~
 
 ## rule: FLOAT_LIT
 kind: lexical
 
 ~~~text
-FLOAT_LIT           = digit , { digit } , "." , digit , { digit } ;
+FLOAT_LIT           = digit , { digit } , [ "." , digit , { digit } ] , [ exponent ] , [ "f" | "F" | "l" | "L" ] ;
+~~~
+
+## rule: exponent
+kind: lexical
+
+~~~text
+exponent            = ( "e" | "E" ) , [ "+" | "-" ] , digit , { digit } ;
 ~~~
 
 ## rule: CHAR_LIT
@@ -95,15 +131,16 @@ kind: lexical
 
 ~~~text
 OPERATOR            = "+" | "-" | "*" | "/" | "%" | "=" | "+=" | "-=" | "*=" | "/="
-                    | "%=" | "++" | "--" | "==" | "!=" | "<" | "<=" | ">" | ">="
-                    | "&&" | "||" | "!" ;
+                    | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" | "++" | "--"
+                    | "==" | "!=" | "<" | "<=" | ">" | ">=" | "&&" | "||" | "!"
+                    | "&" | "|" | "^" | "~" | "<<" | ">>" | "->" | "." | "?" | ":" ;
 ~~~
 
 ## rule: UNSUPPORTED_OP
 kind: lexical
 
 ~~~text
-UNSUPPORTED_OP      = "&" | "|" | "^" | "~" | "<<" | ">>" | "->" | "." | "?" | ":" ;
+UNSUPPORTED_OP      = "..." ;
 ~~~
 
 ## rule: PUNCT
@@ -152,7 +189,7 @@ top_decl       = type_spec , ( function_def | global_decl ) ;
 kind: grammar
 
 ~~~text
-function_def   = IDENT , "(" , params , ")" , ( block | ";" ) ;
+function_def   = { "*" } , IDENT , "(" , params , ")" , ( block | ";" ) ;
 ~~~
 
 ## rule: params
@@ -173,35 +210,87 @@ param_list     = param , { "," , param } ;
 kind: grammar
 
 ~~~text
-param          = type_spec , IDENT ;
+param          = type_spec , { "*" } , [ IDENT ] , { "[" , [ assignment ] , "]" } ;
 ~~~
 
 ## rule: global_decl
 kind: grammar
 
 ~~~text
-global_decl    = declarator , { "," , declarator } , ";" ;
+global_decl    = [ declarator , { "," , declarator } ] , ";" ;
 ~~~
 
 ## rule: type_spec
 kind: grammar
 
 ~~~text
-type_spec      = "int" | "float" | "double" | "char" | "void" ;
+type_spec      = { "const" | "static" | "extern" | "typedef" } ,
+                 ( basic_type | struct_spec | enum_spec | TYPEDEF_NAME ) ,
+                 { "const" | "static" | "extern" | "typedef" } ;
+~~~
+
+## rule: basic_type
+kind: grammar
+
+~~~text
+basic_type     = { "unsigned" | "signed" | "long" | "short" | "int" | "char" | "float" | "double" | "void" } ;
+~~~
+
+## rule: struct_spec
+kind: grammar
+
+~~~text
+struct_spec    = ( "struct" | "union" ) , ( IDENT | [ IDENT ] , "{" , member_decl , { member_decl } , "}" ) ;
+~~~
+
+## rule: member_decl
+kind: grammar
+
+~~~text
+member_decl    = type_spec , [ member , { "," , member } ] , ";" ;
+~~~
+
+## rule: member
+kind: grammar
+
+~~~text
+member         = { "*" } , IDENT , { "[" , assignment , "]" } ;
+~~~
+
+## rule: enum_spec
+kind: grammar
+
+~~~text
+enum_spec      = "enum" , ( IDENT | [ IDENT ] , "{" , IDENT , [ "=" , assignment ]
+                 , { "," , IDENT , [ "=" , assignment ] } , [ "," ] , "}" ) ;
 ~~~
 
 ## rule: declarator
 kind: grammar
 
 ~~~text
-declarator     = IDENT , [ array_suffix ] , [ "=" , expression ] ;
+declarator     = { "*" , { "const" } } , IDENT , { array_suffix } , [ "=" , initializer ] ;
 ~~~
 
 ## rule: array_suffix
 kind: grammar
 
 ~~~text
-array_suffix   = "[" , expression , "]" ;
+array_suffix   = "[" , [ assignment ] , "]" ;
+~~~
+
+## rule: initializer
+kind: grammar
+
+~~~text
+initializer    = assignment | init_list ;
+~~~
+
+## rule: init_list
+kind: grammar
+
+~~~text
+init_list      = "{" , initializer , { "," , initializer } , [ "," ] , "}" ;
 ~~~
 
 ## rule: block
@@ -215,8 +304,9 @@ block          = "{" , { statement } , "}" ;
 kind: grammar
 
 ~~~text
-statement      = var_decl | if_stmt | while_stmt | for_stmt | return_stmt
-               | break_stmt | continue_stmt | block | expr_stmt | empty_stmt ;
+statement      = var_decl | if_stmt | while_stmt | do_while_stmt | for_stmt | switch_stmt
+               | case_label | default_label | return_stmt | break_stmt | continue_stmt
+               | block | expr_stmt | empty_stmt ;
 ~~~
 
 ## rule: var_decl
@@ -230,7 +320,7 @@ var_decl       = var_core , ";" ;
 kind: grammar
 
 ~~~text
-var_core       = type_spec , declarator , { "," , declarator } ;
+var_core       = type_spec , [ declarator , { "," , declarator } ] ;
 ~~~
 
 ## rule: if_stmt
@@ -247,6 +337,13 @@ kind: grammar
 while_stmt     = "while" , "(" , expression , ")" , statement ;
 ~~~
 
+## rule: do_while_stmt
+kind: grammar
+
+~~~text
+do_while_stmt  = "do" , statement , "while" , "(" , expression , ")" , ";" ;
+~~~
+
 ## rule: for_stmt
 kind: grammar
 
@@ -260,6 +357,27 @@ kind: grammar
 
 ~~~text
 for_init       = var_core | expression ;
+~~~
+
+## rule: switch_stmt
+kind: grammar
+
+~~~text
+switch_stmt    = "switch" , "(" , expression , ")" , statement ;
+~~~
+
+## rule: case_label
+kind: grammar
+
+~~~text
+case_label     = "case" , conditional , ":" ;
+~~~
+
+## rule: default_label
+kind: grammar
+
+~~~text
+default_label  = "default" , ":" ;
 ~~~
 
 ## rule: return_stmt
@@ -301,21 +419,28 @@ empty_stmt     = ";" ;
 kind: grammar
 
 ~~~text
-expression     = assignment ;
+expression     = assignment , { "," , assignment } ;
 ~~~
 
 ## rule: assignment
 kind: grammar
 
 ~~~text
-assignment     = logic_or , [ assign_op , assignment ] ;
+assignment     = conditional , [ assign_op , assignment ] ;
 ~~~
 
 ## rule: assign_op
 kind: grammar
 
 ~~~text
-assign_op      = "=" | "+=" | "-=" | "*=" | "/=" | "%=" ;
+assign_op      = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" ;
+~~~
+
+## rule: conditional
+kind: grammar
+
+~~~text
+conditional    = logic_or , [ "?" , expression , ":" , conditional ] ;
 ~~~
 
 ## rule: logic_or
@@ -329,7 +454,28 @@ logic_or       = logic_and , { "||" , logic_and } ;
 kind: grammar
 
 ~~~text
-logic_and      = equality , { "&&" , equality } ;
+logic_and      = bit_or , { "&&" , bit_or } ;
+~~~
+
+## rule: bit_or
+kind: grammar
+
+~~~text
+bit_or         = bit_xor , { "|" , bit_xor } ;
+~~~
+
+## rule: bit_xor
+kind: grammar
+
+~~~text
+bit_xor        = bit_and , { "^" , bit_and } ;
+~~~
+
+## rule: bit_and
+kind: grammar
+
+~~~text
+bit_and        = equality , { "&" , equality } ;
 ~~~
 
 ## rule: equality
@@ -343,7 +489,14 @@ equality       = comparison , { ( "==" | "!=" ) , comparison } ;
 kind: grammar
 
 ~~~text
-comparison     = term , { ( "<" | "<=" | ">" | ">=" ) , term } ;
+comparison     = shift , { ( "<" | "<=" | ">" | ">=" ) , shift } ;
+~~~
+
+## rule: shift
+kind: grammar
+
+~~~text
+shift          = term , { ( "<<" | ">>" ) , term } ;
 ~~~
 
 ## rule: term
@@ -364,15 +517,37 @@ factor         = unary , { ( "*" | "/" | "%" ) , unary } ;
 kind: grammar
 
 ~~~text
-unary          = ( "!" | "-" | "+" | "++" | "--" ) , unary | postfix ;
+unary          = ( "!" | "-" | "+" | "~" | "*" | "&" | "++" | "--" ) , unary
+               | sizeof_expr | cast | postfix ;
+~~~
+
+## rule: sizeof_expr
+kind: grammar
+
+~~~text
+sizeof_expr    = "sizeof" , ( "(" , type_name , ")" | unary ) ;
+~~~
+
+## rule: cast
+kind: grammar
+
+~~~text
+cast           = "(" , type_name , ")" , unary ;
+~~~
+
+## rule: type_name
+kind: grammar
+
+~~~text
+type_name      = type_spec , { "*" } , { "[" , assignment , "]" } ;
 ~~~
 
 ## rule: postfix
 kind: grammar
 
 ~~~text
-postfix        = primary , { "(" , [ arg_list ] , ")" | "[" , expression , "]" }
-               , [ "++" | "--" ] ;
+postfix        = primary , { "(" , [ arg_list ] , ")" | "[" , expression , "]"
+               | ( "." | "->" ) , IDENT } , [ "++" | "--" ] ;
 ~~~
 
 ## rule: arg_list
@@ -386,7 +561,7 @@ arg_list       = assignment , { "," , assignment } ;
 kind: grammar
 
 ~~~text
-primary        = INT_LIT | FLOAT_LIT | CHAR_LIT | STRING_LIT | IDENT
+primary        = INT_LIT | FLOAT_LIT | CHAR_LIT | STRING_LIT , { STRING_LIT } | IDENT
                | "(" , expression , ")" ;
 ~~~
 
@@ -459,8 +634,8 @@ int main(void) {
 kind: semantic
 
 ~~~text
-No variable or parameter may be void; a call to a void function cannot be
-used as a value.
+No variable or parameter may be plain `void` (a `void *` is fine); a call to a
+void function cannot be used as a value.
 
 ```c
 void log_it(void) { }
@@ -532,16 +707,19 @@ int f(int b) {
 kind: semantic
 
 ~~~text
-An array size must be an integer literal greater than 0 (no variable-length
-arrays). Only arrays may be indexed, and the index must have integer type.
-Constant out-of-range indices are not checked (runtime behaviour is out of scope).
+An array size must be a constant integer expression greater than 0: a literal,
+an enum constant, a `#define`d number, `sizeof`, or arithmetic on those (no
+variable-length arrays). Only the first size may be left out, and only when an
+initialiser gives it. Only arrays and pointers may be indexed, and the index must
+have integer type. Constant out-of-range indices are not checked (runtime
+behaviour is out of scope).
 
 ```c
 int main(void) {
     int n = 3;
-    int a[n];           /* size must be a literal */
+    int a[n];           /* size must be constant */
     int x = 1;
-    x[0] = 1;           /* x is not an array */
+    x[0] = 1;           /* x is not an array or pointer */
     return 0;
 }
 ```
@@ -551,7 +729,8 @@ int main(void) {
 kind: semantic
 
 ~~~text
-`break` and `continue` may appear only inside `while` or `for`.
+`break` may appear only inside a loop (`while`, `do`, `for`) or a `switch`;
+`continue` only inside a loop.
 
 ```c
 int main(void) {
@@ -565,8 +744,10 @@ int main(void) {
 kind: semantic
 
 ~~~text
-A global initialiser must be a numeric or char literal, optionally preceded
-by `-`.
+A global (or `static`) initialiser must be a constant expression: literals, enum
+constants, `sizeof`, arithmetic on those, string literals, `NULL`, `&global`, the
+name of a global array or function, or a `{...}` list of such items. Other
+variables are not constants.
 
 ```c
 int x = 4;
@@ -578,10 +759,18 @@ int y = x + 1;          /* not a literal */
 kind: semantic
 
 ~~~text
-`printf` is declared only if `#include <stdio.h>` appears before its first
-use. Its first argument must be a string literal; further arguments may be any
-arithmetic values. Format specifiers are not checked. Redeclaring `printf` is a
-redeclaration.
+The common functions of a supported header are declared only if its `#include`
+appears before their first use: `<stdio.h>` (`printf`, `scanf`, `sprintf`, `puts`,
+`getchar`, `fopen`, ...; `NULL`, `EOF`, `FILE`, `size_t`), `<stdlib.h>` (`malloc`,
+`calloc`, `realloc`, `free`, `exit`, `abs`, `atoi`, `rand`, ...), `<string.h>`
+(`strlen`, `strcpy`, `strcmp`, `strcat`, `memset`, `memcpy`, ...), `<math.h>`
+(`sqrt`, `pow`, `fabs`, `floor`, `ceil`, `sin`, `cos`, ...), `<ctype.h>`
+(`isalpha`, `isdigit`, `toupper`, ...) and `<stdbool.h>` (`bool`, `true`,
+`false`). Their parameter types are checked like any function's; `printf`,
+`scanf` and the other variadic functions accept further arguments of any number
+or pointer type. The first argument of `printf` must be a string: a string
+literal, a `char` array or a `char` pointer. Format specifiers are not checked.
+Redeclaring a builtin function is a redeclaration.
 
 ```c
 #include <stdio.h>
@@ -597,8 +786,8 @@ int main(void) {
 kind: semantic
 
 ~~~text
-Conditions of `if`, `while` and `for` must be arithmetic (any non-zero value
-is true). A plain `=` as the outermost operator of a condition produces a
+Conditions of `if`, `while`, `do` and `for` must be scalar: a number or a
+pointer (any non-zero value or non-null pointer is true). A plain `=` as the outermost operator of a condition produces a
 warning, as in gcc's -Wparentheses.
 
 ```c
@@ -616,12 +805,117 @@ int main(void) {
 kind: semantic
 
 ~~~text
-The program must define `int main()` or `int main(void)`. Real C reports a
+The program must define `int main()`, `int main(void)` or
+`int main(int argc, char *argv[])`. Real C reports a
 missing main at link time; this compiler reports it at the end of semantic
 analysis.
 
 ```c
 void g(void) { }        /* the file has no main */
+```
+~~~
+
+## rule: sem.pointers
+kind: semantic
+
+~~~text
+`*p` needs a pointer (or array) operand, and `&x` needs an lvalue: a variable,
+an array element, a struct member or a dereference. Dereferencing a non-pointer
+is an error. Taking the address of a value that is not stored anywhere (`&5`,
+`&(a + b)`, `&f()`) is an error. A pointer assigned, initialised, passed or
+returned as a pointer to a different base type (`int *p = &some_double;`) gives
+the warning WRN-INCOMPATIBLE-POINTER, as in gcc; `void *` converts to and from
+any object pointer.
+
+```c
+int main(void) {
+    int x = 1;
+    double d = 2.0;
+    int *p = &d;        /* warning: incompatible pointer types */
+    *x = 2;             /* x is not a pointer */
+    int *q = &(x + 1);  /* x + 1 has no address */
+    return 0;
+}
+```
+~~~
+
+## rule: sem.members
+kind: semantic
+
+~~~text
+`s.m` needs a struct or union value and `p->m` a pointer to one; the member must
+exist. Using `.` on a pointer, `->` on a struct value, or either on any other
+type is an error. A struct that is only declared (`struct Node;`) is incomplete:
+a variable or member of that type, or a member access through it, is an error
+(a pointer to it is fine).
+
+```c
+struct Point { int x; int y; };
+int main(void) {
+    struct Point p;
+    int n = 1;
+    p.z = 3;            /* Point has no member z */
+    n.x = 1;            /* n is not a struct */
+    p->x = 2;           /* p is not a pointer */
+    return 0;
+}
+```
+~~~
+
+## rule: sem.const_correctness
+kind: semantic
+
+~~~text
+A `const` variable, an element of a `const` array, and the value a
+`const T *` points to cannot be assigned to, incremented, or decremented.
+
+```c
+int main(void) {
+    const int limit = 10;
+    limit = 20;         /* limit is const */
+    return 0;
+}
+```
+~~~
+
+## rule: sem.switch_stmt
+kind: semantic
+
+~~~text
+The expression of a `switch` must have integer type. Each `case` label must be
+an integer constant expression (a literal, a character, an enum constant, or
+arithmetic on those), and no two labels of one switch may have the same value;
+a switch has at most one `default`. `case` and `default` may appear only inside
+a switch.
+
+```c
+int main(void) {
+    int n = 2;
+    int k = 1;
+    switch (n) {
+        case 1: n = 5; break;
+        case 1: n = 6; break;   /* duplicate label */
+        case k: n = 7; break;   /* not a constant */
+    }
+    return 0;
+}
+```
+~~~
+
+## rule: sem.gcc_fallback
+kind: semantic
+
+~~~text
+Diagnostics that come from the gcc fallback (section 7) are not checked by any
+rule of this language: their text is gcc's own. They carry the rule name
+`sem.gcc_fallback` so the assistant can say where they came from.
+
+```c
+int main(void) {
+    goto done;          /* goto is outside the subset: gcc reports on this program */
+done:
+    return 0;
+}
 ```
 ~~~
 

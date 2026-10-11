@@ -16,7 +16,7 @@ DEFAULT_CATALOG_PATH = REPO_ROOT / "docs" / "error-catalog.md"
 DEFAULT_SPEC_PATH = REPO_ROOT / "docs" / "language-spec.md"
 PRODUCTION = "<production>"
 
-_ROW = re.compile(r"^\|\s*(LEX|SYN|SEM|WRN)-")
+_ROW = re.compile(r"^\|\s*(LEX|SYN|SEM|WRN|GCC)-")
 _RULE_DEF = re.compile(r"^([a-z_]+)\s*=")
 
 
