@@ -35,8 +35,8 @@ Contract: `plans/m2-architecture.md`. Owner decisions: Gemini primary with an Ol
 |------|-------|------------|--------|
 | 008 | Fix stray-closer message | — | TODO (reviewed) |
 | 009 | F2 clustering + exact-root test + metrics | 008 | TODO (reviewed) |
-| 010 | LLM layer (client, fallback, cache, fake) | — | DRAFTING |
-| 011 | F3 agent + rule lookup + CLI --explain | 009, 010 | DRAFTING |
+| 010 | LLM layer (client, fallback, cache, fake) | — | TODO (reviewed) |
+| 011 | F3 agent + rule lookup + CLI --explain | 009, 010 | TODO (reviewed) |
 | 012 | FastAPI backend | 011 | DRAFTING |
 | 013 | React UI | 012 | DRAFTING |
 
