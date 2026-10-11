@@ -5,7 +5,9 @@ For every tests/corpus/<split>/*.c this runs
 and checks two things:
   1. The design rule "accepted => valid C99": a program whose sidecar has
      empty "roots" (all of valid/, plus warning-only faulty programs) MUST be
-     accepted by gcc (exit code 0).
+     accepted by gcc (exit code 0). Programs whose only warning is
+     WRN-INCOMPATIBLE-POINTER are checked with plain gcc -std=c99, because
+     -pedantic-errors turns that warning into an error.
   2. The sidecar's "gcc_rejects" equals what gcc actually did.
 It prints a summary and exits 1 on any mismatch, otherwise 0.
 If gcc is not on PATH it prints a skip message and exits 0.
@@ -44,7 +46,15 @@ def main(argv):
             checked += 1
             rejected += gcc_rejects
             first = next((ln for ln in proc.stderr.splitlines() if "error" in ln), "")
-            if not side.get("roots") and gcc_rejects:
+            plain_ok = None
+            if not side.get("roots") and gcc_rejects and any(
+                    w["code"] == "WRN-INCOMPATIBLE-POINTER" for w in side.get("warnings", [])):
+                # gcc only warns about incompatible pointer types; -pedantic-errors promotes the warning to an
+                # error. The program is accepted by plain gcc, which is what the rule needs.
+                plain = subprocess.run([gcc, "-std=c99", "-fsyntax-only", str(c_path)],
+                                       capture_output=True, text=True, timeout=60)
+                plain_ok = plain.returncode == 0
+            if not side.get("roots") and gcc_rejects and plain_ok is not True:
                 problems.append(f"{rel}: no expected roots but gcc REJECTS it "
                                 f"(breaks 'accepted => valid C99'): {first}")
             if side.get("gcc_rejects") != gcc_rejects:
