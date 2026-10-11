@@ -110,6 +110,11 @@ def use_config(monkeypatch, environ, env_file=None):
     monkeypatch.setattr(api, "client_from_env", lambda: real_client_from_env(environ, env_file=env_file))
 
 
+def without_gcc(health):
+    assert isinstance(health.pop("gcc"), bool)      # whether gcc is installed (for the engine fallback)
+    return health
+
+
 @pytest.mark.parametrize("environ,expected", [
     (PRIMARY, "primary"),
     ({**PRIMARY, "CEA_LLM_FALLBACK_MODEL": "small"}, "primary"),
@@ -123,7 +128,7 @@ def test_health(client, monkeypatch, environ, expected):
     use_config(monkeypatch, environ)
     resp = client.get("/api/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok", "llm": expected}
+    assert without_gcc(resp.json()) == {"status": "ok", "llm": expected}
     assert DUMMY_KEY not in resp.text
 
 
@@ -132,21 +137,22 @@ def test_health_reads_the_env_file(client, monkeypatch, tmp_path):
     env_file.write_text("".join(f"{k}={v}\n" for k, v in PRIMARY.items()), encoding="utf-8")
     use_config(monkeypatch, {}, env_file)
     resp = client.get("/api/health")
-    assert resp.json() == {"status": "ok", "llm": "primary"} and DUMMY_KEY not in resp.text
+    assert without_gcc(resp.json()) == {"status": "ok", "llm": "primary"} and DUMMY_KEY not in resp.text
 
 
 def test_health_environment_wins_over_the_env_file(client, monkeypatch, tmp_path):
     env_file = tmp_path / ".env"
     env_file.write_text("".join(f"{k}={v}\n" for k, v in PRIMARY.items()), encoding="utf-8")
     use_config(monkeypatch, {"CEA_LLM_MODEL": ""}, env_file)
-    assert client.get("/api/health").json() == {"status": "ok", "llm": "none"}
+    assert without_gcc(client.get("/api/health").json()) == {"status": "ok", "llm": "none"}
 
 
 # ---------------------------------------------------------------- /api/compile
 def test_compile_valid_program(client):
     resp = client.post("/api/compile", json={"source": SRC_OK})
     assert resp.status_code == 200
-    assert resp.json() == {"ok": True, "summary": "0 fatal, 0 warnings", "records": [], "clusters": []}
+    assert resp.json() == {"ok": True, "summary": "0 fatal, 0 warnings", "records": [], "clusters": [],
+                           "engine": "cea", "engine_note": None}
 
 
 def test_compile_undeclared_groups_uses(client):
@@ -362,3 +368,40 @@ def test_exactly_the_contract_routes(client):
     assert {(p, m) for p, ops in paths.items() for m in ops} == {
         ("/api/compile", "post"), ("/api/explain", "post"), ("/api/fix", "post"), ("/api/ask", "post"),
         ("/api/health", "get"), ("/api/profile/{student_id}", "get"), ("/api/profile/{student_id}", "delete")}
+
+
+# ---------------------------------------------------------------- engine / gcc fallback
+import shutil  # noqa: E402
+
+needs_gcc = pytest.mark.skipif(shutil.which("gcc") is None, reason="gcc not on PATH")
+SRC_GOTO = "int main(void) {\n    int x = 1;\n    goto end;\nend:\n    return x;\n}\n"
+
+
+@needs_gcc
+def test_compile_falls_back_to_gcc_for_unsupported_features(client):
+    data = client.post("/api/compile", json={"source": SRC_GOTO}).json()
+    assert data["engine"] == "gcc" and "gcc" in data["engine_note"] and data["ok"] is True
+
+
+def test_compile_engine_cea_never_uses_gcc(client):
+    data = client.post("/api/compile", json={"source": SRC_GOTO, "engine": "cea"}).json()
+    assert data["engine"] == "cea" and data["engine_note"] is None
+    assert any(r["code"] == "SYN-UNSUPPORTED-FEATURE" for r in data["records"])
+
+
+@needs_gcc
+def test_compile_engine_gcc_is_forced(client):
+    data = client.post("/api/compile", json={"source": SRC_OK.replace("return 0;", "return y;"), "engine": "gcc"}).json()
+    assert data["engine"] == "gcc" and data["ok"] is False
+    assert {r["code"] for r in data["records"]} <= {"GCC-ERROR", "GCC-WARNING", "GCC-NOTE"}
+
+
+def test_compile_says_so_when_gcc_is_missing(client, monkeypatch):
+    monkeypatch.setattr("cea.gcc_fallback.gcc_path", lambda: None)
+    data = client.post("/api/compile", json={"source": SRC_GOTO, "engine": "gcc"}).json()
+    assert data["engine"] == "cea" and "gcc is not installed" in data["engine_note"]
+    assert client.get("/api/health").json()["gcc"] is False
+
+
+def test_compile_rejects_an_unknown_engine(client):
+    assert client.post("/api/compile", json={"source": SRC_OK, "engine": "clang"}).status_code == 422

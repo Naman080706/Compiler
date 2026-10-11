@@ -1,0 +1,15 @@
+{
+  "description": "A case label that is the variable target.",
+  "split": "dev",
+  "injected_faults": [
+  "line 7: 'case target:' is not a constant"
+],
+  "roots": [
+    {"code": "SEM-CASE-NOT-CONSTANT", "line": 7}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": true,
+  "notes": "gcc: case label does not reduce to an integer constant."
+}

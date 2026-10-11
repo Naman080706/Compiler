@@ -40,7 +40,7 @@ def measure():
     index = load_index()
     total = grounded = nonexistent = dropped = 0
     for c_path in sorted(DEV.glob("*.c")):
-        result = compile_source(c_path.read_text(encoding="utf-8"), c_path.name)
+        result = compile_source(c_path.read_text(encoding="utf-8"), c_path.name, engine="cea")
         for cluster in result.clusters:
             record = cluster.root
             exp = Agent(FakeLLM(default=scripted)).explain(record, c_path.read_text(encoding="utf-8"), "short")

@@ -1,0 +1,11 @@
+{
+  "description": "An enum, a typedef of an anonymous struct and a typedef of unsigned int, with a switch on the enum.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "enum with explicit value, typedef struct, typedef unsigned int, const char * return, array of structs."
+}

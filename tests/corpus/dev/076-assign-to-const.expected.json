@@ -1,0 +1,15 @@
+{
+  "description": "Assigns to the const int limit.",
+  "split": "dev",
+  "injected_faults": [
+  "line 6: assignment to a const variable"
+],
+  "roots": [
+    {"code": "SEM-ASSIGN-TO-CONST", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: assignment of read-only variable. limit is then read in the loop, so no unused warning."
+}

@@ -1,0 +1,11 @@
+{
+  "description": "Upper-cases a copy of a string with strcpy, strlen, toupper and strcmp.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "string.h and ctype.h builtins, char array initialised from a string literal, size_t, pointer in a for loop."
+}

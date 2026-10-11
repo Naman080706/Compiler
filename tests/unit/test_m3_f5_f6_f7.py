@@ -50,13 +50,13 @@ def test_rule_chunks_cover_every_spec_rule_and_are_in_sync():
 def test_one_fix_pattern_per_catalog_code_tagged_with_code_phase_rule_ref():
     index = load_index()
     catalog = load_catalog()
-    assert len(catalog) == 37
+    assert len(catalog) == 52
     for code, entry in catalog.items():
         chunk = index.get(f"fix:{code}")
         assert chunk is not None, code
         assert (chunk.code, chunk.phase, chunk.rule_ref) == (code, entry.phase, entry.rule_ref)
         assert "Common mistake:" in chunk.text and "Fix:" in chunk.text
-    assert sum(1 for c in index.chunks.values() if c.kind == "fix") == 37
+    assert sum(1 for c in index.chunks.values() if c.kind == "fix") == 52
 
 
 def test_retrieval_is_keyed_and_deterministic(rec):

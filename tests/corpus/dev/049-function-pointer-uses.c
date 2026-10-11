@@ -1,15 +1,14 @@
 #include <stdio.h>
 
+int add(int a, int b) {
+    return a + b;
+}
+
 int main(void) {
-    int i;
-    int total = 0;
-    int *values;
-    values[0] = 4;
-    values[1] = 9;
-    values[2] = 16;
-    for (i = 0; i < 3; i++) {
-        total += values[i];
-    }
-    printf("total = %d, first = %d\n", total, values[0]);
+    int (*op)(int, int) = add;
+    int first = op(2, 3);
+    int second = op(10, 20);
+    int third = op(first, second);
+    printf("results: %d, %d and %d\n", first, second, op(third, 1));
     return 0;
 }

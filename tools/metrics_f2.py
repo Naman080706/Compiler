@@ -36,7 +36,7 @@ def measure(split):
         side = json.loads(c_path.with_name(c_path.stem + ".expected.json").read_text(encoding="utf-8"))
         if not side["cascading"]:
             continue
-        result = compile_source(c_path.read_text(encoding="utf-8"), c_path.name)
+        result = compile_source(c_path.read_text(encoding="utf-8"), c_path.name, engine="cea")
         single = len(side["injected_faults"]) == 1
         expected = 1 if single else len(side["roots"]) + len(side["warnings"])
         rows.append((c_path.name, len(result.errors), len(result.clusters), expected, single))

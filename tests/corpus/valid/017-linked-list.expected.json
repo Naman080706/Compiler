@@ -1,0 +1,11 @@
+{
+  "description": "Builds a linked list with malloc, prints it and frees it.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "stdlib.h malloc/free, NULL, a self-referential struct, cast, sizeof(struct ...), pointer-returning function."
+}

@@ -1,0 +1,11 @@
+{
+  "description": "A struct Point returned from a function, passed by value and updated through ->.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "struct definition, member access with . and ->, initialiser list, struct return and pass by value."
+}

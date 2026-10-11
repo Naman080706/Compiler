@@ -36,6 +36,7 @@ tests/corpus/
     order. File `NNN` targets code `#NNN` of `docs/error-catalog.md`.
   - `040`-`059`: cascading programs (at least 10).
   - `060`-`069`: programs with 2-3 independent faults (at least 3).
+  - `070`-`099`: course-level C (milestone 6): one program per new semantic code, plus programs for the features that are still unsupported (`goto`, function pointers, bit-fields, variadic definitions, `#ifdef`) which the gcc fallback handles. `valid/013`-`022` cover the new features.
 - Every `.c` file ends with exactly one `\n` and has no trailing blank lines.
   The last line contains code (for example the final `}`), not only a comment.
   The one exception is a program whose injected fault is an unterminated block
@@ -232,3 +233,11 @@ python -I tools/gcc_check.py                   # gcc cross-check, standalone
    trigger. Their `warnings` is `[]`; the schema test enforces this.
 8. **Run gcc on every program** and copy the result into `gcc_rejects`. Use
    `true` if the exit code is non-zero.
+
+## 7. Course-level C and the gcc fallback
+
+Sidecars describe what **our own compiler** reports (`compile_source(..., engine="cea")`); the corpus tests never use the gcc fallback.
+Programs that became valid when switch, pointers, structs, `const` and more were added keep their slot:
+heldout `020-menu-switch` now has empty `roots`, empty `injected_faults` and a `notes` text that starts with `NOW VALID`
+(the schema test accepts that marker). `WRN-INCOMPATIBLE-POINTER` programs are accepted by plain `gcc -std=c99` but rejected by
+`-pedantic-errors`; `tools/gcc_check.py` checks them with plain gcc.

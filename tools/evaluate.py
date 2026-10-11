@@ -105,7 +105,7 @@ def metric_f2(progs):
     for name, source, side in progs:
         if not side["cascading"]:
             continue
-        res = compile_source(source, name)
+        res = compile_source(source, name, engine="cea")
         single = len(side["injected_faults"]) == 1
         want = 1 if single else len(side["roots"]) + len(side["warnings"])
         rows.append({"program": name, "raw": len(res.errors), "displayed": len(res.clusters),
@@ -123,7 +123,7 @@ def metric_f2(progs):
 def metric_root(progs):
     rows = []
     for name, source, side in progs:
-        res = compile_source(source, name)
+        res = compile_source(source, name, engine="cea")
         shown = {(c.root.code, c.root.line) for c in res.clusters}
         want = {(r["code"], r["line"]) for r in side["roots"] + side["warnings"]}
         rows.append({"program": name, "displayed": sorted(shown), "expected": sorted(want),
@@ -145,7 +145,7 @@ def metric_f8(progs, mode: str, llm_kind: str):
     for name, source, side in progs:
         if not side["fixable"]:
             continue
-        fatal = [c.root for c in compile_source(source, name).clusters if c.root.severity == "fatal"]
+        fatal = [c.root for c in compile_source(source, name, engine="cea").clusters if c.root.severity == "fatal"]
         if not fatal:
             continue
         units += 1
@@ -179,7 +179,7 @@ def metric_f7(progs, llm_kind: str):
     index = load_index()
     total = model_cited = attributed = nonexistent = fallback = 0
     for name, source, side in progs:
-        for cluster in compile_source(source, name).clusters:
+        for cluster in compile_source(source, name, engine="cea").clusters:
             record = cluster.root
             print(f"  F7 {name} {record.code}", file=sys.stderr, flush=True)
             rec = Recorder(make_llm(llm_kind))
@@ -206,7 +206,7 @@ def metric_f7(progs, llm_kind: str):
 def metric_latency(progs, llm_kind: str, n: int):
     """Time Agent.explain(record, source, 'short') for n requests, cycling over the split's roots.
     No explanation cache is used, so every request is a cold call to the model."""
-    records = [(c.root, source) for name, source, _ in progs for c in compile_source(source, name).clusters]
+    records = [(c.root, source) for name, source, _ in progs for c in compile_source(source, name, engine="cea").clusters]
     if not records:
         return {"requests": 0}
     llm = make_llm(llm_kind)

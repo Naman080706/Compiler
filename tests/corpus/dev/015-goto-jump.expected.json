@@ -1,15 +1,17 @@
 {
-  "description": "Multiplication table that declares its size with 'const int LIMIT = 5;', and const is not in the subset.",
+  "description": "Sums numbers and leaves the loop early with a goto and a label, which the subset does not support.",
   "split": "dev",
   "injected_faults": [
-    "line 4: 'const' qualifier is not supported"
-  ],
+  "line 8: 'goto done;' is not supported",
+  "line 10: the label 'done:' is not supported"
+],
   "roots": [
-    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 4}
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 8},
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 10}
   ],
   "warnings": [],
   "cascading": false,
-  "fixable": true,
+  "fixable": false,
   "gcc_rejects": false,
-  "notes": "Expected under plan 002: raw 1. SYN-UNSUPPORTED-FEATURE 4 (caused_by: none). Statement panic skips 'const' and stops before 'int' (a SYNC_STMT_STOP token), so 'int LIMIT = 5;' is parsed normally and LIMIT stays declared. gcc accepts const, so gcc_rejects is false."
+  "notes": "Two roots, one per unsupported construct (goto, label). gcc accepts the file, so gcc_rejects is false. Replaces the old const-qualifier program: const is supported now."
 }

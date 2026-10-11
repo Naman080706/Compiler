@@ -28,7 +28,7 @@ def _cases():
 @pytest.mark.parametrize("c_path", _cases())
 def test_expected_diagnostics_are_reported(c_path):
     side = cl.load_sidecar(c_path)
-    result = pipeline.compile_source(c_path.read_text(encoding="utf-8"), c_path.name)
+    result = pipeline.compile_source(c_path.read_text(encoding="utf-8"), c_path.name, engine="cea")
     for rec in result.errors:
         for attr in RECORD_ATTRS:
             assert hasattr(rec, attr), f"error record lacks attribute {attr!r}: {rec!r}"

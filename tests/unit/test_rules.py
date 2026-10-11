@@ -7,7 +7,7 @@ from cea.rules import RuleText, load_rules, rule_text
 
 def test_rule_counts_by_kind():
     kinds = [r.kind for r in load_rules().values()]
-    assert (kinds.count("lexical"), kinds.count("grammar"), kinds.count("semantic")) == (18, 36, 16)
+    assert (kinds.count("lexical"), kinds.count("grammar"), kinds.count("semantic")) == (23, 55, 21)
 
 
 def test_every_grammar_rule_name_resolves_as_grammar():
@@ -23,8 +23,9 @@ def test_every_catalog_rule_ref_resolves():
 
 @pytest.mark.parametrize("ref,kind,text", [
     ("var_decl", "grammar", 'var_decl       = var_core , ";" ;'),
-    ("statement", "grammar", "statement      = var_decl | if_stmt | while_stmt | for_stmt | return_stmt\n"
-                             "               | break_stmt | continue_stmt | block | expr_stmt | empty_stmt ;"),
+    ("statement", "grammar", "statement      = var_decl | if_stmt | while_stmt | do_while_stmt | for_stmt | switch_stmt\n"
+                             "               | case_label | default_label | return_stmt | break_stmt | continue_stmt\n"
+                             "               | block | expr_stmt | empty_stmt ;"),
     ("STRING_LIT", "lexical", "STRING_LIT          = '\"' , { string_char | escape } , '\"' ;  (* may not span lines *)"),
 ])
 def test_ebnf_rule_text(ref, kind, text):

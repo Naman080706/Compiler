@@ -31,10 +31,10 @@ def test_token_kinds_in_contract_order():
 
 
 @pytest.mark.parametrize("table,rule,size", [
-    (KEYWORDS, "KEYWORD", 12),
-    (UNSUPPORTED_KEYWORDS, "UNSUPPORTED_KEYWORD", 20),
-    (OPERATORS, "OPERATOR", 22),
-    (UNSUPPORTED_OPS, "UNSUPPORTED_OP", 10),
+    (KEYWORDS, "KEYWORD", 28),
+    (UNSUPPORTED_KEYWORDS, "UNSUPPORTED_KEYWORD", 4),
+    (OPERATORS, "OPERATOR", 37),
+    (UNSUPPORTED_OPS, "UNSUPPORTED_OP", 1),
     (PUNCTUATORS, "PUNCT", 8),
 ])
 def test_tables_match_the_spec(table, rule, size):
@@ -43,7 +43,8 @@ def test_tables_match_the_spec(table, rule, size):
 
 
 def test_type_keywords():
-    assert TYPE_KEYWORDS == {"int", "float", "double", "char", "void"}
+    assert TYPE_KEYWORDS == {"int", "float", "double", "char", "void", "long", "short", "unsigned", "signed",
+                             "struct", "union", "enum", "typedef", "const", "static", "extern"}
     assert TYPE_KEYWORDS <= KEYWORDS
 
 

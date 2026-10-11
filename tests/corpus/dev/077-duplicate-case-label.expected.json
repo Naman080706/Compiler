@@ -1,0 +1,15 @@
+{
+  "description": "A switch with two 'case 1:' labels.",
+  "split": "dev",
+  "injected_faults": [
+  "line 12: second 'case 1:'"
+],
+  "roots": [
+    {"code": "SEM-DUPLICATE-CASE", "line": 12}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: duplicate case value."
+}

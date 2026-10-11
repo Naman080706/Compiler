@@ -1,0 +1,15 @@
+{
+  "description": "Declares a variable of struct Node, which is only forward-declared.",
+  "split": "dev",
+  "injected_faults": [
+  "line 6: variable of incomplete type"
+],
+  "roots": [
+    {"code": "SEM-INCOMPLETE-TYPE", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: storage size of 'first' isn't known."
+}

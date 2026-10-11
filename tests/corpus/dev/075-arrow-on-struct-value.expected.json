@@ -1,0 +1,15 @@
+{
+  "description": "Uses b->width where b is a struct value, not a pointer.",
+  "split": "dev",
+  "injected_faults": [
+  "line 10: '->' on a struct value"
+],
+  "roots": [
+    {"code": "SEM-ARROW-ON-NON-POINTER", "line": 10}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: invalid type argument of '->'."
+}

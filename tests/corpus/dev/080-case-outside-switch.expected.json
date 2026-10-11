@@ -1,0 +1,15 @@
+{
+  "description": "A case label inside an if, not inside a switch.",
+  "split": "dev",
+  "injected_faults": [
+  "line 6: 'case 1:' outside a switch"
+],
+  "roots": [
+    {"code": "SEM-CASE-OUTSIDE-SWITCH", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: case label not within a switch statement."
+}

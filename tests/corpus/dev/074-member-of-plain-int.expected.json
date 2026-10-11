@@ -1,0 +1,15 @@
+{
+  "description": "Uses total.value on a plain int.",
+  "split": "dev",
+  "injected_faults": [
+  "line 5: member access on an int"
+],
+  "roots": [
+    {"code": "SEM-MEMBER-ON-NON-STRUCT", "line": 5}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: request for member in something not a structure or union."
+}

@@ -75,7 +75,7 @@ def test_records_are_deterministic(split, c_path):
 @pytest.mark.parametrize("split,c_path", _c_files("valid"), ids=[p.name for _, p in _c_files("valid")])
 def test_valid_programs_report_exactly_their_expected_warnings(split, c_path):
     side = _sidecar(c_path)
-    result = compile_source(c_path.read_text(encoding="utf-8"), c_path.name)
+    result = compile_source(c_path.read_text(encoding="utf-8"), c_path.name, engine="cea")
     assert sorted((r.code, r.line) for r in result.errors) == sorted((w["code"], w["line"]) for w in side["warnings"])
 
 

@@ -31,6 +31,30 @@ MAIN0 = "int main(void) {\n    return 0;\n}\n"
 # (code, source, full expected [(code, line, col)] list, message of the first record)
 # -- the catalog's "Example trigger" placed in a minimal program
 CODE_CASES = [
+    ("SEM-DEREF-NON-POINTER", "int main(void) {\n    int x = 1;\n    *x = 2;\n    return x;\n}\n",
+     [("SEM-DEREF-NON-POINTER", 3, 5)], "Cannot dereference 'x': int is not a pointer"),
+    ("SEM-ADDR-OF-NON-LVALUE", "int main(void) {\n    int x = 1;\n    int *p = &(x + 1);\n    return *p;\n}\n",
+     [("SEM-ADDR-OF-NON-LVALUE", 3, 14)], "Cannot take the address of 'x + 1': it is not a variable or memory location"),
+    ("SEM-NO-SUCH-MEMBER", "struct Point { int x; int y; };\nint main(void) {\n    struct Point p;\n    p.z = 3;\n    return p.x;\n}\n",
+     [("SEM-NO-SUCH-MEMBER", 4, 7)], "struct Point has no member named 'z'"),
+    ("SEM-MEMBER-ON-NON-STRUCT", "int main(void) {\n    int n = 1;\n    n.x = 1;\n    return n;\n}\n",
+     [("SEM-MEMBER-ON-NON-STRUCT", 3, 5)], "Cannot access member 'x' of int: it is not a struct or union"),
+    ("SEM-ARROW-ON-NON-POINTER", "struct Point { int x; };\nint main(void) {\n    struct Point p;\n    p->x = 1;\n    return p.x;\n}\n",
+     [("SEM-ARROW-ON-NON-POINTER", 4, 5)], "'->' needs a pointer to a struct or union, but this is struct Point (use '.' for member 'x')"),
+    ("SEM-INCOMPLETE-TYPE", "struct Node;\nint main(void) {\n    struct Node n;\n    return 0;\n}\n",
+     [("SEM-INCOMPLETE-TYPE", 3, 17)], "'n' has incomplete type struct Node: the struct is declared but never defined"),
+    ("SEM-ASSIGN-TO-CONST", "int main(void) {\n    const int n = 1;\n    n = 2;\n    return n;\n}\n",
+     [("SEM-ASSIGN-TO-CONST", 3, 5)], "Cannot assign to 'n': it is read-only (const)"),
+    ("SEM-DUPLICATE-CASE", "int main(void) {\n    int n = 1;\n    switch (n) {\n        case 1: n = 2; break;\n        case 1: n = 3; break;\n    }\n    return n;\n}\n",
+     [("SEM-DUPLICATE-CASE", 5, 14)], "Duplicate case label 1 (first used on line 4)"),
+    ("SEM-CASE-NOT-CONSTANT", "int main(void) {\n    int n = 1;\n    int k = 2;\n    switch (n) {\n        case k: n = 2; break;\n    }\n    return n;\n}\n",
+     [("SEM-CASE-NOT-CONSTANT", 5, 14)], "A case label must be an integer constant expression"),
+    ("SEM-SWITCH-NON-INT", "int main(void) {\n    double d = 1.5;\n    switch (d) {\n        default: break;\n    }\n    return 0;\n}\n",
+     [("SEM-SWITCH-NON-INT", 3, 13)], "A switch needs an integer expression but this is double"),
+    ("SEM-CASE-OUTSIDE-SWITCH", "int main(void) {\n    case 1: ;\n    return 0;\n}\n",
+     [("SEM-CASE-OUTSIDE-SWITCH", 2, 5)], "'case' can only be used inside a switch"),
+    ("WRN-INCOMPATIBLE-POINTER", "int main(void) {\n    double d = 1.5;\n    int *p = &d;\n    return *p;\n}\n",
+     [("WRN-INCOMPATIBLE-POINTER", 3, 10)], "Incompatible pointer types: double* used where int* is expected"),
     ("SEM-UNDECLARED-VAR", "int main(void) {\n    y = 3;\n    return 0;\n}\n",
      [("SEM-UNDECLARED-VAR", 2, 5)],
      "Variable 'y' is used before it is declared"),
@@ -69,22 +93,22 @@ CODE_CASES = [
      "Function 'g' returns int but this returns nothing"),
     ("SEM-NOT-ARRAY", "int main(void) {\n    int x = 1;\n    x[0] = 1;\n    return x;\n}\n",
      [("SEM-NOT-ARRAY", 3, 5)],
-     "'x' is not an array and cannot be indexed"),
+     "'x' is not an array or pointer and cannot be indexed"),
     ("SEM-INDEX-NOT-INT", "int main(void) {\n    int a[3];\n    a[1.5] = 2;\n    return a[0];\n}\n",
      [("SEM-INDEX-NOT-INT", 3, 7)],
      'Array index must be an integer but has type double'),
     ("SEM-BAD-ARRAY-SIZE", "int main(void) {\n    int n = 3;\n    int a[n];\n    a[0] = n;\n    return a[0];\n}\n",
      [("SEM-BAD-ARRAY-SIZE", 3, 11)],
-     'Array size must be an integer literal greater than 0'),
+     'Array size must be a constant integer greater than 0'),
     ("SEM-BREAK-OUTSIDE-LOOP", "int main(void) {\n    if (1) {\n        break;\n    }\n    return 0;\n}\n",
      [("SEM-BREAK-OUTSIDE-LOOP", 3, 9)],
      "'break' can only be used inside a loop"),
     ("SEM-NONCONST-GLOBAL-INIT", "int x = 4;\nint y = x + 1;\nint main(void) {\n    return y;\n}\n",
      [("SEM-NONCONST-GLOBAL-INIT", 2, 9)],
-     'A global variable must be initialised with a literal'),
+     'A global variable must be initialised with a constant expression'),
     ("SEM-PRINTF-FORMAT", "#include <stdio.h>\nint main(void) {\n    int x = 1;\n    printf(x);\n    return 0;\n}\n",
      [("SEM-PRINTF-FORMAT", 4, 5)],
-     'The first argument of printf must be a string literal'),
+     'The first argument of printf must be a string (a string literal or a char array or pointer)'),
     ("SEM-MISSING-MAIN", "void g(void) {\n}\n",
      [("SEM-MISSING-MAIN", 2, 2)],
      "Program has no 'int main()' function"),
@@ -137,9 +161,10 @@ def test_printf_redeclared_after_include():
     assert table(src) == [("SEM-REDECLARED", 2, 5)]
 
 
-def test_printf_extra_arguments_must_be_arithmetic():
-    src = "#include <stdio.h>\nint main(void) {\n    printf(\"%d %s\", 1, \"x\");\n    return 0;\n}\n"
-    assert table(src) == [("SEM-ARG-TYPE", 3, 5)]
+def test_printf_extra_arguments_must_be_numbers_or_pointers():
+    src = ("#include <stdio.h>\nstruct P { int x; };\nint main(void) {\n    struct P p;\n    p.x = 1;\n"
+           "    printf(\"%d %s\", 1, \"x\");\n    printf(\"%d\", p);\n    return 0;\n}\n")
+    assert table(src) == [("SEM-ARG-TYPE", 7, 5)]
 
 
 # ---------------------------------------------------------------- scopes
@@ -213,8 +238,9 @@ def test_narrowing_on_assignment_compound_return_and_argument():
                           ("WRN-IMPLICIT-NARROWING", 10, 7), ("WRN-IMPLICIT-NARROWING", 11, 9)]
 
 
-def test_string_condition_is_a_type_mismatch():
-    assert table("int main(void) {\n    if (\"yes\") {\n        return 1;\n    }\n    return 0;\n}\n") == [("SEM-TYPE-MISMATCH", 2, 9)]
+def test_struct_condition_is_a_type_mismatch():
+    src = "struct P { int x; };\nint main(void) {\n    struct P p;\n    p.x = 1;\n    if (p) {\n        return 1;\n    }\n    return 0;\n}\n"
+    assert table(src) == [("SEM-TYPE-MISMATCH", 5, 9)]
 
 
 def test_void_variable_and_void_operand():
@@ -280,7 +306,7 @@ def test_r3_global_initializer_error_expr():
 
 
 def test_r3_array_size_error_expr():
-    recs = records("int main(void) {\n    int a[];\n    return 0;\n}\n")
+    recs = records("int main(void) {\n    int a[;\n    return 0;\n}\n")
     assert [(r.code, r.caused_by) for r in recs][:2] == [("SYN-EXPECTED-EXPRESSION", None),
                                                         ("SEM-BAD-ARRAY-SIZE", "E-0001")]
 

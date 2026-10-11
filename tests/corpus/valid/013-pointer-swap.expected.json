@@ -1,0 +1,11 @@
+{
+  "description": "Swaps two ints through pointers, sums an array through a const int pointer and walks a pointer.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Pointers: &, *, pointer arithmetic (p++), const int * parameter, array decay in a call."
+}

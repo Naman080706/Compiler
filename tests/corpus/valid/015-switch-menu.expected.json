@@ -1,0 +1,11 @@
+{
+  "description": "Two switch statements: grouped case labels, break, and a fall-through into default.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "switch/case/default; was a SYN-UNSUPPORTED-FEATURE program before course-level C."
+}

@@ -16,10 +16,10 @@ def test_dev_metrics_totals():
     proc = _run()
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout.splitlines()
-    assert out[0] == "F2 metric, split=dev, cascade set = 15 programs"
-    assert "TOTAL raw=50 displayed=20 reduction=60.0%" in out
-    assert "SINGLE-FAULT raw=40 displayed=11 reduction=72.5%" in out
-    assert "part (b): 11/11 single-fault programs display exactly 1 root" in out
+    assert out[0] == "F2 metric, split=dev, cascade set = 16 programs"
+    assert "TOTAL raw=57 displayed=21 reduction=63.2%" in out
+    assert "SINGLE-FAULT raw=47 displayed=12 reduction=74.5%" in out
+    assert "part (b): 12/12 single-fault programs display exactly 1 root" in out
     assert out[-1] == "mismatches: 0"
 
 

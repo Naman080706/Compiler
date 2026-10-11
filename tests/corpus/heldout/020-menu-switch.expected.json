@@ -1,15 +1,11 @@
 {
-  "description": "Prints a day name from a menu number using a switch statement, which the subset does not support.",
+  "description": "Prints a day name from a menu number using a switch statement (supported since course-level C).",
   "split": "heldout",
-  "injected_faults": [
-    "line 6: 'switch' statements are not supported"
-  ],
-  "roots": [
-    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 6}
-  ],
+  "injected_faults": [],
+  "roots": [],
   "warnings": [],
-  "cascading": true,
-  "fixable": true,
+  "cascading": false,
+  "fixable": false,
   "gcc_rejects": false,
-  "notes": "Expected under plan 004: raw 8. SYN-UNSUPPORTED-FEATURE 6 (caused_by: none), SYN-UNSUPPORTED-FEATURE 7 (caused_by: R2), SYN-UNSUPPORTED-FEATURE 10 (caused_by: R9), SYN-UNSUPPORTED-FEATURE 13 (caused_by: R9), SYN-UNSUPPORTED-FEATURE 16 (caused_by: R9), SEM-BREAK-OUTSIDE-LOOP 9 (caused_by: R7), SEM-BREAK-OUTSIDE-LOOP 12 (caused_by: R7), SEM-BREAK-OUTSIDE-LOOP 15 (caused_by: R7). Displayed 1. Panic after 'switch' stops before '{' (orphan block, ErrorStmt kind_hint unsupported). 'case 1' is reached while that region is open, so R2 links it; its panic consumes a ';', closing the region. 'case 2', 'case 3' and 'default' are then linked by R9 (innermost block is an orphan of the unsupported ErrorStmt). The three 'break;' statements are in that orphan block with no real loop between, so R7 links them. Assumes case/default are UNSUPPORTED_KEYWORDs (language-spec section 1). gcc accepts the file, so gcc_rejects is false."
+  "notes": "NOW VALID: this program used a switch, which was SYN-UNSUPPORTED-FEATURE under the strict subset. Sidecar updated for that reason only; the C file is unchanged. gcc accepts the file."
 }

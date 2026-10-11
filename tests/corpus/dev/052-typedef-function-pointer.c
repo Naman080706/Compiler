@@ -1,18 +1,13 @@
 #include <stdio.h>
 
+typedef int (*binop)(int, int);
+
+int mul(int a, int b) {
+    return a * b;
+}
+
 int main(void) {
-    int band = 2;
-    int points = 87;
-    switch (band) {
-        case 1:
-            printf("excellent: %d\n", points);
-            break;
-        case 2:
-            printf("good: %d\n", points);
-            break;
-        default:
-            printf("review: %d\n", points);
-    }
-    printf("band %d, points %d\n", band, points);
+    binop f = mul;
+    printf("product = %d\n", f(6, 7));
     return 0;
 }

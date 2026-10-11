@@ -1,0 +1,15 @@
+{
+  "description": "Dereferences a plain int with *count.",
+  "split": "dev",
+  "injected_faults": [
+  "line 6: '*count' where count is an int"
+],
+  "roots": [
+    {"code": "SEM-DEREF-NON-POINTER", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: invalid type argument of unary '*'."
+}

@@ -1,0 +1,11 @@
+{
+  "description": "An array of string pointers, a char ** variable, pointer subtraction and comparison with NULL.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "const char *words[] with an initialiser list, char **, pointer difference (end - buffer)."
+}

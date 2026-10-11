@@ -1,14 +1,13 @@
 #include <stdio.h>
 
 int main(void) {
-    const int LIMIT = 5;
+    int total = 0;
     int i;
-    int row;
-    for (row = 1; row <= LIMIT; row++) {
-        for (i = 1; i <= LIMIT; i++) {
-            printf("%d ", row * i);
-        }
-        printf("\n");
+    for (i = 0; i < 5; i++) {
+        total += i;
+        if (total > 5) goto done;
     }
+done:
+    printf("total = %d\n", total);
     return 0;
 }
