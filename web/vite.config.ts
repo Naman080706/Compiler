@@ -8,8 +8,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    // The UI talks only to /api/*; the FastAPI backend (plan 012) runs on 127.0.0.1:8000.
-    proxy: { "/api": { target: "http://127.0.0.1:8000", changeOrigin: false } },
+    // The UI talks only to /api/*; the FastAPI backend (plan 012) runs on 127.0.0.1:8000
+    // unless CEA_API_URL points elsewhere (e.g. when port 8000 is taken).
+    proxy: { "/api": { target: process.env.CEA_API_URL ?? "http://127.0.0.1:8000", changeOrigin: false } },
   },
   build: { chunkSizeWarningLimit: 8000 },
   test: {

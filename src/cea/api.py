@@ -107,9 +107,16 @@ def get_profiles() -> ProfileStore:
 
 
 def fix_timeout() -> float:
-    """Overall F8 time budget in seconds: CEA_FIX_TIMEOUT, default 10."""
+    """Overall F8 time budget in seconds: CEA_FIX_TIMEOUT (environment, then .env), default 10.
+
+    Local models need more: each attempt can take 6-10 s, so set e.g. CEA_FIX_TIMEOUT=60 for Ollama.
+    """
+    from cea.llm.config import DEFAULT_ENV_FILE, read_env_file
+    raw = os.environ.get("CEA_FIX_TIMEOUT")
+    if raw is None:
+        raw = read_env_file(DEFAULT_ENV_FILE).get("CEA_FIX_TIMEOUT", DEFAULT_TIMEOUT) if DEFAULT_ENV_FILE.exists() else DEFAULT_TIMEOUT
     try:
-        value = float(os.environ.get("CEA_FIX_TIMEOUT", DEFAULT_TIMEOUT))
+        value = float(raw)
     except ValueError:
         return DEFAULT_TIMEOUT
     return value if value > 0 else DEFAULT_TIMEOUT
