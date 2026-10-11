@@ -30,3 +30,4 @@ Thumbs.db
 # Web UI (plan 013)
 web/node_modules/
 web/dist/
+.cea_data/

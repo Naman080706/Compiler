@@ -1,9 +1,12 @@
 """FastAPI backend for the web UI (plan 012, plans/m2-architecture.md section 3).
 
 Endpoints (all JSON):
-    POST /api/compile  {source}                      -> {ok, summary, records, clusters}
-    POST /api/explain  {source, record_id, mode, verbosity} -> Explanation (with citations)
-    POST /api/fix      {source, record_id}           -> {diff, patched_source, verified}
+    POST /api/compile  {source, student_id?, session_id?} -> {ok, summary, records, clusters}
+    POST /api/explain  {source, record_id, mode, verbosity?, student_id?} -> Explanation (with citations)
+    POST /api/fix      {source, record_id}           -> {diff, patched_source, verified, attempts, reason}
+                                                        (F8: a diff only when verified; otherwise diff is "")
+    GET    /api/profile/{id}                         -> the student's error-category counts (F9)
+    DELETE /api/profile/{id}                         -> reset (delete) that profile
     POST /api/ask      {source, record_id, question, history} -> {text, refused}
     GET  /api/health                                 -> {status, llm}
 
@@ -24,6 +27,7 @@ Run (from the project root):
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated, Literal, TypeVar
@@ -35,7 +39,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from cea.agent import Agent
 from cea.llm import ExplanationCache, FallbackClient, client_from_env
 from cea.pipeline import CompileResult, compile_source
+from cea.profile import STUDENT_ID_RE, ProfileStore, category_of, choose_depth
 from cea.records import ErrorRecord
+from cea.verifier import DEFAULT_TIMEOUT, verify_fix
 
 MAX_SOURCE_BYTES = 64 * 1024          # contract section 3: "The source is size-limited (64 KB)"
 MAX_QUESTION_CHARS = 1000
@@ -47,13 +53,19 @@ logger = logging.getLogger("cea.api")
 T = TypeVar("T")
 
 app = FastAPI(title="Compiler Error Assistant API", version="0.1.0")
-app.add_middleware(CORSMiddleware, allow_origins=[DEV_ORIGIN], allow_methods=["GET", "POST"],
+app.add_middleware(CORSMiddleware, allow_origins=[DEV_ORIGIN], allow_methods=["GET", "POST", "DELETE"],
                    allow_headers=["Content-Type"])
+
+
+ID_PATTERN = STUDENT_ID_RE.pattern
 
 
 class CompileRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")      # filename, student name, ... are dropped here
     source: str
+    # F9: pseudonymous random tokens made by the browser. Only the profile store sees them, never the LLM.
+    student_id: str | None = Field(default=None, pattern=ID_PATTERN)
+    session_id: str | None = Field(default=None, pattern=ID_PATTERN)
 
 
 class FixRequest(CompileRequest):
@@ -62,7 +74,8 @@ class FixRequest(CompileRequest):
 
 class ExplainRequest(FixRequest):
     mode: Literal["short", "expand"] = "short"
-    verbosity: Literal["beginner", "expert"] = "beginner"
+    # None = automatic (F9 with a student_id, else "beginner"); an explicit F5 choice always wins
+    verbosity: Literal["beginner", "expert"] | None = None
 
 
 class HistoryTurn(BaseModel):
@@ -81,6 +94,25 @@ class AskRequest(FixRequest):
 def _env_agent() -> Agent:
     """The production agent, built once from plan 010's configuration, with the on-disk explanation cache."""
     return Agent(client_from_env(), cache=ExplanationCache())
+
+
+@lru_cache(maxsize=1)
+def _env_profiles() -> ProfileStore:
+    return ProfileStore()
+
+
+def get_profiles() -> ProfileStore:
+    """FastAPI dependency: the F9 profile store (tests override it with a temp-file store)."""
+    return _env_profiles()
+
+
+def fix_timeout() -> float:
+    """Overall F8 time budget in seconds: CEA_FIX_TIMEOUT, default 10."""
+    try:
+        value = float(os.environ.get("CEA_FIX_TIMEOUT", DEFAULT_TIMEOUT))
+    except ValueError:
+        return DEFAULT_TIMEOUT
+    return value if value > 0 else DEFAULT_TIMEOUT
 
 
 def get_agent() -> Agent:
@@ -137,11 +169,20 @@ def _call_agent(call: Callable[..., T], *args: object) -> T:
 
 
 AgentDep = Annotated[Agent, Depends(get_agent)]
+ProfilesDep = Annotated[ProfileStore, Depends(get_profiles)]
+
+
+def _profile_id(student_id: str) -> str:
+    if not STUDENT_ID_RE.fullmatch(student_id):
+        raise HTTPException(status_code=422, detail="Invalid student id.")
+    return student_id
 
 
 @app.post("/api/compile")
-def compile_endpoint(req: CompileRequest) -> dict:
+def compile_endpoint(req: CompileRequest, profiles: ProfilesDep) -> dict:
     result = _compile(req.source)
+    if req.student_id:
+        profiles.record_compile(req.student_id, req.session_id, [c.root for c in result.clusters])
     return {"ok": result.ok, "summary": result.summary(),
             "records": [r.to_dict() for r in result.errors],
             "clusters": [{"root_id": c.root.id, "symptom_ids": [s.id for s in c.symptoms]}
@@ -149,18 +190,35 @@ def compile_endpoint(req: CompileRequest) -> dict:
 
 
 @app.post("/api/explain")
-def explain_endpoint(req: ExplainRequest, agent: AgentDep) -> dict:
+def explain_endpoint(req: ExplainRequest, agent: AgentDep, profiles: ProfilesDep) -> dict:
     record = _record(_compile(req.source), req.record_id)
-    exp = _call_agent(agent.explain, record, req.source, req.mode, req.verbosity)
-    return {"text": exp.text, "rule_ref": exp.rule_ref, "cited_rule": exp.cited_rule, "mode": exp.mode,
-            "verbosity": exp.verbosity, "citations": list(exp.citations)}
+    personal = None
+    if req.student_id:                     # F9: the id picks the depth here and goes no further
+        category = category_of(record)
+        hits = profiles.hits(req.student_id, category)
+        verbosity, example = choose_depth(req.verbosity, hits)
+        personal = {"category": category, "hits": hits, "depth": "full" if example else "terse",
+                    "override": req.verbosity is not None}
+    else:
+        verbosity, example = req.verbosity or "beginner", False
+    args = (record, req.source, req.mode, verbosity) + ((True,) if example else ())
+    exp = _call_agent(agent.explain, *args)
+    out = {"text": exp.text, "rule_ref": exp.rule_ref, "cited_rule": exp.cited_rule, "mode": exp.mode,
+           "verbosity": exp.verbosity, "citations": list(exp.citations)}
+    if personal is not None:
+        out["personalised"] = personal
+    return out
 
 
 @app.post("/api/fix")
 def fix_endpoint(req: FixRequest, agent: AgentDep) -> dict:
     record = _record(_compile(req.source), req.record_id)
-    fix = _call_agent(agent.suggest_fix, record, req.source)
-    return {"diff": fix.diff, "patched_source": fix.patched_source, "verified": bool(fix.verified)}
+    fix = _call_agent(lambda: verify_fix(agent, record, req.source, timeout=fix_timeout()))
+    if not fix.verified:                   # F8: an unverified fix is never sent as a fix
+        return {"diff": "", "patched_source": req.source, "verified": False, "attempts": fix.attempts,
+                "reason": fix.reason}
+    return {"diff": fix.diff, "patched_source": fix.patched_source, "verified": True, "attempts": fix.attempts,
+            "reason": fix.reason}
 
 
 @app.post("/api/ask")
@@ -169,6 +227,17 @@ def ask_endpoint(req: AskRequest, agent: AgentDep) -> dict:
     history = [t.model_dump() for t in req.history]
     answer = _call_agent(agent.ask, record, req.source, req.question, history)
     return {"text": answer.text, "refused": bool(answer.refused)}
+
+
+@app.get("/api/profile/{student_id}")
+def profile_endpoint(student_id: str, profiles: ProfilesDep) -> dict:
+    return profiles.view(_profile_id(student_id))
+
+
+@app.delete("/api/profile/{student_id}")
+def profile_reset_endpoint(student_id: str, profiles: ProfilesDep) -> dict:
+    profiles.reset(_profile_id(student_id))
+    return profiles.view(student_id)
 
 
 @app.get("/api/health")

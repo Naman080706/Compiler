@@ -55,11 +55,11 @@ def test_explain_expand(fake, src_file, capsys):
     assert fake.calls[0]["messages"][1]["content"].startswith("Mode: expand\n")
 
 
-def test_fix_prints_unverified_header_and_diff(fake, src_file, capsys):
+def test_fix_prints_verified_header_and_diff(fake, src_file, capsys):
     code = cli.main([str(src_file), "--fix", "--no-cache"])
     out = capsys.readouterr().out.splitlines()
     assert code == 1
-    assert out[1] == "    --- UNVERIFIED fix suggestion (not re-checked by the compiler) ---"
+    assert out[1] == "    " + cli.VERIFIED_HEADER
     assert out[2:5] == ["    --- original", "    +++ suggested", "    @@ -1,5 +1,5 @@"]
     assert "    -    total = total + 1" in out and "    +    total = total + 1;" in out
     assert out[-1] == "1 fatal, 0 warnings"
@@ -81,7 +81,8 @@ def test_json_includes_agent_results(fake, src_file, capsys):
     assert item["explanation"] == {"text": "A ';' is missing at the end of line 3. Add it.",
                                    "rule_ref": "expr_stmt", "cited_rule": "expr_stmt", "mode": "short",
                                    "verbosity": "beginner", "citations": ["rule:expr_stmt"]}
-    assert item["fix"]["verified"] is False and item["fix"]["diff"].startswith("--- original\n")
+    assert item["fix"]["verified"] is True and item["fix"]["diff"].startswith("--- original\n")
+    assert item["fix"]["attempts"] == 1
 
 
 def test_json_without_agent_flags_has_no_agent_key(src_file, capsys):
@@ -111,3 +112,14 @@ def test_cache_is_used_without_no_cache(monkeypatch, fake, src_file, tmp_path, c
     cli.main([str(src_file), "--explain"])
     cli.main([str(src_file), "--explain"])
     assert len(fake.calls) == 1 and (tmp_path / "cache.json").is_file()
+
+
+def test_fix_that_cannot_be_verified_prints_no_fix_note(monkeypatch, src_file, capsys):
+    llm = FakeLLM(default=json.dumps({"start_line": 3, "end_line": 3, "replacement": ["    total = total + 1"]}))
+    monkeypatch.setattr(cli, "client_from_env", lambda: llm)
+    cli.main([str(src_file), "--fix", "--no-cache"])
+    out = capsys.readouterr().out
+    assert "    No verified fix found; see explanation" in out and "Verified fix" not in out and "UNVERIFIED" not in out
+    cli.main([str(src_file), "--json", "--fix", "--no-cache"])
+    fix = json.loads(capsys.readouterr().out)["agent"][0]["fix"]
+    assert fix["verified"] is False and fix["diff"] == "" and fix["patched_source"] == "" and fix["attempts"] == 3

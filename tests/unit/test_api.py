@@ -12,6 +12,7 @@ from cea.agent import Agent, Answer, Explanation, FixSuggestion
 from cea.llm import FakeLLM
 from cea.llm import client_from_env as real_client_from_env
 from cea.pipeline import compile_source
+from cea.profile import ProfileStore
 from cea.records import ErrorRecord
 
 SRC_OK = "int main(void) {\n    return 0;\n}\n"
@@ -37,9 +38,13 @@ class SpyAgent:
         return Explanation(text=f"why {record.id}", rule_ref=record.rule_ref, cited_rule=None, mode=mode,
                            verbosity=verbosity, citations=["rule:" + record.rule_ref])
 
-    def suggest_fix(self, record, source):
+    def suggest_fix(self, record, source, feedback=None, store=True):
         self.calls.append(("fix", record, source))
-        return FixSuggestion(diff="--- a/input.c\n+++ b/input.c\n", patched_source=source + "\n")
+        patched = source.replace("    x = 1;", "    int x = 1;").replace(" @ ", " * ")     # a genuine fix for the test sources
+        return FixSuggestion(diff=Agent.unified_diff(source, patched), patched_source=patched)
+
+    def remember_fix(self, record, source, fix):
+        pass
 
     def ask(self, record, source, question, history=None):
         self.calls.append(("ask", record, source, question, history))
@@ -69,7 +74,8 @@ class RecordingLLM:
 
 
 @pytest.fixture
-def client():
+def client(tmp_path):
+    api.app.dependency_overrides[api.get_profiles] = lambda: ProfileStore(tmp_path / "profiles.sqlite3")
     yield TestClient(api.app)
     api.app.dependency_overrides.clear()
     api._env_agent.cache_clear()
@@ -233,12 +239,23 @@ def test_explain_mode_defaults_to_short(client, spy):
     assert resp.status_code == 200 and resp.json()["mode"] == "short"
 
 
-def test_fix_is_never_verified(client, spy):
+def test_fix_is_shown_only_when_verified(client, spy):
     resp = client.post("/api/fix", json=body("/api/fix", SRC_CASCADE))
     assert resp.status_code == 200
-    assert resp.json() == {"diff": "--- a/input.c\n+++ b/input.c\n", "patched_source": SRC_CASCADE + "\n",
-                           "verified": False}
+    data = resp.json()
+    patched = SRC_CASCADE.replace(" @ ", " * ")
+    assert data == {"diff": Agent.unified_diff(SRC_CASCADE, patched), "patched_source": patched,
+                    "verified": True, "attempts": 1, "reason": data["reason"]}
     assert [(c[0], c[1].code) for c in spy.calls] == [("fix", "LEX-INVALID-CHAR")]
+
+
+def test_unverified_fix_is_withheld(client, spy):
+    """The spy's edit does not fix SRC_WARNING's root, so there is no root; use a source it cannot fix."""
+    src = "int main(void) {\n    int x = 5 # 2;\n    return x;\n}\n"
+    resp = client.post("/api/fix", json=body("/api/fix", src))
+    data = resp.json()
+    assert resp.status_code == 200 and data["verified"] is False
+    assert data["diff"] == "" and data["patched_source"] == src and data["attempts"] == 3 and data["reason"]
 
 
 def test_ask(client, spy):
@@ -279,8 +296,9 @@ def fake_agent():
     return llm
 
 
-@pytest.mark.parametrize("path,keys", [("/api/explain", {"text", "rule_ref", "cited_rule", "mode", "verbosity", "citations"}),
-                                       ("/api/fix", {"diff", "patched_source", "verified"}),
+@pytest.mark.parametrize("path,keys", [("/api/explain", {"text", "rule_ref", "cited_rule", "mode", "verbosity", "citations",
+                                                         "personalised"}),
+                                       ("/api/fix", {"diff", "patched_source", "verified", "attempts", "reason"}),
                                        ("/api/ask", {"text", "refused"})])
 def test_real_agent_over_fake_llm(client, fake_agent, path, keys):
     resp = client.post(path, json=body(path, SRC_UNDECLARED, **PRIVATE))
@@ -343,4 +361,4 @@ def test_exactly_the_contract_routes(client):
     paths = client.get("/openapi.json").json()["paths"]
     assert {(p, m) for p, ops in paths.items() for m in ops} == {
         ("/api/compile", "post"), ("/api/explain", "post"), ("/api/fix", "post"), ("/api/ask", "post"),
-        ("/api/health", "get")}
+        ("/api/health", "get"), ("/api/profile/{student_id}", "get"), ("/api/profile/{student_id}", "delete")}
