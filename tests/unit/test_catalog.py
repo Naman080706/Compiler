@@ -54,8 +54,7 @@ def test_production_rows():
 @pytest.mark.parametrize("code,template", [
     ("LEX-INVALID-CHAR", "Unexpected character '{found}'"),
     ("LEX-UNSUPPORTED-DIRECTIVE", "Only '#include <stdio.h>' is supported; '{found}' is not"),
-    ("SYN-UNBALANCED-BRACKET",
-     "Expected '{expected}' to close '{opener}' from line {open_line} but found '{found}'"),
+    ("SYN-UNBALANCED-BRACKET", "Unbalanced bracket at '{found}': {detail}"),
     ("SYN-EXPECTED-TOKEN", "Expected {expected} but found '{found}'"),
     ("WRN-ASSIGN-IN-CONDITION", "Assignment used as a condition; did you mean '=='?"),
 ])

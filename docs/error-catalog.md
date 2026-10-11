@@ -27,7 +27,7 @@ This file is the single source of truth for every diagnostic the compiler can em
 | LEX-INVALID-ESCAPE | lexical | fatal | malformed-token | `escape` | Unknown escape sequence '{found}' | `printf("a\q");` |
 | LEX-UNSUPPORTED-DIRECTIVE | lexical | fatal | syntax-structure | `directive` | Only '#include <stdio.h>' is supported; '{found}' is not | `#define N 10` |
 | SYN-MISSING-SEMICOLON | syntax | fatal | missing-semicolon | `<production>` | Expected ';' after {context} but found '{found}' | `int x = 5` then next line |
-| SYN-UNBALANCED-BRACKET | syntax | fatal | unclosed-delimiter | `<production>` | Expected '{expected}' to close '{opener}' from line {open_line} but found '{found}' | `if (x > 1 { }` |
+| SYN-UNBALANCED-BRACKET | syntax | fatal | unclosed-delimiter | `<production>` | Unbalanced bracket at '{found}': {detail} | `if (x > 1 { }` |
 | SYN-EXPECTED-TOKEN | syntax | fatal | syntax-structure | `<production>` | Expected {expected} but found '{found}' | `while x > 1) { }` |
 | SYN-EXPECTED-EXPRESSION | syntax | fatal | syntax-structure | `<production>` | Expected an expression but found '{found}' | `int x = ;` |
 | SYN-EXPECTED-TYPE | syntax | fatal | syntax-structure | `<production>` | Expected a type (int, float, double, char, void) but found '{found}' | `int f(a) { }` |

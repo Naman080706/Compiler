@@ -240,13 +240,7 @@ class Parser:
             r = self.rules[-1] if self.rules else "program"
             return {"context": "the expression" if r in EXPRESSION_RULES else RULE_PHRASES.get(r, "the " + r.replace("_", " "))}
         if code == "SYN-UNBALANCED-BRACKET":
-            want = OPENER_OF.get(expected[0]) if expected and expected[0] in OPENER_OF else None
-            if want is None:                                  # rule 3 via a stray closer
-                return {"opener": OPENER_OF.get(tok.text, "?"), "open_line": "?"}
-            for b in reversed(self.brackets):
-                if b.text == want:
-                    return {"opener": b.text, "open_line": b.line}
-            return {"opener": want, "open_line": "?"}
+            return {"detail": self.bracket_detail(tok, expected)}
         if code == "SYN-UNSUPPORTED-FEATURE":
             if tok.text == "*":
                 return {"feature": "A pointer ('*' after a type)"}
@@ -254,6 +248,22 @@ class Parser:
                 return {"feature": f"The operator '{tok.text}'"}
             return {"feature": f"'{tok.text}'"}
         return {}
+
+    def bracket_detail(self, tok: Token, expected: list[str]) -> str:
+        """The {detail} of SYN-UNBALANCED-BRACKET (plan 008).
+
+        Missing closer (the expected set is a closing bracket): name the innermost
+        open opener and its line. Stray closer (catalog rule 3, second clause):
+        say that nothing opened it.
+        """
+        closer = expected[0] if expected and expected[0] in OPENER_OF else None
+        if closer is None:                                    # rule 3 via a stray closer
+            return "nothing opened it"
+        want = OPENER_OF[closer]
+        for b in reversed(self.brackets):
+            if b.text == want:
+                return f"expected '{closer}' to close '{want}' from line {b.line}"
+        return f"expected '{closer}' but no '{want}' is open"
 
     def report(self, code: str, tok: Token, expected: list[str], *,
                at: tuple[int, int] | None = None) -> str:

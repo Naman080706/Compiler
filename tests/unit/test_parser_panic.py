@@ -89,6 +89,7 @@ def test_stray_closing_brace_at_top_level():
     prog, recs = parse_src("int main(void) { return 0; }\n}\nint g;\n")
     assert rows(recs) == [("E-0001", "SYN-UNBALANCED-BRACKET", "2:1", "}", None)]
     assert recs[0].rule_ref == "type_spec"
+    assert recs[0].message == "Unbalanced bracket at '}': nothing opened it"
     assert [type(d).__name__ for d in prog.decls] == ["FunctionDecl", "ErrorStmt", "VarDeclStmt"]
 
 
@@ -96,3 +97,4 @@ def test_brackets_opened_in_a_failed_statement_are_forgotten():
     prog, recs = parse_src(main("int x = 1;", "x = (1 + ;", ");", "return x;"))
     assert rows(recs) == [("E-0001", "SYN-EXPECTED-EXPRESSION", "3:14", ";", None),
                           ("E-0002", "SYN-UNBALANCED-BRACKET", "4:5", ")", None)]   # stray: its '(' was dropped
+    assert recs[1].message == "Unbalanced bracket at ')': nothing opened it"
