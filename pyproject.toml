@@ -8,6 +8,7 @@ requires-python = ">=3.11"
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-m 'not heldout'"
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecated:UserWarning"]   # Starlette 1.7 TestClient nudges toward httpx2; the project uses httpx (plan 012)
 markers = [
     "corpus: tests driven by the C program corpus in tests/corpus",
     "heldout: evaluation-only tests over tests/corpus/heldout (milestone 5; deselected by default)",

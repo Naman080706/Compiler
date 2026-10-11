@@ -1,0 +1,6 @@
+# Runtime dependencies of the cea package (plans/m2-architecture.md section 2).
+# The compiler core and the LLM layer (src/cea/llm/, plan 010) use the Python
+# standard library only, so this file lists no packages yet. Plan 012 adds FastAPI.
+# FastAPI backend (plan 012)
+fastapi==0.143.0
+uvicorn==0.54.0

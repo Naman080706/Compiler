@@ -1,15 +1,15 @@
 """Exact-match tests for the traced examples of docs/error-recovery.md §9 (plan 007).
 
 Each trace is compiled with ``cea.pipeline.compile_source`` and the full record
-table is compared: id, code, line:col, found, caused_by, plus the provisional
-F2 root (docs/error-recovery.md §7, "Provisional F2 root rule"), which this
-test computes itself because ``root_id`` stays equal to ``id`` until milestone 2.
+table is compared: id, code, line:col, found, caused_by and root_id. Since
+plan 009, ``root_id`` is filled by F2 clustering (``cea.cluster``), which
+implements the root rule of docs/error-recovery.md §7.
 """
 import pytest
 
 from cea.pipeline import compile_source
 
-# (name, source, [(id, code, "line:col", found, caused_by or None, provisional root)])
+# (name, source, [(id, code, "line:col", found, caused_by or None, root_id)])
 TRACES = [
     ("T1", "int main(void) {\n    int a = 1;\n    int b = 2\n    a = a + b;\n    return a;\n}\n", [
         ("E-0001", "SYN-MISSING-SEMICOLON", "3:14", "a", None, "E-0001"),
@@ -70,52 +70,27 @@ SUMMARY = {
 }
 
 
-def _function_of(rec, program):
-    """Name of the function whose span contains the record's line, or None at file scope."""
-    for d in program.decls:
-        body = getattr(d, "body", None)
-        if body is not None and d.span.start_line <= rec.line <= d.span.end_line:
-            return d.name
-    return None
-
-
-def provisional_roots(result):
-    """docs/error-recovery.md §7 'Provisional F2 root rule', as a test helper (F2 is milestone 2)."""
-    roots, first_use = {}, {}
-    for rec in result.errors:
-        if rec.caused_by:
-            roots[rec.id] = roots[rec.caused_by]
-            continue
-        if rec.code in ("SEM-UNDECLARED-VAR", "SEM-UNDECLARED-FUNC"):
-            key = (rec.code, rec.found, _function_of(rec, result.program))
-            if key in first_use:
-                roots[rec.id] = roots[first_use[key]]
-                continue
-            first_use[key] = rec.id
-        roots[rec.id] = rec.id
-    return roots
-
-
 @pytest.mark.parametrize("name,source,expected", TRACES, ids=[t[0] for t in TRACES])
 def test_trace_record_table(name, source, expected):
     result = compile_source(source, f"{name}.c")
-    roots = provisional_roots(result)
-    got = [(r.id, r.code, f"{r.line}:{r.column}", r.found, r.caused_by, roots[r.id]) for r in result.errors]
+    got = [(r.id, r.code, f"{r.line}:{r.column}", r.found, r.caused_by, r.root_id) for r in result.errors]
     assert got == expected
 
 
 @pytest.mark.parametrize("name,source,expected", TRACES, ids=[t[0] for t in TRACES])
 def test_trace_summary_row(name, source, expected):
     result = compile_source(source, f"{name}.c")
-    roots = provisional_roots(result)
     raw = len(result.errors)
-    displayed = len(set(roots.values()))
+    displayed = len(result.clusters)
     fatal = sum(r.severity == "fatal" for r in result.errors)
     warning = sum(r.severity == "warning" for r in result.errors)
     assert (raw, displayed, fatal, warning) == SUMMARY[name]
 
 
 @pytest.mark.parametrize("name,source,expected", TRACES, ids=[t[0] for t in TRACES])
-def test_trace_root_id_is_own_id_until_f2(name, source, expected):
+def test_trace_clusters_partition_the_records(name, source, expected):
     result = compile_source(source, f"{name}.c")
-    assert all(r.root_id == r.id for r in result.errors)
+    ids = [r.id for c in result.clusters for r in [c.root, *c.symptoms]]
+    assert sorted(ids) == [r.id for r in result.errors]
+    assert all(c.root.root_id == c.root.id and c.root.caused_by is None for c in result.clusters)
+    assert all(s.root_id == c.root.id for c in result.clusters for s in c.symptoms)

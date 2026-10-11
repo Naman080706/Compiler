@@ -84,6 +84,25 @@ def test_stray_closer_uses_only_matched_openers():
     assert p.select_code(p.cur, [P.EXPR]) == "SYN-EXPECTED-EXPRESSION"  # now it has an opener
 
 
+def test_bracket_detail_names_opener_or_says_nothing_opened_it():
+    p, _ = make("( x )")
+    p.match("(")                                                           # '(' on line 1 is open
+    assert p.bracket_detail(p.cur, [")"]) == "expected ')' to close '(' from line 1"
+    assert p.bracket_detail(p.cur, ["]"]) == "expected ']' but no '[' is open"
+    p.pos = 2
+    assert p.bracket_detail(p.cur, [P.EXPR]) == "nothing opened it"         # stray closer
+
+
+def test_probe_stray_closing_brace_message():
+    src = "int main(void) { return 0; }\n}\n"
+    sink = ErrorSink(src)
+    P.parse(lex(src, sink), sink)
+    (rec,) = sink.records
+    assert rec.code == "SYN-UNBALANCED-BRACKET" and (rec.line, rec.column) == (2, 1)
+    assert rec.message == "Unbalanced bracket at '}': nothing opened it"
+    assert "?" not in rec.message
+
+
 def test_caused_by_precedence_r2_then_r1_then_r9():
     p, sink = make("int main(void) { int x = 5 @ 2; }")      # '2' carries lex_gap E-0001
     tok = at_text(p, "2").cur

@@ -14,6 +14,7 @@ build/
 
 # Local data and secrets
 .env
+.cea_cache/
 *.sqlite3
 chroma_db/
 
@@ -26,3 +27,6 @@ Thumbs.db
 
 # Claude Code agent worktrees
 .claude/worktrees/
+# Web UI (plan 013)
+web/node_modules/
+web/dist/

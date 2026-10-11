@@ -23,7 +23,7 @@ class ErrorRecord:
     found: str              # offending text; "EOF" for the EOF token
     expected: list[str]     # what the failing expect() required; [] if not applicable
     snippet: str            # up to 3 source lines around `line`
-    root_id: str            # == id until F2 (milestone 2) assigns clusters
+    root_id: str            # id of the cluster root; set by cea.cluster.assign_roots (F2, plan 009)
     rule_ref: str           # catalog rule_ref, or the grammar rule for "<production>" rows
     # additions (docs/error-recovery.md section 2)
     language: str           # always "c"

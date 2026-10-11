@@ -104,3 +104,16 @@ docs/decisions/              design decisions (ADRs)
 tools/check_spec.py          checks that catalog and spec agree
 plans/                       implementation plans and status
 ```
+
+## Run the web backend (milestone 2)
+
+The FastAPI backend (`src/cea/api.py`, plan 012) serves the compiler and the AI agent to the web UI in `web/`.
+
+    .venv/Scripts/python -m pip install -r requirements-dev.txt
+    .venv/Scripts/python -m uvicorn cea.api:app --reload --app-dir src
+
+It listens on `http://127.0.0.1:8000`. Endpoints: `POST /api/compile`, `/api/explain`, `/api/fix`, `/api/ask`, and `GET /api/health`; interactive docs at `http://127.0.0.1:8000/docs`. Sources above 64 KB are rejected (HTTP 413). The AI endpoints need the `CEA_LLM_*` settings described in `.env.example`; without them they answer HTTP 503 and `/api/compile` still works.
+
+## Run the web UI (milestone 2)
+
+The React + Monaco UI lives in `web/` (plan 013). Start the backend first (previous section), then `cd web && npm install && npm run dev` and open `http://localhost:5173`. See `web/README.md`, "How to run the demo".

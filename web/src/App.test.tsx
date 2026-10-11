@@ -1,0 +1,183 @@
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import App from "./App";
+import { SAMPLE_SOURCE } from "./sample";
+import { bodiesFor, mockFetch, type Routes } from "./test/fetch-mock";
+import { SAMPLE_COMPILE } from "./test/fixtures";
+import { monacoMock } from "./test/monaco-mock";
+
+const PATCHED = SAMPLE_SOURCE.replace("total)\n", "total);\n");
+
+function routes(extra: Routes = {}): Routes {
+  return {
+    "GET /api/health": () => ({ json: { status: "ok", llm: "none" } }),
+    "POST /api/compile": () => ({ json: SAMPLE_COMPILE }),
+    "POST /api/explain": (b) => ({ json: { text: `${b.mode} text for ${b.record_id}`, rule_ref: "sem.declare_before_use", cited_rule: null, mode: b.mode } }),
+    "POST /api/fix": () => ({ json: { diff: "--- a\n+++ b\n", patched_source: PATCHED, verified: false } }),
+    "POST /api/ask": () => ({ json: { text: "I only answer questions about your compiler errors.", refused: true } }),
+    ...extra,
+  };
+}
+
+async function compileSample(extra: Routes = {}) {
+  const fetchFn = mockFetch(routes(extra));
+  const user = userEvent.setup();
+  render(<App />);
+  await user.click(screen.getByRole("button", { name: "Compile" }));
+  await screen.findByTestId("summary");
+  return { fetchFn, user };
+}
+
+function card(code: string, line: number) {
+  return screen.getByRole("listitem", { name: `${code} at line ${line}` });
+}
+
+describe("App", () => {
+  it("starts with the sample program and a hint", async () => {
+    mockFetch(routes());
+    render(<App />);
+    expect(screen.getByTestId("editor")).toHaveValue(SAMPLE_SOURCE);
+    expect(screen.getByText("Press Compile to check your program.")).toBeInTheDocument();
+    expect(await screen.findByText("AI: none")).toBeInTheDocument();
+  });
+
+  it("shows the backend as offline when /api/health fails", async () => {
+    mockFetch(routes({ "GET /api/health": () => ({ status: 500, json: {} }) }));
+    render(<App />);
+    expect(await screen.findByText("AI: offline")).toBeInTheDocument();
+  });
+
+  it("compiles the editor text and shows the F4 summary line", async () => {
+    const { fetchFn } = await compileSample();
+    expect(screen.getByTestId("summary")).toHaveTextContent("6 fatal, 1 warning");
+    expect(screen.getByText("Does not compile")).toBeInTheDocument();
+    expect(screen.getByText("3 root causes shown for 7 errors")).toBeInTheDocument();
+    expect(bodiesFor(fetchFn, "/api/compile")).toEqual([{ source: SAMPLE_SOURCE }]);
+  });
+
+  it("shows one card per root cause, not one per record", async () => {
+    await compileSample();
+    const list = screen.getByRole("list", { name: "Root causes" });
+    const cards = within(list).getAllByRole("listitem");
+    expect(cards.map((c) => c.getAttribute("aria-label"))).toEqual([
+      "WRN-UNUSED-VAR at line 5",
+      "SEM-UNDECLARED-VAR at line 6",
+      "SYN-MISSING-SEMICOLON at line 9",
+    ]);
+  });
+
+  it("labels each root fatal or warning", async () => {
+    await compileSample();
+    expect(within(card("WRN-UNUSED-VAR", 5)).getByText("warning")).toHaveClass("badge", "warning");
+    expect(within(card("SEM-UNDECLARED-VAR", 6)).getByText("fatal")).toHaveClass("badge", "fatal");
+    expect(within(card("SYN-MISSING-SEMICOLON", 9)).getByText("fatal")).toHaveClass("badge", "fatal");
+  });
+
+  it("collapses symptoms behind +N related and expands them on click", async () => {
+    const { user } = await compileSample();
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    const toggle = within(root).getByRole("button", { name: "+4 related" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("list", { name: "Errors related to E-0002" })).toBeNull();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const symptoms = within(screen.getByRole("list", { name: "Errors related to E-0002" })).getAllByRole("listitem");
+    expect(symptoms).toHaveLength(4);
+    expect(symptoms[0]).toHaveTextContent("SEM-UNDECLARED-VAR line 6, col 17");
+    expect(within(card("SYN-MISSING-SEMICOLON", 9)).queryByRole("button", { name: /related/ })).toBeNull();
+  });
+
+  it("sets inline markers for every record", async () => {
+    await compileSample();
+    await waitFor(() => expect(monacoMock.setModelMarkers).toHaveBeenLastCalledWith(monacoMock.model, "cea", expect.any(Array)));
+    const markers = monacoMock.setModelMarkers.mock.lastCall?.[2] as { code: string; severity: number }[];
+    expect(markers).toHaveLength(7);
+    expect(markers.filter((m) => m.severity === 8).map((m) => m.code)).toEqual(["SYN-MISSING-SEMICOLON", "SEM-UNDECLARED-VAR"]);
+  });
+
+  it("Explain asks for the short explanation and Expand for the full one", async () => {
+    const { fetchFn, user } = await compileSample();
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    await user.click(within(root).getByRole("button", { name: "Explain" }));
+    expect(await within(root).findByText("short text for E-0002")).toBeInTheDocument();
+    await user.click(within(root).getByRole("button", { name: "Expand" }));
+    expect(await within(root).findByText("expand text for E-0002")).toBeInTheDocument();
+    expect(within(root).getByText("sem.declare_before_use")).toBeInTheDocument();
+    expect(bodiesFor(fetchFn, "/api/explain")).toEqual([
+      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "short" },
+      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "expand" },
+    ]);
+  });
+
+  it("Suggest fix shows the diff with an Unverified preview badge", async () => {
+    const { fetchFn, user } = await compileSample();
+    const root = card("SYN-MISSING-SEMICOLON", 9);
+    await user.click(within(root).getByRole("button", { name: "Suggest fix" }));
+    const fix = await within(root).findByRole("region", { name: "Suggested fix" });
+    expect(within(fix).getByText("Unverified preview")).toHaveClass("badge", "unverified");
+    expect(within(fix).queryByText("Verified")).toBeNull();
+    const diff = within(fix).getByTestId("diff-editor");
+    expect(diff).toHaveAttribute("data-original", SAMPLE_SOURCE);
+    expect(diff.textContent).toBe(PATCHED);
+    expect(bodiesFor(fetchFn, "/api/fix")).toEqual([{ source: SAMPLE_SOURCE, record_id: "E-0001" }]);
+  });
+
+  it("says so when the fix changes nothing", async () => {
+    const { user } = await compileSample({
+      "POST /api/fix": () => ({ json: { diff: "", patched_source: SAMPLE_SOURCE, verified: false } }),
+    });
+    const root = card("SYN-MISSING-SEMICOLON", 9);
+    await user.click(within(root).getByRole("button", { name: "Suggest fix" }));
+    expect(await within(root).findByText("The assistant has no code change to suggest for this error.")).toBeInTheDocument();
+    expect(within(root).queryByTestId("diff-editor")).toBeNull();
+  });
+
+  it("Ask shows a refused answer as out of scope", async () => {
+    const { fetchFn, user } = await compileSample();
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    const askButton = within(root).getByRole("button", { name: "Ask" });
+    expect(askButton).toBeDisabled();
+    await user.type(within(root).getByRole("textbox", { name: "Question about E-0002" }), "  What is the capital of France?  ");
+    await user.click(askButton);
+    expect(await within(root).findByText("Out of scope:")).toBeInTheDocument();
+    expect(bodiesFor(fetchFn, "/api/ask")).toEqual([
+      { source: SAMPLE_SOURCE, record_id: "E-0002", question: "What is the capital of France?" },
+    ]);
+  });
+
+  it("shows a backend error from compile", async () => {
+    mockFetch(routes({ "POST /api/compile": () => ({ status: 413, json: { detail: "Source is larger than 65536 bytes." } }) }));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Compile" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Source is larger than 65536 bytes.");
+  });
+
+  it("shows an assistant error inside the card", async () => {
+    const { user } = await compileSample({
+      "POST /api/explain": () => ({ status: 503, json: { detail: "The AI assistant is not configured. See .env.example." } }),
+    });
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    await user.click(within(root).getByRole("button", { name: "Explain" }));
+    expect(await within(root).findByRole("alert")).toHaveTextContent("The AI assistant is not configured.");
+  });
+
+  it("reports a clean program", async () => {
+    await compileSample({
+      "POST /api/compile": () => ({ json: { ok: true, summary: "0 fatal, 0 warnings", records: [], clusters: [] } }),
+    });
+    expect(screen.getByText("Compiles")).toBeInTheDocument();
+    expect(screen.getByText("No errors. The program compiles.")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Root causes" })).toBeNull();
+  });
+
+  it("after an edit, warns that results are stale and still sends the compiled source", async () => {
+    const { fetchFn, user } = await compileSample();
+    await user.type(screen.getByTestId("editor"), "// edited");
+    expect(screen.getByText("The code changed since the last compile. Compile again to update.")).toBeInTheDocument();
+    await user.click(within(card("SEM-UNDECLARED-VAR", 6)).getByRole("button", { name: "Explain" }));
+    await screen.findByText("short text for E-0002");
+    expect(bodiesFor(fetchFn, "/api/explain")[0].source).toBe(SAMPLE_SOURCE);
+  });
+});

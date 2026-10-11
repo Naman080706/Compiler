@@ -61,7 +61,7 @@ def test_missing_paren_before_brace_keeps_if_while_for():
     assert [(c, lc, f) for _, c, lc, f, _ in rows(recs)] == [
         ("SYN-UNBALANCED-BRACKET", "3:15", "{"), ("SYN-UNBALANCED-BRACKET", "4:14", "{"),
         ("SYN-UNBALANCED-BRACKET", "7:28", "{")]
-    assert recs[0].message == "Expected ')' to close '(' from line 3 but found '{'"
+    assert recs[0].message == "Unbalanced bracket at '{': expected ')' to close '(' from line 3"
     assert [type(s).__name__ for s in body(prog)] == ["VarDeclStmt", "If", "While", "For", "Return"]
 
 
@@ -76,7 +76,7 @@ def test_missing_brace_repair_closes_every_open_block():
     prog, recs = parse_src(src)
     assert rows(recs) == [("E-0001", "SYN-UNBALANCED-BRACKET", "5:1", "int", None)]
     assert recs[0].expected == ["}"] and recs[0].rule_ref == "statement"
-    assert recs[0].message == "Expected '}' to close '{' from line 3 but found 'int'"
+    assert recs[0].message == "Unbalanced bracket at 'int': expected '}' to close '{' from line 3"
     f, m = prog.decls
     assert f.name == "f" and m.name == "main" and f.error_id is None
     assert f.body.closed_by_repair == "E-0001" and f.body.span == A.Span(1, 14, 4, 22)
