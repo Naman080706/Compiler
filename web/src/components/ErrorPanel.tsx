@@ -10,10 +10,10 @@ import FixDiff from "./FixDiff";
 interface PanelProps {
   views: ClusterView[];
   source: string; // the source these records came from (the server is stateless)
-  verbosity?: Verbosity; // F5: session-wide explanation style
+  verbosity?: Verbosity; // F5 manual choice; undefined = automatic (F9 profile)
 }
 
-export default function ErrorPanel({ views, source, verbosity = "beginner" }: PanelProps) {
+export default function ErrorPanel({ views, source, verbosity }: PanelProps) {
   return (
     <ol className="clusters" aria-label="Root causes">
       {views.map((v) => (
@@ -29,7 +29,7 @@ interface CardProps {
   verbosity?: Verbosity;
 }
 
-export function RootCard({ view, source, verbosity = "beginner" }: CardProps) {
+export function RootCard({ view, source, verbosity }: CardProps) {
   const { root, symptoms } = view;
   const [open, setOpen] = useState(false);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
@@ -53,7 +53,7 @@ export function RootCard({ view, source, verbosity = "beginner" }: CardProps) {
 
   // F5: switching the toggle re-renders an explanation already on screen in the new style (same mode).
   useEffect(() => {
-    if (explanation && explanation.verbosity !== verbosity) {
+    if (explanation) {
       void run(() => explain(source, root.id, explanation.mode, verbosity), setExplanation);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,6 +123,12 @@ export function RootCard({ view, source, verbosity = "beginner" }: CardProps) {
           <p className="rule">
             Rule: <code>{explanation.rule_ref}</code>
           </p>
+          {explanation.personalised?.depth === "full" && !explanation.personalised.override && (
+            <p className="note" data-testid="depth-note">
+              Fuller explanation: you have hit this kind of error ({explanation.personalised.category}){" "}
+              {explanation.personalised.hits} times.
+            </p>
+          )}
           {explanation.citations && explanation.citations.length > 0 && (
             <p className="citations" aria-label="Cited sources">
               Grounded in:{" "}

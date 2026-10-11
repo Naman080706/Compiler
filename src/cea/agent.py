@@ -10,7 +10,8 @@ never sent (PRD privacy note); the agent is never even given them.
   explanation.
 - ``suggest_fix``: the model names a line range and replacement lines; the
   agent applies them to a copy of the source and builds a unified diff with
-  difflib. ``verified`` is always False in milestone 2 (F8 is milestone 4).
+  difflib. A raw suggestion is never verified: ``cea.verifier.verify_fix`` (F8)
+  re-compiles it and is what the API and CLI show to students.
 - ``ask``: a local keyword check refuses clearly off-topic questions without
   calling the LLM; the system prompt makes the model refuse the rest.
 
@@ -119,7 +120,10 @@ class Explanation:
 class FixSuggestion:
     diff: str
     patched_source: str
-    verified: bool = False      # always False in milestone 2 (F8 verifies fixes in milestone 4)
+    verified: bool = False      # True only when cea.verifier re-compiled the patch and accepted it (PRD F8)
+    attempts: int = 0           # LLM attempts the verifier used (0 for a raw, unverified suggestion)
+    reason: str = ""            # why the patch was accepted or rejected (verifier)
+    edit: tuple | None = field(default=None, compare=False, repr=False)   # (start_line, end_line, replacement)
 
 
 @dataclass
@@ -338,8 +342,19 @@ class Agent:
             kept = [own if own in retrieved else retrieved[0]]
         return kept
 
+    @staticmethod
+    def _example_note(chunks: list[Chunk], record: ErrorRecord) -> str:
+        """F9: the curated fix-pattern chunk for this code as a worked example the student has earned."""
+        own = next((c for c in chunks if c.id == f"fix:{record.code}"), None)
+        body = ""
+        if own is not None:
+            body = ("\nWorked example (a common mistake of this kind and its fix):\n"
+                    + "\n".join("  " + line for line in own.text.splitlines()))
+        return body + ("\nThis student keeps hitting this kind of error: explain it in more detail "
+                       "and finish with a short worked example.")
+
     def explain(self, record: ErrorRecord, source: str, mode: str = "short",
-                verbosity: str = "beginner") -> Explanation:
+                verbosity: str = "beginner", worked_example: bool = False) -> Explanation:
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
         if verbosity not in VERBOSITIES:
@@ -347,13 +362,14 @@ class Agent:
         rule = rule_text(record.rule_ref)
         cited = rule.rule_ref if rule is not None else None
         chunks = retrieve(record)
-        key = f"{verbosity}/{mode}"
+        key = f"{verbosity}/{mode}" + ("/example" if worked_example else "")     # F9: fuller depth is its own entry
         sig = self._signature(record)
         hit = self.cache.get(sig, key) if self.cache is not None else None
         if hit is not None and isinstance(hit.get("text"), str):
             return Explanation(hit["text"], record.rule_ref, cited, mode, verbosity,
                                self.validate_citations(hit.get("citations"), chunks, record))
-        messages = self._messages(record, mode, self._snippet_block(record), verbosity=verbosity, chunks=chunks)
+        extra = self._example_note(chunks, record) if worked_example else ""
+        messages = self._messages(record, mode, self._snippet_block(record), extra, verbosity=verbosity, chunks=chunks)
         obj = self._call_json(messages, EXPLAIN_SCHEMA, mode, check=lambda o: bool(o["explanation"].strip()))
         if obj is None:
             text = self.fallback_text(record, mode, verbosity)
@@ -385,7 +401,13 @@ class Agent:
         text = "\n".join(lines)
         return text + "\n" if text else ""
 
-    def suggest_fix(self, record: ErrorRecord, source: str) -> FixSuggestion:
+    def _fix_sig(self, record: ErrorRecord, source: str) -> dict:
+        return dict(self._signature(record), source_sha256=hashlib.sha256(source.encode("utf-8")).hexdigest())
+
+    def suggest_fix(self, record: ErrorRecord, source: str, feedback: str | None = None,
+                    store: bool = True) -> FixSuggestion:
+        """One raw patch proposal (never verified). ``feedback`` (F8 retry) is why the last patch was
+        rejected; it bypasses the cache. ``store=False`` keeps the proposal out of the cache."""
         line_count = len(source.splitlines())
 
         def valid(o: dict) -> bool:
@@ -393,18 +415,27 @@ class Agent:
                 return False
             return self.apply_fix(source, o["start_line"], o["end_line"], o["replacement"]) != source
 
-        sig = dict(self._signature(record), source_sha256=hashlib.sha256(source.encode("utf-8")).hexdigest())
-        hit = self.cache.get(sig, "fix") if self.cache is not None else None
+        sig = self._fix_sig(record, source)
+        hit = self.cache.get(sig, "fix") if self.cache is not None and feedback is None else None
         obj = hit if hit is not None and matches_schema(hit, FIX_SCHEMA) and valid(hit) else None
         if obj is None:
             block = "Source (whole file):\n" + self._numbered(source, 1)
-            obj = self._call_json(self._messages(record, "fix", block), FIX_SCHEMA, "fix", check=valid)
+            extra = ("\n" + feedback + " Propose a different edit.") if feedback else ""
+            obj = self._call_json(self._messages(record, "fix", block, extra), FIX_SCHEMA, "fix", check=valid)
             if obj is None:
                 return FixSuggestion(diff="", patched_source=source, verified=False)
-            if self.cache is not None:
+            if self.cache is not None and store:
                 self.cache.put(sig, "fix", {k: obj[k] for k in ("start_line", "end_line", "replacement")})
         patched = self.apply_fix(source, obj["start_line"], obj["end_line"], obj["replacement"])
-        return FixSuggestion(diff=self.unified_diff(source, patched), patched_source=patched, verified=False)
+        return FixSuggestion(diff=self.unified_diff(source, patched), patched_source=patched, verified=False,
+                             edit=(obj["start_line"], obj["end_line"], list(obj["replacement"])))
+
+    def remember_fix(self, record: ErrorRecord, source: str, fix: FixSuggestion) -> None:
+        """Cache a fix the verifier accepted (raw, unverified proposals are never cached)."""
+        if self.cache is not None and fix.edit is not None:
+            start, end, replacement = fix.edit
+            self.cache.put(self._fix_sig(record, source), "fix",
+                           {"start_line": start, "end_line": end, "replacement": replacement})
 
     # -- ask
     def ask(self, record: ErrorRecord, source: str, question: str, history: list[dict] | None = None) -> Answer:

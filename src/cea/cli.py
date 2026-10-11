@@ -6,8 +6,9 @@ the symptoms grouped under it (plan 009). ``--all`` lists every record.
 ``--json`` prints every record plus a ``clusters`` array.
 ``--explain`` and ``--fix`` (plan 011, PRD F3) ask the AI agent about every
 root: an explanation (``short`` by default, or ``expand``) and/or a suggested
-fix printed as a unified diff under an UNVERIFIED header (fixes are not
-re-checked by the compiler until F8, milestone 4). The LLM comes from
+fix. A fix (PRD F8) is shown only when ``cea.verifier`` re-compiled the patch and
+accepted it: a unified diff under a Verified header; otherwise the line
+"No verified fix found; see explanation". The LLM comes from
 ``cea.llm.client_from_env()``; ``--no-cache`` skips the explanation cache.
 Exit status: 0 when the file compiles (no fatal record, PRD F4), 1 when at
 least one record is fatal, 2 for a usage error, an unreadable file, or
@@ -26,8 +27,16 @@ from cea.cluster import Cluster
 from cea.llm import ExplanationCache, LLMError, client_from_env
 from cea.pipeline import compile_source
 from cea.records import ErrorRecord
+from cea.verifier import verify_fix
 
-UNVERIFIED_HEADER = "--- UNVERIFIED fix suggestion (not re-checked by the compiler) ---"
+VERIFIED_HEADER = "--- Verified fix (re-compiled: the error is gone, no new fatal error) ---"
+NO_FIX_TEXT = "No verified fix found; see explanation"
+
+
+def fix_payload(fix) -> dict:
+    """JSON-ready verified-fix result; an unverified fix never carries a diff or patched source."""
+    return {"diff": fix.diff if fix.verified else "", "patched_source": fix.patched_source if fix.verified else "",
+            "verified": bool(fix.verified), "attempts": fix.attempts, "reason": fix.reason}
 
 
 def format_record(filename: str, rec: ErrorRecord) -> str:
@@ -62,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--all", action="store_true", help="list every record, not just one root per cluster")
     ap.add_argument("--explain", nargs="?", const="short", choices=("short", "expand"),
                     help="AI explanation of every root error (default: short)")
-    ap.add_argument("--fix", action="store_true", help="AI fix suggestion (UNVERIFIED diff) for every root error")
+    ap.add_argument("--fix", action="store_true", help="verified AI fix (diff) for every root error, or a note that none was found")
     ap.add_argument("--no-cache", action="store_true", help="do not read or write the explanation cache")
     args = ap.parse_args(argv)
     if args.all and (args.explain or args.fix):
@@ -92,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
                 {"root_id": c.root.id,
                  "explanation": dataclasses.asdict(agent.explain(c.root, source, args.explain))
                  if args.explain else None,
-                 "fix": dataclasses.asdict(agent.suggest_fix(c.root, source)) if args.fix else None}
+                 "fix": fix_payload(verify_fix(agent, c.root, source)) if args.fix else None}
                 for c in result.clusters]
         print(json.dumps(payload, indent=2))
     else:
@@ -109,8 +118,11 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"    Explanation ({exp.mode}, rule {exp.cited_rule or exp.rule_ref}):")
                     print("\n".join(_indent(exp.text, "      ")))
                 if args.fix:
-                    fix = agent.suggest_fix(cluster.root, source)
-                    print("    " + UNVERIFIED_HEADER)
-                    print("\n".join(_indent(fix.diff)) if fix.diff else "    (no fix suggested)")
+                    fix = verify_fix(agent, cluster.root, source)
+                    if fix.verified:
+                        print("    " + VERIFIED_HEADER)
+                        print("\n".join(_indent(fix.diff)))
+                    else:
+                        print("    " + NO_FIX_TEXT)
         print(result.summary())
     return 0 if result.ok else 1

@@ -1,0 +1,343 @@
+{
+ "001-stray-at-sign.c": {
+  "start_line": 12,
+  "end_line": 12,
+  "replacement": [
+   "        total += marks[i];"
+  ]
+ },
+ "002-unclosed-printf-string.c": {
+  "start_line": 11,
+  "end_line": 11,
+  "replacement": [
+   "    printf(\"Total: %d\\n\", sum);"
+  ]
+ },
+ "003-two-char-literal.c": {
+  "start_line": 5,
+  "end_line": 5,
+  "replacement": [
+   "    char grade = 'B';"
+  ]
+ },
+ "004-unclosed-todo-comment.c": {
+  "start_line": 12,
+  "end_line": 12,
+  "replacement": [
+   "   and print a message when the three numbers are equal*/"
+  ]
+ },
+ "005-number-with-letters.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    int limit = 10;"
+  ]
+ },
+ "006-windows-path-escape.c": {
+  "start_line": 10,
+  "end_line": 10,
+  "replacement": [
+   "    printf(\"Saved to C:data\\n\");"
+  ]
+ },
+ "007-unsupported-include.c": {
+  "start_line": 2,
+  "end_line": 2,
+  "replacement": []
+ },
+ "008-missing-semicolon-assign.c": {
+  "start_line": 8,
+  "end_line": 8,
+  "replacement": [
+   "        sum = sum + i;"
+  ]
+ },
+ "009-if-missing-close-paren.c": {
+  "start_line": 6,
+  "end_line": 6,
+  "replacement": [
+   "    if (score > 50) {"
+  ]
+ },
+ "010-while-missing-open-paren.c": {
+  "start_line": 6,
+  "end_line": 6,
+  "replacement": [
+   "    while( count < 10) {"
+  ]
+ },
+ "011-empty-right-hand-side.c": {
+  "start_line": 12,
+  "end_line": 12,
+  "replacement": [
+   "    average = sum  ;"
+  ]
+ },
+ "012-param-without-type.c": {
+  "start_line": 3,
+  "end_line": 3,
+  "replacement": [
+   "int max(int a, int b) {"
+  ]
+ },
+ "013-missing-final-brace.c": {
+  "start_line": 12,
+  "end_line": 12,
+  "replacement": [
+   "    return 0;}"
+  ]
+ },
+ "014-reversed-assignment.c": {
+  "start_line": 12,
+  "end_line": 12,
+  "replacement": [
+   "    i = count;"
+  ]
+ },
+ "015-const-qualifier.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "     int LIMIT = 5;"
+  ]
+ },
+ "016-typo-in-variable.c": {
+  "start_line": 5,
+  "end_line": 5,
+  "replacement": [
+   "    int totl = 0;",
+   "    int x;"
+  ]
+ },
+ "017-call-before-definition.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    int square(int n);",
+   "    int i;"
+  ]
+ },
+ "018-redeclared-loop-var.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    int i0;"
+  ]
+ },
+ "019-prototype-disagrees.c": {
+  "start_line": 11,
+  "end_line": 11,
+  "replacement": [
+   "float rea(int w, int h) {"
+  ]
+ },
+ "020-string-into-int.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    int count = 5;"
+  ]
+ },
+ "021-void-result-used.c": {
+  "start_line": 8,
+  "end_line": 8,
+  "replacement": [
+   "    print_header();",
+   "    int r = 0;"
+  ]
+ },
+ "022-variable-called-like-function.c": {
+  "start_line": 13,
+  "end_line": 15,
+  "replacement": [
+   "    int largest = 0;",
+   "    largest = max(a, b);",
+   "    printf(\"larger = %d\\n\", largest);"
+  ]
+ },
+ "023-arg-count-too-few.c": {
+  "start_line": 11,
+  "end_line": 11,
+  "replacement": [
+   "        total = add(total, i);"
+  ]
+ },
+ "024-string-argument.c": {
+  "start_line": 12,
+  "end_line": 12,
+  "replacement": [
+   "    print_score(1, 90);"
+  ]
+ },
+ "025-value-from-void-function.c": {
+  "start_line": 8,
+  "end_line": 8,
+  "replacement": [
+   "    return ;"
+  ]
+ },
+ "026-index-plain-int.c": {
+  "start_line": 14,
+  "end_line": 14,
+  "replacement": [
+   "    average = total / 3;"
+  ]
+ },
+ "027-double-index.c": {
+  "start_line": 10,
+  "end_line": 10,
+  "replacement": [
+   "    printf(\"middle mark = %d\\n\", marks[i]);"
+  ]
+ },
+ "028-variable-array-size.c": {
+  "start_line": 5,
+  "end_line": 5,
+  "replacement": [
+   "    int marks[5];"
+  ]
+ },
+ "029-break-in-if.c": {
+  "start_line": 8,
+  "end_line": 8,
+  "replacement": [
+   "        ;"
+  ]
+ },
+ "030-global-from-global.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "int half = 5;"
+  ]
+ },
+ "031-printf-int-first.c": {
+  "start_line": 9,
+  "end_line": 9,
+  "replacement": [
+   "    printf;(total);"
+  ]
+ },
+ "032-main-misspelled.c": {
+  "start_line": 3,
+  "end_line": 3,
+  "replacement": [
+   "int main(void) {"
+  ]
+ },
+ "040-missing-semicolon-decl-cascade.c": {
+  "start_line": 5,
+  "end_line": 5,
+  "replacement": [
+   "    int count = 0;"
+  ]
+ },
+ "041-missing-brace-before-next-function.c": {
+  "start_line": 7,
+  "end_line": 7,
+  "replacement": [
+   "}    return result;"
+  ]
+ },
+ "042-missing-loop-brace-at-eof.c": {
+  "start_line": 9,
+  "end_line": 9,
+  "replacement": [
+   "}        i++;"
+  ]
+ },
+ "043-loop-counter-never-declared.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    int i = 0;",
+   "    int data[5];"
+  ]
+ },
+ "044-empty-initializer-then-uses.c": {
+  "start_line": 6,
+  "end_line": 6,
+  "replacement": [
+   "    double average  ;"
+  ]
+ },
+ "045-while-missing-paren-cascade.c": {
+  "start_line": 7,
+  "end_line": 7,
+  "replacement": [
+   "    while( count < 10) {"
+  ]
+ },
+ "046-unclosed-string-mid-function.c": {
+  "start_line": 8,
+  "end_line": 8,
+  "replacement": [
+   "    printf(\"Cost: %d\\n\", cost);"
+  ]
+ },
+ "047-helper-called-before-defined.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    int cube(int x);",
+   "    int i;"
+  ]
+ },
+ "048-global-missing-semicolon.c": {
+  "start_line": 3,
+  "end_line": 3,
+  "replacement": [
+   "int limit = 10;"
+  ]
+ },
+ "049-pointer-declaration-uses.c": {
+  "start_line": 6,
+  "end_line": 6,
+  "replacement": [
+   "    int values[3];"
+  ]
+ },
+ "050-for-missing-close-paren.c": {
+  "start_line": 7,
+  "end_line": 7,
+  "replacement": [
+   "    for (i = 1; i < 6; i++) {"
+  ]
+ },
+ "051-for-header-missing-semicolon.c": {
+  "start_line": 6,
+  "end_line": 6,
+  "replacement": [
+   "    for (int i = 0; i < n; i++) {"
+  ]
+ },
+ "060-one-per-phase.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    return n * n;"
+  ]
+ },
+ "061-two-semantic-faults.c": {
+  "start_line": 7,
+  "end_line": 7,
+  "replacement": [
+   "int report(int value) {"
+  ]
+ },
+ "062-syntax-and-semantic.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    return total  ;"
+  ]
+ },
+ "063-fault-plus-warning.c": {
+  "start_line": 9,
+  "end_line": 9,
+  "replacement": [
+   "    int count = 10;"
+  ]
+ }
+}

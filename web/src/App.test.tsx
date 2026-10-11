@@ -2,19 +2,23 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import App from "./App";
+import { sessionId, studentId } from "./api";
 import { SAMPLE_SOURCE } from "./sample";
 import { bodiesFor, mockFetch, type Routes } from "./test/fetch-mock";
 import { SAMPLE_COMPILE } from "./test/fixtures";
 import { monacoMock } from "./test/monaco-mock";
 
+const PROFILE = {"student_id": "x", "threshold": 3, "categories": [{"category": "missing-semicolon", "hits": 3, "depth": "full"}, {"category": "undeclared-identifier", "hits": 1, "depth": "terse"}]};
 const PATCHED = SAMPLE_SOURCE.replace("total)\n", "total);\n");
 
 function routes(extra: Routes = {}): Routes {
   return {
     "GET /api/health": () => ({ json: { status: "ok", llm: "none" } }),
     "POST /api/compile": () => ({ json: SAMPLE_COMPILE }),
-    "POST /api/explain": (b) => ({ json: { text: `${b.verbosity} ${b.mode} text for ${b.record_id}`, rule_ref: "sem.declare_before_use", cited_rule: null, mode: b.mode, verbosity: b.verbosity, citations: ["rule:sem.declare_before_use", "fix:SEM-UNDECLARED-VAR"] } }),
-    "POST /api/fix": () => ({ json: { diff: "--- a\n+++ b\n", patched_source: PATCHED, verified: false } }),
+    "POST /api/explain": (b) => ({ json: { text: `${b.verbosity ?? "auto"} ${b.mode} text for ${b.record_id}`, rule_ref: "sem.declare_before_use", cited_rule: null, mode: b.mode, verbosity: b.verbosity ?? "beginner", citations: ["rule:sem.declare_before_use", "fix:SEM-UNDECLARED-VAR"] } }),
+    "POST /api/fix": () => ({ json: { diff: "--- a\n+++ b\n", patched_source: PATCHED, verified: true, attempts: 1, reason: "verified" } }),
+    [`GET /api/profile/${studentId()}`]: () => ({ json: PROFILE }),
+    [`DELETE /api/profile/${studentId()}`]: () => ({ json: { student_id: studentId(), threshold: 3, categories: [] } }),
     "POST /api/ask": () => ({ json: { text: "I only answer questions about your compiler errors.", refused: true } }),
     ...extra,
   };
@@ -53,7 +57,9 @@ describe("App", () => {
     expect(screen.getByTestId("summary")).toHaveTextContent("6 fatal, 1 warning");
     expect(screen.getByText("Does not compile")).toBeInTheDocument();
     expect(screen.getByText("3 root causes shown for 7 errors")).toBeInTheDocument();
-    expect(bodiesFor(fetchFn, "/api/compile")).toEqual([{ source: SAMPLE_SOURCE }]);
+    expect(bodiesFor(fetchFn, "/api/compile")).toEqual([
+      { source: SAMPLE_SOURCE, student_id: studentId(), session_id: sessionId() },
+    ]);
   });
 
   it("shows one card per root cause, not one per record", async () => {
@@ -100,36 +106,47 @@ describe("App", () => {
     const { fetchFn, user } = await compileSample();
     const root = card("SEM-UNDECLARED-VAR", 6);
     await user.click(within(root).getByRole("button", { name: "Explain" }));
-    expect(await within(root).findByText("beginner short text for E-0002")).toBeInTheDocument();
+    expect(await within(root).findByText("auto short text for E-0002")).toBeInTheDocument();
     await user.click(within(root).getByRole("button", { name: "Expand" }));
-    expect(await within(root).findByText("beginner expand text for E-0002")).toBeInTheDocument();
+    expect(await within(root).findByText("auto expand text for E-0002")).toBeInTheDocument();
     expect(within(root).getByText("sem.declare_before_use")).toBeInTheDocument();
     expect(bodiesFor(fetchFn, "/api/explain")).toEqual([
-      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "short", verbosity: "beginner" },
-      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "expand", verbosity: "beginner" },
+      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "short", student_id: studentId() },
+      { source: SAMPLE_SOURCE, record_id: "E-0002", mode: "expand", student_id: studentId() },
     ]);
   });
 
-  it("Suggest fix shows the diff with an Unverified preview badge", async () => {
+  it("Suggest fix shows the diff with a Verified badge", async () => {
     const { fetchFn, user } = await compileSample();
     const root = card("SYN-MISSING-SEMICOLON", 9);
     await user.click(within(root).getByRole("button", { name: "Suggest fix" }));
-    const fix = await within(root).findByRole("region", { name: "Suggested fix" });
-    expect(within(fix).getByText("Unverified preview")).toHaveClass("badge", "unverified");
-    expect(within(fix).queryByText("Verified")).toBeNull();
+    const fix = await within(root).findByRole("region", { name: "Verified fix" });
+    expect(within(fix).getByText("Verified")).toHaveClass("badge", "verified");
+    expect(within(fix).queryByText(/Unverified/)).toBeNull();
     const diff = within(fix).getByTestId("diff-editor");
     expect(diff).toHaveAttribute("data-original", SAMPLE_SOURCE);
     expect(diff.textContent).toBe(PATCHED);
     expect(bodiesFor(fetchFn, "/api/fix")).toEqual([{ source: SAMPLE_SOURCE, record_id: "E-0001" }]);
   });
 
-  it("says so when the fix changes nothing", async () => {
+  it("shows no diff, only a note, when there is no verified fix", async () => {
     const { user } = await compileSample({
-      "POST /api/fix": () => ({ json: { diff: "", patched_source: SAMPLE_SOURCE, verified: false } }),
+      "POST /api/fix": () => ({ json: { diff: "", patched_source: SAMPLE_SOURCE, verified: false, attempts: 3, reason: "the original error is still there" } }),
     });
     const root = card("SYN-MISSING-SEMICOLON", 9);
     await user.click(within(root).getByRole("button", { name: "Suggest fix" }));
-    expect(await within(root).findByText("The assistant has no code change to suggest for this error.")).toBeInTheDocument();
+    expect(await within(root).findByText("No verified fix found; see explanation")).toBeInTheDocument();
+    expect(within(root).queryByTestId("diff-editor")).toBeNull();
+    expect(within(root).queryByText("Verified")).toBeNull();
+  });
+
+  it("never displays an unverified diff even if the server sent one", async () => {
+    const { user } = await compileSample({
+      "POST /api/fix": () => ({ json: { diff: "--- a\n+++ b\n", patched_source: PATCHED, verified: false, attempts: 3, reason: "x" } }),
+    });
+    const root = card("SYN-MISSING-SEMICOLON", 9);
+    await user.click(within(root).getByRole("button", { name: "Suggest fix" }));
+    expect(await within(root).findByText("No verified fix found; see explanation")).toBeInTheDocument();
     expect(within(root).queryByTestId("diff-editor")).toBeNull();
   });
 
@@ -177,7 +194,7 @@ describe("App", () => {
     await user.type(screen.getByTestId("editor"), "// edited");
     expect(screen.getByText("The code changed since the last compile. Compile again to update.")).toBeInTheDocument();
     await user.click(within(card("SEM-UNDECLARED-VAR", 6)).getByRole("button", { name: "Explain" }));
-    await screen.findByText("beginner short text for E-0002");
+    await screen.findByText("auto short text for E-0002");
     expect(bodiesFor(fetchFn, "/api/explain")[0].source).toBe(SAMPLE_SOURCE);
   });
 
@@ -193,15 +210,14 @@ describe("App", () => {
   it("the verbosity toggle re-renders an existing explanation in the same mode", async () => {
     const { fetchFn, user } = await compileSample();
     const root = card("SEM-UNDECLARED-VAR", 6);
-    const beginner = screen.getByRole("button", { name: "Beginner" });
-    expect(beginner).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Auto" })).toHaveAttribute("aria-pressed", "true");
     await user.click(within(root).getByRole("button", { name: "Expand" }));
-    await within(root).findByText("beginner expand text for E-0002");
+    await within(root).findByText("auto expand text for E-0002");
     await user.click(screen.getByRole("button", { name: "Expert" }));
     expect(await within(root).findByText("expert expand text for E-0002")).toBeInTheDocument();
-    expect(within(root).queryByText("beginner expand text for E-0002")).toBeNull();
+    expect(within(root).queryByText("auto expand text for E-0002")).toBeNull();
     expect(bodiesFor(fetchFn, "/api/explain").map((b) => [b.mode, b.verbosity])).toEqual([
-      ["expand", "beginner"],
+      ["expand", undefined],
       ["expand", "expert"],
     ]);
     // a card with no explanation yet makes no request on toggle; its next Explain uses the new style
@@ -217,7 +233,7 @@ describe("App", () => {
     mockFetch(routes());
     render(<App />);
     expect(screen.getByRole("button", { name: "Expert" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Beginner" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Auto" })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("each error card has its own chat thread and sends only its own history", async () => {
@@ -263,6 +279,52 @@ describe("App", () => {
     expect(last).toHaveLength(6);
     expect(last[0].question).toBe("question 4");
     expect(last.map((t) => t.question)).not.toContain("question 2");
+  });
+});
+
+describe("F9 profile view", () => {
+  it("shows the stored category counts and resets them", async () => {
+    const { fetchFn, user } = await compileSample();
+    await user.click(screen.getByRole("button", { name: "My profile" }));
+    const table = await screen.findByRole("table", { name: "Error categories" });
+    expect(within(table).getByText("missing-semicolon")).toBeInTheDocument();
+    expect(within(table).getByText("fuller, with example")).toBeInTheDocument();
+    expect(within(table).getByText("undeclared-identifier")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reset my profile" }));
+    expect(await screen.findByText("No errors recorded yet.")).toBeInTheDocument();
+    const calls = fetchFn.mock.calls.map(([url, init]) => `${init?.method} ${url}`);
+    expect(calls).toContain(`DELETE /api/profile/${studentId()}`);
+  });
+
+  it("the student id is a random token kept in localStorage and sent to compile, explain and profile only", async () => {
+    window.localStorage.clear();
+    const id = studentId();
+    expect(id).toMatch(/^stu_[0-9a-f]{24}$/);
+    expect(studentId()).toBe(id);
+    expect(window.localStorage.getItem("cea.student_id")).toBe(id);
+    const { fetchFn, user } = await compileSample();
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    await user.click(within(root).getByRole("button", { name: "Explain" }));
+    await user.click(within(root).getByRole("button", { name: "Suggest fix" }));
+    await user.type(within(root).getByRole("textbox", { name: "Question about E-0002" }), "why?");
+    await user.click(within(root).getByRole("button", { name: "Ask" }));
+    await within(root).findByText(/only answer questions/);
+    for (const [url, init] of fetchFn.mock.calls) {
+      const carries = String(init?.body ?? "").includes(id) || String(url).includes(id);
+      expect(carries).toBe(["/api/compile", "/api/explain"].includes(String(url)) || String(url).startsWith("/api/profile/"));
+    }
+  });
+
+  it("shows a note when the profile earned a fuller explanation", async () => {
+    const { user } = await compileSample({
+      "POST /api/explain": () => ({
+        json: { text: "long text", rule_ref: "r", cited_rule: null, mode: "short", verbosity: "beginner", citations: [],
+                personalised: { category: "undeclared-identifier", hits: 4, depth: "full", override: false } },
+      }),
+    });
+    const root = card("SEM-UNDECLARED-VAR", 6);
+    await user.click(within(root).getByRole("button", { name: "Explain" }));
+    expect(await within(root).findByTestId("depth-note")).toHaveTextContent("hit this kind of error (undeclared-identifier) 4 times");
   });
 });
 
