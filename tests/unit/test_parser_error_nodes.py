@@ -59,28 +59,27 @@ def test_broken_global_and_broken_function():
 
 
 def test_unsupported_kind_hint_and_declarator_names():
-    src = ("const int N = 5;\n"
+    src = ("register int N = 5;\n"
            "int k;\n"
-           "struct point p, *q;\n"
+           "typedef struct { int a : 2; } Bits;\n"
            "int main(void) {\n"
-           "    unsigned int u = 1;\n"
-           "    char *s = 0, t;\n"
-           "    int *v[3];\n"
+           "    volatile int u = 1;\n"
+           "    int (*fp)(int), t;\n"
+           "    int x = 1;\n"
            "    return N;\n"
            "}\n")
     prog, recs = parse_src(src)
     assert [(r.code, f"{r.line}:{r.column}", r.found) for r in recs] == [
-        ("SYN-UNSUPPORTED-FEATURE", "1:1", "const"), ("SYN-UNSUPPORTED-FEATURE", "3:1", "struct"),
-        ("SYN-UNSUPPORTED-FEATURE", "5:5", "unsigned"), ("SYN-UNSUPPORTED-FEATURE", "6:10", "*"),
-        ("SYN-UNSUPPORTED-FEATURE", "7:9", "*")]
+        ("SYN-UNSUPPORTED-FEATURE", "1:1", "register"), ("SYN-UNSUPPORTED-FEATURE", "3:24", ":"),
+        ("SYN-UNSUPPORTED-FEATURE", "5:5", "volatile"), ("SYN-UNSUPPORTED-FEATURE", "6:9", "(")]
     e1, e2 = prog.decls[0], prog.decls[2]
-    assert (e1.kind_hint, e1.declared_names) == ("unsupported", [("N", "<unsupported>")])
-    assert (e2.kind_hint, e2.declared_names) == ("unsupported", [("p", "<unsupported>"), ("q", "<unsupported>")])
+    assert e1.kind_hint == "unsupported"
+    assert (e2.kind_hint, e2.declared_names) == ("top", [("Bits", "<unsupported>")])   # the typedef name is not lost
     s = body(prog, 3)
     assert s[0].kind_hint == "unsupported" and s[0].declared_names == [] and s[0].stopped_before == "int"
-    assert isinstance(s[1], A.VarDeclStmt) and s[1].decls[0].name == "u"     # 'int u = 1;' parses normally
-    assert (s[2].kind_hint, s[2].declared_names) == ("decl", [("s", "<unsupported>")])   # t follows "," so the plan-004 pattern skips it
-    assert s[3].declared_names == [("v", "<unsupported>")]
+    assert isinstance(s[1], A.VarDeclStmt) and s[1].decls[0].name == "u"      # 'int u = 1;' parses normally
+    assert (s[2].kind_hint, s[2].declared_names) == ("decl", [("fp", "<unsupported>")])
+    assert isinstance(s[3], A.VarDeclStmt) and s[3].decls[0].name == "x"
 
 
 def test_declarator_names_only_for_unsupported_errors():
@@ -94,10 +93,15 @@ def test_for_header_error_stmt_declares_loop_variable():
     assert body(prog)[1].declared_names == [("i", "int"), ("j", "int")]
 
 
-def test_array_initialiser_list_cascade_is_linked():
+def test_array_initialiser_list_parses():
     prog, recs = parse_src(main("int a[3] = {1, 2};", "return 0;"))
-    assert rows(recs) == [("E-0001", "SYN-EXPECTED-EXPRESSION", "2:16", "{", None),
-                          ("E-0002", "SYN-MISSING-SEMICOLON", "2:18", ",", "E-0001")]
-    decl, orphan = body(prog)[0], body(prog)[1]
+    assert rows(recs) == []
+    init = body(prog)[0].decls[0].init
+    assert isinstance(init, A.InitList) and [i.value for i in init.items] == [1, 2]
+
+
+def test_broken_initialiser_list_keeps_the_declaration():
+    prog, recs = parse_src(main("int a[3] = {1, ;", "return 0;"))
+    assert rows(recs)[0][1:4] == ("SYN-EXPECTED-EXPRESSION", "2:20", ";")
+    decl = body(prog)[0]
     assert decl.decls[0].error_id == "E-0001" and isinstance(decl.decls[0].init, A.ErrorExpr)
-    assert isinstance(orphan, A.Block) and orphan.orphan_of == "E-0001"

@@ -10,6 +10,8 @@ fix. A fix (PRD F8) is shown only when ``cea.verifier`` re-compiled the patch an
 accepted it: a unified diff under a Verified header; otherwise the line
 "No verified fix found; see explanation". The LLM comes from
 ``cea.llm.client_from_env()``; ``--no-cache`` skips the explanation cache.
+``--engine`` picks the compiler: ``auto`` (default) uses ours and falls back to gcc for programs that use a
+feature outside the course subset (``cea.gcc_fallback``), ``cea`` never uses gcc, ``gcc`` always does.
 Exit status: 0 when the file compiles (no fatal record, PRD F4), 1 when at
 least one record is fatal, 2 for a usage error, an unreadable file, or
 ``--explain``/``--fix`` with no LLM configured.
@@ -67,6 +69,9 @@ def main(argv: list[str] | None = None) -> int:
             pass
     ap = argparse.ArgumentParser(prog="python -m cea", description="Compile a C-subset file and report its errors.")
     ap.add_argument("file", help="path to a .c file")
+    ap.add_argument("--engine", choices=("auto", "cea", "gcc"), default="auto",
+                    help="auto: our compiler, falling back to gcc for features outside the course subset; "
+                         "cea: never use gcc; gcc: always use gcc")
     ap.add_argument("--json", action="store_true", help="print the error records and clusters as JSON")
     ap.add_argument("--all", action="store_true", help="list every record, not just one root per cluster")
     ap.add_argument("--explain", nargs="?", const="short", choices=("short", "expand"),
@@ -82,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, UnicodeDecodeError) as exc:
         print(f"error: cannot read {path}: {exc}", file=sys.stderr)
         return 2
-    result = compile_source(source, path.name)
+    result = compile_source(source, path.name, engine=args.engine)
     agent = None
     if args.explain or args.fix:
         try:
@@ -93,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         agent = Agent(llm, cache=None if args.no_cache else ExplanationCache())
     if args.json:
         payload = {"file": path.name, "ok": result.ok, "summary": result.summary(),
+                   "engine": result.engine, "engine_note": result.engine_note,
                    "errors": [r.to_dict() for r in result.errors],
                    "clusters": [{"root_id": c.root.id, "symptom_ids": [s.id for s in c.symptoms]}
                                 for c in result.clusters]}
@@ -105,6 +111,8 @@ def main(argv: list[str] | None = None) -> int:
                 for c in result.clusters]
         print(json.dumps(payload, indent=2))
     else:
+        if result.engine_note:
+            print(f"note: {result.engine_note}")
         if args.all:
             for rec in result.errors:
                 print(format_record(path.name, rec))

@@ -33,7 +33,7 @@ def main(*lines):
 
 # ---------------------------------------------------------------- lvalues
 @pytest.mark.parametrize("stmt,col,found", [
-    ("5 = x;", 7, "="), ("x + 1 = 2;", 11, "="), ("(x) = 1;", 9, "="), ("a[1][2] = 3;", 13, "="),
+    ("5 = x;", 7, "="), ("x + 1 = 2;", 11, "="), ("(x) = 1;", 9, "="), ("a[1] + 1 = 3;", 14, "="), ("p->m + 1 = 3;", 14, "="),
     ("f(x) += 1;", 10, "+="), ("5++;", 6, "++"), ("--(x);", 5, "--"), ("x = 3++;", 10, "++"),
 ])
 def test_invalid_assign_target(stmt, col, found):
@@ -43,7 +43,7 @@ def test_invalid_assign_target(stmt, col, found):
     assert isinstance(body(prog)[1], A.ErrorStmt)
 
 
-@pytest.mark.parametrize("stmt", ["x = 1;", "a[x] = 2;", "x++;", "--a[0];", "x += a[1] = 3;"])
+@pytest.mark.parametrize("stmt", ["x = 1;", "a[x] = 2;", "x++;", "--a[0];", "x += a[1] = 3;", "a[1][2] = 3;", "s.m = 1;", "p->m++;", "*p = 2;", "(*p)[1] = 2;", "x <<= 1;"])
 def test_valid_assign_targets(stmt):
     _, recs = parse_src(main("int x = 1;", "int a[2];", stmt, "return x;"))
     assert rows(recs) == []

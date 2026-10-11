@@ -1,0 +1,11 @@
+{
+  "description": "static variables and functions, a hex literal, short/unsigned long, bool and calloc, main(argc, argv).",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "stdbool.h, static, 0xFFul, main with parameters, calloc."
+}

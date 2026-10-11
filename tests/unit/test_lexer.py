@@ -31,18 +31,22 @@ def toks(source):
 
 @pytest.mark.parametrize("source,expected", [
     ("int x = 5;", [("KEYWORD", "int"), ("IDENT", "x"), ("OP", "="), ("INT_LIT", "5"), ("PUNCT", ";")]),
-    ("struct sizeof whilex _a1 A9", [("UNSUPPORTED_KEYWORD", "struct"), ("UNSUPPORTED_KEYWORD", "sizeof"),
+    ("struct sizeof goto whilex _a1 A9", [("KEYWORD", "struct"), ("KEYWORD", "sizeof"), ("UNSUPPORTED_KEYWORD", "goto"),
                                     ("IDENT", "whilex"), ("IDENT", "_a1"), ("IDENT", "A9")]),
     ("a+++b", [("IDENT", "a"), ("OP", "++"), ("OP", "+"), ("IDENT", "b")]),
     ("i-->0", [("IDENT", "i"), ("OP", "--"), ("OP", ">"), ("INT_LIT", "0")]),
-    ("x<<=2", [("IDENT", "x"), ("UNSUPPORTED_OP", "<<"), ("OP", "="), ("INT_LIT", "2")]),
-    ("x>>1", [("IDENT", "x"), ("UNSUPPORTED_OP", ">>"), ("INT_LIT", "1")]),
-    ("p->q", [("IDENT", "p"), ("UNSUPPORTED_OP", "->"), ("IDENT", "q")]),
-    ("s.f", [("IDENT", "s"), ("UNSUPPORTED_OP", "."), ("IDENT", "f")]),
+    ("x<<=2", [("IDENT", "x"), ("OP", "<<="), ("INT_LIT", "2")]),
+    ("x>>1", [("IDENT", "x"), ("OP", ">>"), ("INT_LIT", "1")]),
+    ("p->q", [("IDENT", "p"), ("OP", "->"), ("IDENT", "q")]),
+    ("s.f", [("IDENT", "s"), ("OP", "."), ("IDENT", "f")]),
     ("a&&b||!c", [("IDENT", "a"), ("OP", "&&"), ("IDENT", "b"), ("OP", "||"), ("OP", "!"), ("IDENT", "c")]),
-    ("a&b|c^~d", [("IDENT", "a"), ("UNSUPPORTED_OP", "&"), ("IDENT", "b"), ("UNSUPPORTED_OP", "|"),
-                  ("IDENT", "c"), ("UNSUPPORTED_OP", "^"), ("UNSUPPORTED_OP", "~"), ("IDENT", "d")]),
-    ("a?b:c", [("IDENT", "a"), ("UNSUPPORTED_OP", "?"), ("IDENT", "b"), ("UNSUPPORTED_OP", ":"), ("IDENT", "c")]),
+    ("a&b|c^~d", [("IDENT", "a"), ("OP", "&"), ("IDENT", "b"), ("OP", "|"),
+                  ("IDENT", "c"), ("OP", "^"), ("OP", "~"), ("IDENT", "d")]),
+    ("f(a, ...)", [("IDENT", "f"), ("PUNCT", "("), ("IDENT", "a"), ("PUNCT", ","), ("UNSUPPORTED_OP", "..."),
+                   ("PUNCT", ")")]),
+    ("0x1F 12UL 017 1e3 2.5f", [("INT_LIT", "0x1F"), ("INT_LIT", "12UL"), ("INT_LIT", "017"), ("FLOAT_LIT", "1e3"),
+                                ("FLOAT_LIT", "2.5f")]),
+    ("a?b:c", [("IDENT", "a"), ("OP", "?"), ("IDENT", "b"), ("OP", ":"), ("IDENT", "c")]),
     ("a==b!=c<=d>=e<f>g", [("IDENT", "a"), ("OP", "=="), ("IDENT", "b"), ("OP", "!="), ("IDENT", "c"),
                            ("OP", "<="), ("IDENT", "d"), ("OP", ">="), ("IDENT", "e"), ("OP", "<"),
                            ("IDENT", "f"), ("OP", ">"), ("IDENT", "g")]),
@@ -50,7 +54,7 @@ def toks(source):
     ("a*b/c%d-e", [("IDENT", "a"), ("OP", "*"), ("IDENT", "b"), ("OP", "/"), ("IDENT", "c"),
                    ("OP", "%"), ("IDENT", "d"), ("OP", "-"), ("IDENT", "e")]),
     ("(){}[],;", [("PUNCT", c) for c in "(){}[],;"]),
-    (".5", [("UNSUPPORTED_OP", "."), ("INT_LIT", "5")]),
+    (".5", [("OP", "."), ("INT_LIT", "5")]),
 ])
 def test_token_kinds_and_maximal_munch(source, expected):
     assert toks(source) == expected
@@ -170,8 +174,9 @@ def test_include_alone_gives_only_eof():
 
 
 @pytest.mark.parametrize("source,found,span_end", [
-    ("#include <math.h>\n", "#include <math.h>", Position(1, 17)),
-    ("#define N 10\n", "#define N 10", Position(1, 12)),
+    ("#include <time.h>\n", "#include <time.h>", Position(1, 17)),
+    ("#define SQ(x) x\n", "#define SQ(x) x", Position(1, 15)),
+    ("#ifdef DEBUG\n", "#ifdef DEBUG", Position(1, 12)),
     ('#include "stdio.h"', '#include "stdio.h"', Position(1, 18)),
     ("#include < stdio.h >", "#include < stdio.h >", Position(1, 20)),
     ("#include <stdio.h> x", "#include <stdio.h> x", Position(1, 20)),
@@ -186,7 +191,7 @@ def test_unsupported_directive(source, found, span_end):
     [rec] = records
     assert (rec.code, rec.line, rec.column, rec.found, rec.span_end) == \
         ("LEX-UNSUPPORTED-DIRECTIVE", 1, 1, found, span_end)
-    assert rec.message == f"Only '#include <stdio.h>' is supported; '{found}' is not"
+    assert rec.message == f"'{found}' is not supported; allowed are #include of stdio.h, stdlib.h, string.h, math.h, ctype.h or stdbool.h, and '#define NAME value'"
     assert result.stdio_include is None
 
 
@@ -198,7 +203,7 @@ def test_unclosed_block_comment_after_include_stays_inside_the_directive():
 
 
 def test_unsupported_directive_does_not_set_lex_gap():
-    result, records = run("#define N 10\nint x;")
+    result, records = run("#undef N\nint x;")
     assert [r.code for r in records] == ["LEX-UNSUPPORTED-DIRECTIVE"]
     assert [(t.text, t.lex_gap) for t in result.tokens] == \
         [("int", None), ("x", None), (";", None), ("EOF", None)]
@@ -240,8 +245,8 @@ def test_hash_after_code_is_an_invalid_char():
     ("n = 1.2.3;", "LEX-MALFORMED-NUMBER", 1, 5, "1.2.3", (1, 9), (";", 1, 10)),
     ("n = 12.;", "LEX-MALFORMED-NUMBER", 1, 5, "12.", (1, 7), (";", 1, 8)),
     ("n = 10x;", "LEX-MALFORMED-NUMBER", 1, 5, "10x", (1, 7), (";", 1, 8)),
-    ("n = 1e5;", "LEX-MALFORMED-NUMBER", 1, 5, "1e5", (1, 7), (";", 1, 8)),
-    ("n = 0x1F;", "LEX-MALFORMED-NUMBER", 1, 5, "0x1F", (1, 8), (";", 1, 9)),
+    ("n = 1e;", "LEX-MALFORMED-NUMBER", 1, 5, "1e", (1, 6), (";", 1, 7)),
+    ("n = 0xZ;", "LEX-MALFORMED-NUMBER", 1, 5, "0xZ", (1, 7), (";", 1, 8)),
     ("n = 3_000;", "LEX-MALFORMED-NUMBER", 1, 5, "3_000", (1, 9), (";", 1, 10)),
     ("n = 1..2;", "LEX-MALFORMED-NUMBER", 1, 5, "1..2", (1, 8), (";", 1, 9)),
     ("n = 2.5x;", "LEX-MALFORMED-NUMBER", 1, 5, "2.5x", (1, 8), (";", 1, 9)),
@@ -264,7 +269,7 @@ LEX_CASES = [
     ("LEX-UNTERMINATED-COMMENT", "/* a", "BLOCK_COMMENT"),
     ("LEX-MALFORMED-NUMBER", "1x", "number"),
     ("LEX-INVALID-ESCAPE", '"\\q"', "escape"),
-    ("LEX-UNSUPPORTED-DIRECTIVE", "#define X", "directive"),
+    ("LEX-UNSUPPORTED-DIRECTIVE", "#ifdef X", "directive"),
 ]
 
 
@@ -376,3 +381,31 @@ def test_crlf_and_lf_give_the_same_result(c_path):
     assert res_lf == res_crlf
     assert [(r.code, r.line, r.column, r.found, r.span_end, r.snippet) for r in rec_lf] == \
         [(r.code, r.line, r.column, r.found, r.span_end, r.snippet) for r in rec_crlf]
+
+
+# ---------------------------------------------------------------- course-level C: headers and #define
+@pytest.mark.parametrize("header", ["stdio.h", "stdlib.h", "string.h", "math.h", "ctype.h", "stdbool.h"])
+def test_supported_headers_are_recorded(header):
+    result, records = run(f"#include <{header}>\nint x;")
+    assert records == [] and [h for h, _ in result.includes] == [header]
+    assert [t.text for t in result.tokens] == ["int", "x", ";", "EOF"]
+
+
+def test_define_substitutes_object_like_macros_at_the_use_site():
+    result, records = run("#define N 10\n#define TWICE N\nint a[N];\nint b = TWICE;\n")
+    assert records == []
+    assert [t.text for t in result.tokens if t.kind is TokenKind.INT_LIT] == ["10", "10"]
+    ten = [t for t in result.tokens if t.text == "10"]
+    assert [(t.line, t.col, t.end_col) for t in ten] == [(3, 7, 7), (4, 9, 13)]
+
+
+def test_empty_define_expands_to_nothing():
+    result, records = run("#define EMPTY\nint EMPTY x;")
+    assert records == [] and [t.text for t in result.tokens] == ["int", "x", ";", "EOF"]
+
+
+@pytest.mark.parametrize("source", ["#define F(x) x", "#define", "#define 5 6", "#define N 'ab'", "#undef N", "#if 1",
+                                    "#pragma once", "#include <time.h>", '#include "a.h"'])
+def test_other_directives_are_unsupported(source):
+    _, records = run(source)
+    assert [r.code for r in records] == ["LEX-UNSUPPORTED-DIRECTIVE"]

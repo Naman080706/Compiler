@@ -1,0 +1,15 @@
+{
+  "description": "Defines 'int total(int n, ...)', a variadic function, and calls it.",
+  "split": "dev",
+  "injected_faults": [
+  "line 3: variadic function definition is not supported"
+],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 3}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "raw 4. SYN-UNSUPPORTED-FEATURE 3, SEM-UNDECLARED-FUNC 8, 9, 10 (R5: 'total' was lost). gcc accepts the file."
+}

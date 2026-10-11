@@ -30,11 +30,25 @@ class Program:
 
 
 @dataclass
+class TypeInfo:
+    """What the declaration specifiers said. ``base`` is canonical text: 'int', 'unsigned long',
+    'struct Point', 'enum Color', or a typedef name; ``type_def`` is an inline struct/union/enum definition."""
+    base: str
+    const: bool = False
+    storage: str | None = None             # 'static' | 'extern' | 'typedef' | None
+    type_def: "StructDef | EnumDef | None" = None
+
+
+@dataclass
 class Param:
     type_name: str
-    name: str
+    name: str                      # "" for an unnamed parameter of a prototype
     name_pos: Position
     span: Span
+    ptr: int = 0                   # number of '*' in the declarator
+    dims: list = field(default_factory=list)       # array suffixes ('[]' is None): decays to a pointer
+    const: bool = False            # 'const' applies to the pointed-to / element type (or the value itself)
+    ptr_const: bool = False        # 'const' after the last '*'
 
 
 @dataclass
@@ -47,6 +61,10 @@ class FunctionDecl:
     span: Span
     error_id: str | None = None    # broken declaration (error-recovery section 5)
     idents_in_span: set[str] = field(default_factory=set)
+    ret_ptr: int = 0               # '*' before the function name
+    ret_const: bool = False
+    storage: str | None = None
+    type_def: "StructDef | EnumDef | None" = None
 
 
 @dataclass
@@ -61,13 +79,58 @@ class VarDecl:
     span: Span
     error_id: str | None = None
     idents_in_span: set[str] = field(default_factory=set)
+    ptr: int = 0                   # number of '*' in the declarator
+    is_array: bool = False         # array_size is the first dimension (None for '[]')
+    more_dims: list = field(default_factory=list)  # second and later dimensions
+    const: bool = False            # 'const' on the base type
+    storage: str | None = None
+    ptr_const: bool = False        # 'const' after the last '*' (char *const p)
 
 
 @dataclass
 class VarDeclStmt:
-    """'int a, b = 2;' (local or global)."""
+    """'int a, b = 2;' (local or global); also 'struct P {...};' (no declarators) and typedefs."""
     decls: list[VarDecl]
     span: Span
+    type_def: "StructDef | EnumDef | None" = None   # inline struct/union/enum definition in the specifiers
+    is_typedef: bool = False       # the declarators are typedef names
+    base: str = ""                 # canonical base type text of the specifiers
+
+
+@dataclass
+class StructMember:
+    type_name: str
+    name: str
+    name_pos: Position
+    ptr: int
+    dims: list
+    const: bool
+    span: Span
+    type_def: "StructDef | EnumDef | None" = None
+
+
+@dataclass
+class StructDef:
+    kind: str                      # 'struct' | 'union'
+    tag: str | None
+    members: list[StructMember]
+    span: Span
+    name_pos: Position | None = None
+
+
+@dataclass
+class EnumItem:
+    name: str
+    name_pos: Position
+    value: "Expr | None"
+
+
+@dataclass
+class EnumDef:
+    tag: str | None
+    items: list[EnumItem]
+    span: Span
+    name_pos: Position | None = None
 
 
 # ---- statements
@@ -100,6 +163,32 @@ class For:
     cond: "Expr | None"
     step: "Expr | None"
     body: "Stmt"
+    span: Span
+
+
+@dataclass
+class DoWhile:
+    body: "Stmt"
+    cond: "Expr"
+    span: Span
+
+
+@dataclass
+class Switch:
+    cond: "Expr"
+    body: "Stmt"
+    span: Span
+
+
+@dataclass
+class Case:
+    """'case value:' label (a marker inside the switch body)."""
+    value: "Expr"
+    span: Span
+
+
+@dataclass
+class Default:
     span: Span
 
 
@@ -174,7 +263,7 @@ class Name:
 
 @dataclass
 class Unary:
-    op: str                        # '!', '-', '+', '++', '--'
+    op: str                        # '!', '-', '+', '~', '*', '&', '++', '--'
     operand: "Expr"
     postfix: bool
     span: Span
@@ -213,11 +302,59 @@ class Index:
 
 
 @dataclass
+class Member:
+    base: "Expr"
+    name: str
+    arrow: bool                    # '->' (True) or '.' (False)
+    name_pos: Position
+    span: Span
+
+
+@dataclass
+class TypeName:
+    """A type written without a name: the operand of a cast or of sizeof."""
+    base: str
+    ptr: int
+    dims: list
+    const: bool
+    span: Span
+
+
+@dataclass
+class Cast:
+    type: TypeName
+    operand: "Expr"
+    span: Span
+
+
+@dataclass
+class SizeOf:
+    operand: "Expr | TypeName"
+    span: Span
+
+
+@dataclass
+class Ternary:
+    cond: "Expr"
+    then: "Expr"
+    els: "Expr"
+    span: Span
+
+
+@dataclass
+class InitList:
+    items: list["Expr | InitList"]
+    span: Span
+
+
+@dataclass
 class ErrorExpr:
     """Stands in for an expression that failed to parse (type <error>)."""
     span: Span
     error_id: str
 
 
-Expr = Union[IntLit, FloatLit, CharLit, StringLit, Name, Unary, Binary, Assign, Call, Index, ErrorExpr]
-Stmt = Union[VarDeclStmt, Block, If, While, For, Return, Break, Continue, ExprStmt, EmptyStmt, ErrorStmt]
+Expr = Union[IntLit, FloatLit, CharLit, StringLit, Name, Unary, Binary, Assign, Call, Index, Member, Cast,
+             SizeOf, Ternary, InitList, ErrorExpr]
+Stmt = Union[VarDeclStmt, Block, If, While, DoWhile, For, Switch, Case, Default, Return, Break, Continue,
+             ExprStmt, EmptyStmt, ErrorStmt]

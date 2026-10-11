@@ -1,0 +1,15 @@
+{
+  "description": "Assigns s.mark but the member is called marks.",
+  "split": "dev",
+  "injected_faults": [
+  "line 11: no member 'mark' in struct Student"
+],
+  "roots": [
+    {"code": "SEM-NO-SUCH-MEMBER", "line": 11}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: 'struct Student' has no member named 'mark'."
+}

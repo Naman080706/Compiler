@@ -1,0 +1,15 @@
+{
+  "description": "A switch on a double variable.",
+  "split": "dev",
+  "injected_faults": [
+  "line 5: 'switch (grade)' with grade a double"
+],
+  "roots": [
+    {"code": "SEM-SWITCH-NON-INT", "line": 5}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: switch quantity not an integer."
+}

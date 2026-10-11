@@ -1,0 +1,11 @@
+{
+  "description": "Object-like #define constants, a 2-D array, a const int, a do-while loop, a comma in a for header and math.h.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "#define substitution (array sizes and a double), multi-dimensional array initialiser, sqrt/pow."
+}

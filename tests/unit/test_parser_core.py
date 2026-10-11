@@ -53,9 +53,9 @@ def test_expect_failure_raises_after_one_record():
 
 
 @pytest.mark.parametrize("src,found,expected,code", [
-    ("switch", "switch", [";"], "SYN-UNSUPPORTED-FEATURE"),       # rule 0 beats rule 2
-    ("a & b", "&", [";"], "SYN-UNSUPPORTED-FEATURE"),             # rule 0: UNSUPPORTED_OP
-    ("int * p", "*", [P.IDENT], "SYN-UNSUPPORTED-FEATURE"),        # rule 0: '*' directly after type_spec
+    ("goto", "goto", [";"], "SYN-UNSUPPORTED-FEATURE"),         # rule 0 beats rule 2
+    ("f(a, ...)", "...", [")"], "SYN-UNSUPPORTED-FEATURE"),        # rule 0: UNSUPPORTED_OP
+    ("int * p", "*", [P.IDENT], "SYN-EXPECTED-TOKEN"),             # a pointer declarator is ordinary now
     ("x * p", "*", [P.IDENT], "SYN-EXPECTED-TOKEN"),               # '*' after a non-type is ordinary
     ("x", "EOF", [";"], "SYN-UNEXPECTED-EOF"),                     # rule 1 beats rule 2
     ("x y", "y", [";"], "SYN-MISSING-SEMICOLON"),                  # rule 2

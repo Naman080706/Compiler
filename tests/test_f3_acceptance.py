@@ -38,14 +38,14 @@ def line_of(messages, n):
 
 
 def test_dev_corpus_is_present():
-    assert len(DEV) == 54
+    assert len(DEV) == 69
 
 
 @pytest.mark.corpus
 @pytest.mark.parametrize("c_path", DEV, ids=[p.name for p in DEV])
 def test_every_root_gets_an_explanation_and_a_diff(c_path):
     source = c_path.read_text(encoding="utf-8")
-    result = compile_source(source, c_path.name)
+    result = compile_source(source, c_path.name, engine="cea")
     assert result.clusters, "every dev program has at least one root"
     for cluster in result.clusters:
         root = cluster.root

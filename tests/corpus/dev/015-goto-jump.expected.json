@@ -1,0 +1,17 @@
+{
+  "description": "Sums numbers and leaves the loop early with a goto and a label, which the subset does not support.",
+  "split": "dev",
+  "injected_faults": [
+  "line 8: 'goto done;' is not supported",
+  "line 10: the label 'done:' is not supported"
+],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 8},
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 10}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Two roots, one per unsupported construct (goto, label). gcc accepts the file, so gcc_rejects is false. Replaces the old const-qualifier program: const is supported now."
+}

@@ -12,17 +12,17 @@ PRODUCTION_CODES = {
 }
 WARNING_CODES = {
     "WRN-UNUSED-VAR", "WRN-UNREACHABLE-CODE", "WRN-IMPLICIT-NARROWING",
-    "WRN-MISSING-RETURN", "WRN-ASSIGN-IN-CONDITION",
+    "WRN-MISSING-RETURN", "WRN-ASSIGN-IN-CONDITION", "WRN-INCOMPATIBLE-POINTER", "GCC-WARNING", "GCC-NOTE",
 }
 
 
-def test_catalog_has_37_codes():
-    assert len(load_catalog()) == 37
+def test_catalog_has_52_codes():
+    assert len(load_catalog()) == 52
 
 
 def test_codes_per_phase():
     phases = Counter(e.phase for e in load_catalog().values())
-    assert phases == {"lexical": 7, "syntax": 8, "semantic": 22}
+    assert phases == {"lexical": 7, "syntax": 8, "semantic": 37}
 
 
 def test_severity_comes_from_the_table():
@@ -32,7 +32,7 @@ def test_severity_comes_from_the_table():
 
 
 def test_code_prefix_matches_phase():
-    prefix_phase = {"LEX": "lexical", "SYN": "syntax", "SEM": "semantic", "WRN": "semantic"}
+    prefix_phase = {"LEX": "lexical", "SYN": "syntax", "SEM": "semantic", "WRN": "semantic", "GCC": "semantic"}
     for code, e in load_catalog().items():
         assert e.code == code
         assert e.phase == prefix_phase[code[:3]], code
@@ -53,7 +53,7 @@ def test_production_rows():
 
 @pytest.mark.parametrize("code,template", [
     ("LEX-INVALID-CHAR", "Unexpected character '{found}'"),
-    ("LEX-UNSUPPORTED-DIRECTIVE", "Only '#include <stdio.h>' is supported; '{found}' is not"),
+    ("LEX-UNSUPPORTED-DIRECTIVE", "'{found}' is not supported; allowed are #include of stdio.h, stdlib.h, string.h, math.h, ctype.h or stdbool.h, and '#define NAME value'"),
     ("SYN-UNBALANCED-BRACKET", "Unbalanced bracket at '{found}': {detail}"),
     ("SYN-EXPECTED-TOKEN", "Expected {expected} but found '{found}'"),
     ("WRN-ASSIGN-IN-CONDITION", "Assignment used as a condition; did you mean '=='?"),
@@ -70,7 +70,7 @@ def test_category_column():
 
 def test_table_order_is_kept():
     codes = list(load_catalog())
-    assert codes[0] == "LEX-INVALID-CHAR" and codes[-1] == "WRN-ASSIGN-IN-CONDITION"
+    assert codes[0] == "LEX-INVALID-CHAR" and codes[-1] == "GCC-NOTE"
 
 
 def test_cached_entries_are_shared_but_dict_is_a_copy():
@@ -101,6 +101,6 @@ def test_row_with_wrong_cell_count_raises(tmp_path):
 
 def test_grammar_rule_names():
     rules = load_grammar_rules()
-    assert len(rules) == 36
+    assert len(rules) == 55
     assert {"program", "statement", "var_decl", "assignment", "primary"} <= rules
     assert "token" not in rules          # lexical rules (section 1) are not syntax rule_refs

@@ -50,6 +50,7 @@ class ErrorSink:
                span_end: Position | None = None,
                caused_by: str | None = None,
                rule_ref: str | None = None,
+               phase: str | None = None,
                **message_args: object) -> ErrorRecord:
         entry = self._catalog[code]                      # unknown code -> KeyError
         if isinstance(expected, str):
@@ -76,7 +77,7 @@ class ErrorSink:
                 span_end = Position(line, column + max(len(found), 1) - 1)
         rec_id = f"E-{len(self._records) + 1:04d}"
         record = ErrorRecord(
-            id=rec_id, phase=entry.phase, code=code, severity=entry.severity,
+            id=rec_id, phase=phase or entry.phase, code=code, severity=entry.severity,
             line=line, column=column, found=found, expected=expected_list,
             snippet=self._snippet(line), root_id=rec_id, rule_ref=rule_ref,
             language="c", caused_by=caused_by, span_end=span_end, message=message,
@@ -97,5 +98,5 @@ class ErrorSink:
     def summary(self) -> str:
         """PRD F4 count line, e.g. "2 fatal, 3 warnings" / "1 fatal, 1 warning"."""
         fatal = sum(1 for r in self._records if r.severity == "fatal")
-        warnings = sum(1 for r in self._records if r.severity == "warning")
+        warnings = sum(1 for r in self._records if r.severity == "warning" and r.code != "GCC-NOTE")   # notes explain, they do not count
         return f"{fatal} fatal, {warnings} warning{'' if warnings == 1 else 's'}"

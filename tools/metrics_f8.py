@@ -40,7 +40,7 @@ def units():
             continue
         c_path = side.with_name(side.name[: -len(".expected.json")] + ".c")
         source = c_path.read_text(encoding="utf-8")
-        fatal = [c.root for c in compile_source(source, c_path.name).clusters if c.root.severity == "fatal"]
+        fatal = [c.root for c in compile_source(source, c_path.name, engine="cea").clusters if c.root.severity == "fatal"]
         if fatal:
             yield c_path.name, source, fatal[0]
 

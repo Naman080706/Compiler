@@ -1,0 +1,11 @@
+{
+  "description": "Bitwise operators, compound bit assignments, shifts, the ?: operator, sizeof and a cast.",
+  "split": "valid",
+  "injected_faults": [],
+  "roots": [],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "unsigned/long types with u and L suffixes, | ^ & ~ << >> and |= ^= &= <<=."
+}

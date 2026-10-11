@@ -95,13 +95,6 @@
    "    i = count;"
   ]
  },
- "015-const-qualifier.c": {
-  "start_line": 4,
-  "end_line": 4,
-  "replacement": [
-   "     int LIMIT = 5;"
-  ]
- },
  "016-typo-in-variable.c": {
   "start_line": 5,
   "end_line": 5,
@@ -291,13 +284,6 @@
    "int limit = 10;"
   ]
  },
- "049-pointer-declaration-uses.c": {
-  "start_line": 6,
-  "end_line": 6,
-  "replacement": [
-   "    int values[3];"
-  ]
- },
  "050-for-missing-close-paren.c": {
   "start_line": 7,
   "end_line": 7,
@@ -338,6 +324,85 @@
   "end_line": 9,
   "replacement": [
    "    int count = 10;"
+  ]
+ },
+ "070-deref-plain-int.c": {
+  "start_line": 6,
+  "end_line": 6,
+  "replacement": [
+   "    copy = count;"
+  ]
+ },
+ "071-address-of-expression.c": {
+  "start_line": 6,
+  "end_line": 6,
+  "replacement": [
+   "    int sum = a + b;",
+   "    int *where = &sum;"
+  ]
+ },
+ "073-struct-member-typo.c": {
+  "start_line": 11,
+  "end_line": 11,
+  "replacement": [
+   "    s.marks = 90;"
+  ]
+ },
+ "074-member-of-plain-int.c": {
+  "start_line": 5,
+  "end_line": 5,
+  "replacement": [
+   "    total = total + 4;"
+  ]
+ },
+ "075-arrow-on-struct-value.c": {
+  "start_line": 10,
+  "end_line": 10,
+  "replacement": [
+   "    int area = b.width * b.height;"
+  ]
+ },
+ "076-assign-to-const.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    int limit = 10;"
+  ]
+ },
+ "077-duplicate-case-label.c": {
+  "start_line": 12,
+  "end_line": 12,
+  "replacement": [
+   "        case 3:"
+  ]
+ },
+ "079-switch-on-double.c": {
+  "start_line": 5,
+  "end_line": 5,
+  "replacement": [
+   "    switch ((int)grade) {"
+  ]
+ },
+ "080-case-outside-switch.c": {
+  "start_line": 5,
+  "end_line": 6,
+  "replacement": [
+   "    switch (n) {",
+   "        case 1:"
+  ]
+ },
+ "081-incomplete-struct-variable.c": {
+  "start_line": 6,
+  "end_line": 6,
+  "replacement": [
+   "    struct Node *first = NULL;"
+  ]
+ },
+ "083-bit-field-member.c": {
+  "start_line": 4,
+  "end_line": 4,
+  "replacement": [
+   "    int ready;"
   ]
  }
 }

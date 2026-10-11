@@ -19,9 +19,8 @@ TRACES = {
            "    count = count + 1\n    result = count;\n    return 0;\n}\n"),
     "T7": ("int main(void) {\n    int i = 0;\n    while (i < 10 {\n        i = i + 1;\n        if (i == 5) {\n"
            "            break;\n        }\n    }\n    return i;\n}\n"),
-    "T8": ("int main(void) {\n    int n = 2;\n    switch (n) {\n        case 1:\n            n = 5;\n"
-           "            break;\n        default:\n            n = 0;\n    }\n    return n;\n}\n"),
-    "T9": "int main(void) {\n    int *p;\n    p = 0;\n    return p;\n}\n",
+    "T8": ("int main(void) {\n    int n = 2;\n    volatile (n) {\n        goto a;\n        break;\n        goto b;\n    }\n    return n;\n}\n"),
+    "T9": "int main(void) {\n    int (*p)(int);\n    p = 0;\n    return p;\n}\n",
 }
 
 # (id, code, line:col, found, expected, caused_by) for every lexical + syntax record
@@ -35,10 +34,10 @@ EXPECTED = {
     "T6": [("E-0001", "LEX-INVALID-ESCAPE", "4:18", "\\q", [], None),
            ("E-0002", "SYN-MISSING-SEMICOLON", "5:22", "result", [";"], None)],
     "T7": [("E-0001", "SYN-UNBALANCED-BRACKET", "3:19", "{", [")"], None)],
-    "T8": [("E-0001", "SYN-UNSUPPORTED-FEATURE", "3:5", "switch", [], None),
-           ("E-0002", "SYN-UNSUPPORTED-FEATURE", "4:9", "case", [], "E-0001"),
-           ("E-0003", "SYN-UNSUPPORTED-FEATURE", "7:9", "default", [], "E-0001")],
-    "T9": [("E-0001", "SYN-UNSUPPORTED-FEATURE", "2:9", "*", [P.IDENT], None)],
+    "T8": [("E-0001", "SYN-UNSUPPORTED-FEATURE", "3:5", "volatile", [], None),
+           ("E-0002", "SYN-UNSUPPORTED-FEATURE", "4:9", "goto", [], "E-0001"),
+           ("E-0003", "SYN-UNSUPPORTED-FEATURE", "6:9", "goto", [], "E-0001")],
+    "T9": [("E-0001", "SYN-UNSUPPORTED-FEATURE", "2:9", "(", [], None)],
 }
 
 
@@ -114,13 +113,21 @@ def test_t9_declarator_name_recovered():
     ("int f(a) { }\n", ("SYN-EXPECTED-TYPE", "1:7", "a")),
     ("int main() { return 0;", ("SYN-UNEXPECTED-EOF", "1:23", "EOF")),
     (main("int x = 1;", "5 = x;", "return 0;"), ("SYN-INVALID-ASSIGN-TARGET", "3:7", "=")),
-    (main("int *p;", "return 0;"), ("SYN-UNSUPPORTED-FEATURE", "2:9", "*")),
+    (main("goto done;", "return 0;"), ("SYN-UNSUPPORTED-FEATURE", "2:5", "goto")),
     # language-spec 6: no special case; ordinary selection rules
-    (main("int a[3] = {1, 2};", "return 0;"), ("SYN-EXPECTED-EXPRESSION", "2:16", "{")),
-    ("int f(int a[]) { return 0; }\n", ("SYN-EXPECTED-TOKEN", "1:12", "[")),
+    (main("int a[3] = {1, 2};", "return 0;"), None),
+    ("int f(int a[]) { return 0; }\n", None),
+    (main("int (*fp)(int);", "return 0;"), ("SYN-UNSUPPORTED-FEATURE", "2:9", "(")),
+    ("struct S { int x : 3; };\n", ("SYN-UNSUPPORTED-FEATURE", "1:18", ":")),
+    ("int f(int n, ...) { return n; }\n", ("SYN-UNSUPPORTED-FEATURE", "1:14", "...")),
+    (main("done: return 0;"), ("SYN-UNSUPPORTED-FEATURE", "2:5", "done")),
 ])
 def test_catalog_example_triggers(src, want):
     sink = ErrorSink(src)
     P.parse(lex(src, sink), sink)
-    first = [r for r in sink.records if r.phase == "syntax"][0]
+    syn = [r for r in sink.records if r.phase == "syntax"]
+    if want is None:                       # supported since course-level C (array initialiser, array parameter)
+        assert syn == []
+        return
+    first = syn[0]
     assert (first.code, f"{first.line}:{first.column}", first.found) == want

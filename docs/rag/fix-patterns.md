@@ -47,8 +47,8 @@ fix: Use a supported escape (\n, \t, \\, \", \') or remove the backslash.
 code: LEX-UNSUPPORTED-DIRECTIVE
 phase: lexical
 rule_ref: directive
-mistake: Using #define or another preprocessor directive.
-fix: Keep only #include <stdio.h>; replace a #define constant with a global variable or a literal.
+mistake: Using a preprocessor directive outside the supported ones: #ifdef/#if/#pragma/#undef, a function-like macro such as #define SQ(x), or a header other than stdio.h, stdlib.h, string.h, math.h, ctype.h and stdbool.h.
+fix: Keep only #include of the supported headers and object-like '#define NAME value'; replace a function-like macro with a real function and drop conditional compilation.
 
 ## fix: SYN-MISSING-SEMICOLON
 code: SYN-MISSING-SEMICOLON
@@ -103,8 +103,8 @@ fix: Put a variable name or an array element such as a[i] on the left of the =, 
 code: SYN-UNSUPPORTED-FEATURE
 phase: syntax
 rule_ref: <production>
-mistake: Using a C feature outside the course subset, such as pointers (int *p), structs, switch or the ternary operator.
-fix: Rewrite with supported features: use arrays and plain variables instead of pointers, if/else instead of switch.
+mistake: Using a C feature outside the course subset: goto and labels, function pointers, variadic functions (...), bit-fields, designated initialisers, or register/auto/volatile.
+fix: Rewrite with supported features: use break/return or a flag instead of goto, a plain if/else or switch instead of a function pointer, and ordinary members instead of bit-fields.
 
 ## fix: SEM-UNDECLARED-VAR
 code: SEM-UNDECLARED-VAR
@@ -259,3 +259,108 @@ phase: semantic
 rule_ref: sem.conditions
 mistake: Writing = in an if or while condition when == was meant, as in if (x = 5).
 fix: Use == to compare. Keep = only if you really want to assign.
+
+## fix: SEM-DEREF-NON-POINTER
+code: SEM-DEREF-NON-POINTER
+phase: semantic
+rule_ref: sem.pointers
+mistake: Using * on a value that is not a pointer, for example *count where count is an int.
+fix: Remove the *, or declare the variable as a pointer (int *count) and give it an address with &.
+
+## fix: SEM-ADDR-OF-NON-LVALUE
+code: SEM-ADDR-OF-NON-LVALUE
+phase: semantic
+rule_ref: sem.pointers
+mistake: Taking the address of a computed value such as &(a + b) or &5.
+fix: Store the value in a variable first and take the address of that variable (&sum), or pass the value itself.
+
+## fix: SEM-NO-SUCH-MEMBER
+code: SEM-NO-SUCH-MEMBER
+phase: semantic
+rule_ref: sem.members
+mistake: Misspelling a struct member name, or using a member the struct does not have.
+fix: Compare with the struct definition and use an existing member name, or add the member to the struct.
+
+## fix: SEM-MEMBER-ON-NON-STRUCT
+code: SEM-MEMBER-ON-NON-STRUCT
+phase: semantic
+rule_ref: sem.members
+mistake: Using . on something that is not a struct or union, such as an int or a pointer.
+fix: Use . only on a struct value; for a pointer to a struct use ->. Check that the variable has the type you expect.
+
+## fix: SEM-ARROW-ON-NON-POINTER
+code: SEM-ARROW-ON-NON-POINTER
+phase: semantic
+rule_ref: sem.members
+mistake: Using -> on a struct value instead of a pointer to a struct.
+fix: Use . when you have the struct itself (b.width) and -> only when you have a pointer (p->width).
+
+## fix: SEM-INCOMPLETE-TYPE
+code: SEM-INCOMPLETE-TYPE
+phase: semantic
+rule_ref: sem.members
+mistake: Declaring a variable of a struct that was only declared (struct Node;) and never defined.
+fix: Define the struct with its members before declaring variables of it, or use a pointer to it instead.
+
+## fix: SEM-ASSIGN-TO-CONST
+code: SEM-ASSIGN-TO-CONST
+phase: semantic
+rule_ref: sem.const_correctness
+mistake: Assigning to a variable declared const, or through a pointer to const.
+fix: Remove const from the declaration if the value must change, or stop assigning to it.
+
+## fix: SEM-DUPLICATE-CASE
+code: SEM-DUPLICATE-CASE
+phase: semantic
+rule_ref: sem.switch_stmt
+mistake: Writing the same case value twice in one switch (often a copy and paste slip).
+fix: Change one label to the intended value or merge the two cases; each value may appear once per switch.
+
+## fix: SEM-CASE-NOT-CONSTANT
+code: SEM-CASE-NOT-CONSTANT
+phase: semantic
+rule_ref: sem.switch_stmt
+mistake: Using a variable as a case label.
+fix: Use a literal, a character, an enum constant or a #define value; use if / else if for runtime values.
+
+## fix: SEM-SWITCH-NON-INT
+code: SEM-SWITCH-NON-INT
+phase: semantic
+rule_ref: sem.switch_stmt
+mistake: Switching on a double, float or pointer.
+fix: Switch on an int or char value (for example convert with a cast) or use if / else if.
+
+## fix: SEM-CASE-OUTSIDE-SWITCH
+code: SEM-CASE-OUTSIDE-SWITCH
+phase: semantic
+rule_ref: sem.switch_stmt
+mistake: Writing case or default outside a switch body, often after a misplaced brace.
+fix: Move the label inside the switch braces, or check that the braces around the switch are balanced.
+
+## fix: WRN-INCOMPATIBLE-POINTER
+code: WRN-INCOMPATIBLE-POINTER
+phase: semantic
+rule_ref: sem.pointers
+mistake: Pointing an int pointer at a double (or another different type).
+fix: Declare the pointer with the same base type as the variable (double *p = &price) or cast deliberately.
+
+## fix: GCC-ERROR
+code: GCC-ERROR
+phase: semantic
+rule_ref: sem.gcc_fallback
+mistake: The program uses a feature outside the course subset, so gcc analysed it and reported an error.
+fix: Read gcc's message; it names the line and what to change. The usual causes are the same as the course errors: missing semicolon, undeclared name, wrong type.
+
+## fix: GCC-WARNING
+code: GCC-WARNING
+phase: semantic
+rule_ref: sem.gcc_fallback
+mistake: gcc reports a warning for code that is legal but suspicious (unused variable, format mismatch).
+fix: Fix the cause gcc names; warnings do not stop the program from compiling but often point at real bugs.
+
+## fix: GCC-NOTE
+code: GCC-NOTE
+phase: semantic
+rule_ref: sem.gcc_fallback
+mistake: A note gives extra detail about the gcc error or warning just before it (for example where the earlier declaration is).
+fix: Use the note's location to understand the main message; fix the main diagnostic.

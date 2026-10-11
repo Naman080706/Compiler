@@ -66,6 +66,8 @@ class CompileRequest(BaseModel):
     # F9: pseudonymous random tokens made by the browser. Only the profile store sees them, never the LLM.
     student_id: str | None = Field(default=None, pattern=ID_PATTERN)
     session_id: str | None = Field(default=None, pattern=ID_PATTERN)
+    # "auto": our compiler, with the gcc fallback for features outside the course subset; "cea"/"gcc" force one
+    engine: Literal["auto", "cea", "gcc"] = "auto"
 
 
 class FixRequest(CompileRequest):
@@ -151,11 +153,11 @@ def llm_status() -> str:
     return "fallback" if getattr(client, "name", None) == "fallback" else "primary"
 
 
-def _compile(source: str) -> CompileResult:
+def _compile(source: str, engine: str = "auto") -> CompileResult:
     """Re-compile the request's source (stateless server); 413 above 64 KB of UTF-8."""
     if len(source.encode("utf-8", errors="surrogatepass")) > MAX_SOURCE_BYTES:
         raise HTTPException(status_code=413, detail=f"Source is larger than {MAX_SOURCE_BYTES} bytes.")
-    return compile_source(source, DISPLAY_NAME)
+    return compile_source(source, DISPLAY_NAME, engine=engine)
 
 
 def _record(result: CompileResult, record_id: str) -> ErrorRecord:
@@ -187,10 +189,11 @@ def _profile_id(student_id: str) -> str:
 
 @app.post("/api/compile")
 def compile_endpoint(req: CompileRequest, profiles: ProfilesDep) -> dict:
-    result = _compile(req.source)
+    result = _compile(req.source, req.engine)
     if req.student_id:
         profiles.record_compile(req.student_id, req.session_id, [c.root for c in result.clusters])
-    return {"ok": result.ok, "summary": result.summary(),
+    return {"ok": result.ok, "summary": result.summary(), "engine": result.engine,
+            "engine_note": result.engine_note,
             "records": [r.to_dict() for r in result.errors],
             "clusters": [{"root_id": c.root.id, "symptom_ids": [s.id for s in c.symptoms]}
                          for c in result.clusters]}
@@ -198,7 +201,7 @@ def compile_endpoint(req: CompileRequest, profiles: ProfilesDep) -> dict:
 
 @app.post("/api/explain")
 def explain_endpoint(req: ExplainRequest, agent: AgentDep, profiles: ProfilesDep) -> dict:
-    record = _record(_compile(req.source), req.record_id)
+    record = _record(_compile(req.source, req.engine), req.record_id)
     personal = None
     if req.student_id:                     # F9: the id picks the depth here and goes no further
         category = category_of(record)
@@ -219,8 +222,9 @@ def explain_endpoint(req: ExplainRequest, agent: AgentDep, profiles: ProfilesDep
 
 @app.post("/api/fix")
 def fix_endpoint(req: FixRequest, agent: AgentDep) -> dict:
-    record = _record(_compile(req.source), req.record_id)
-    fix = _call_agent(lambda: verify_fix(agent, record, req.source, timeout=fix_timeout()))
+    record = _record(_compile(req.source, req.engine), req.record_id)
+    fix = _call_agent(lambda: verify_fix(agent, record, req.source, timeout=fix_timeout(),
+                                         compile_fn=lambda s, n: compile_source(s, n, engine=req.engine)))
     if not fix.verified:                   # F8: an unverified fix is never sent as a fix
         return {"diff": "", "patched_source": req.source, "verified": False, "attempts": fix.attempts,
                 "reason": fix.reason}
@@ -230,7 +234,7 @@ def fix_endpoint(req: FixRequest, agent: AgentDep) -> dict:
 
 @app.post("/api/ask")
 def ask_endpoint(req: AskRequest, agent: AgentDep) -> dict:
-    record = _record(_compile(req.source), req.record_id)
+    record = _record(_compile(req.source, req.engine), req.record_id)
     history = [t.model_dump() for t in req.history]
     answer = _call_agent(agent.ask, record, req.source, req.question, history)
     return {"text": answer.text, "refused": bool(answer.refused)}
@@ -249,4 +253,5 @@ def profile_reset_endpoint(student_id: str, profiles: ProfilesDep) -> dict:
 
 @app.get("/api/health")
 def health_endpoint() -> dict:
-    return {"status": "ok", "llm": llm_status()}
+    from cea.gcc_fallback import gcc_available
+    return {"status": "ok", "llm": llm_status(), "gcc": gcc_available()}

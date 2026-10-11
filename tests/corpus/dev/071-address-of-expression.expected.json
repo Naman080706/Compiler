@@ -1,0 +1,15 @@
+{
+  "description": "Takes the address of the expression a + b.",
+  "split": "dev",
+  "injected_faults": [
+  "line 6: '&(a + b)' has no address"
+],
+  "roots": [
+    {"code": "SEM-ADDR-OF-NON-LVALUE", "line": 6}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "gcc: lvalue required as unary '&' operand."
+}

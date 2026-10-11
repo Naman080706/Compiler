@@ -1,0 +1,17 @@
+{
+  "description": "Wraps a #define in #ifdef DEBUG / #endif, which the subset does not support.",
+  "split": "dev",
+  "injected_faults": [
+  "line 2: '#ifdef DEBUG' is not supported",
+  "line 4: '#endif' is not supported"
+],
+  "roots": [
+    {"code": "LEX-UNSUPPORTED-DIRECTIVE", "line": 2},
+    {"code": "LEX-UNSUPPORTED-DIRECTIVE", "line": 4}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "Two roots, one per conditional directive; the #define between them is still accepted. gcc accepts the file."
+}

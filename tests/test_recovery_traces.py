@@ -49,15 +49,14 @@ TRACES = [
            "            break;\n        }\n    }\n    return i;\n}\n", [
         ("E-0001", "SYN-UNBALANCED-BRACKET", "3:19", "{", None, "E-0001"),
     ]),
-    ("T8", "int main(void) {\n    int n = 2;\n    switch (n) {\n        case 1:\n            n = 5;\n"
-           "            break;\n        default:\n            n = 0;\n    }\n    return n;\n}\n", [
-        ("E-0001", "SYN-UNSUPPORTED-FEATURE", "3:5", "switch", None, "E-0001"),
-        ("E-0002", "SYN-UNSUPPORTED-FEATURE", "4:9", "case", "E-0001", "E-0001"),
-        ("E-0003", "SYN-UNSUPPORTED-FEATURE", "7:9", "default", "E-0001", "E-0001"),
-        ("E-0004", "SEM-BREAK-OUTSIDE-LOOP", "6:13", "break", "E-0001", "E-0001"),
+    ("T8", "int main(void) {\n    int n = 2;\n    volatile (n) {\n        goto a;\n        break;\n        goto b;\n    }\n    return n;\n}\n", [
+        ("E-0001", "SYN-UNSUPPORTED-FEATURE", "3:5", "volatile", None, "E-0001"),
+        ("E-0002", "SYN-UNSUPPORTED-FEATURE", "4:9", "goto", "E-0001", "E-0001"),
+        ("E-0003", "SYN-UNSUPPORTED-FEATURE", "6:9", "goto", "E-0001", "E-0001"),
+        ("E-0004", "SEM-BREAK-OUTSIDE-LOOP", "5:9", "break", "E-0001", "E-0001"),
     ]),
-    ("T9", "int main(void) {\n    int *p;\n    p = 0;\n    return p;\n}\n", [
-        ("E-0001", "SYN-UNSUPPORTED-FEATURE", "2:9", "*", None, "E-0001"),
+    ("T9", "int main(void) {\n    int (*p)(int);\n    p = 0;\n    return p;\n}\n", [
+        ("E-0001", "SYN-UNSUPPORTED-FEATURE", "2:9", "(", None, "E-0001"),
         ("E-0002", "SEM-UNDECLARED-VAR", "3:5", "p", "E-0001", "E-0001"),
         ("E-0003", "SEM-UNDECLARED-VAR", "4:12", "p", "E-0001", "E-0001"),
     ]),
@@ -72,14 +71,14 @@ SUMMARY = {
 
 @pytest.mark.parametrize("name,source,expected", TRACES, ids=[t[0] for t in TRACES])
 def test_trace_record_table(name, source, expected):
-    result = compile_source(source, f"{name}.c")
+    result = compile_source(source, f"{name}.c", engine="cea")
     got = [(r.id, r.code, f"{r.line}:{r.column}", r.found, r.caused_by, r.root_id) for r in result.errors]
     assert got == expected
 
 
 @pytest.mark.parametrize("name,source,expected", TRACES, ids=[t[0] for t in TRACES])
 def test_trace_summary_row(name, source, expected):
-    result = compile_source(source, f"{name}.c")
+    result = compile_source(source, f"{name}.c", engine="cea")
     raw = len(result.errors)
     displayed = len(result.clusters)
     fatal = sum(r.severity == "fatal" for r in result.errors)
@@ -89,7 +88,7 @@ def test_trace_summary_row(name, source, expected):
 
 @pytest.mark.parametrize("name,source,expected", TRACES, ids=[t[0] for t in TRACES])
 def test_trace_clusters_partition_the_records(name, source, expected):
-    result = compile_source(source, f"{name}.c")
+    result = compile_source(source, f"{name}.c", engine="cea")
     ids = [r.id for c in result.clusters for r in [c.root, *c.symptoms]]
     assert sorted(ids) == [r.id for r in result.errors]
     assert all(c.root.root_id == c.root.id and c.root.caused_by is None for c in result.clusters)

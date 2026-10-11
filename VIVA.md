@@ -278,3 +278,14 @@ On a folder of faulty C programs with known injected faults, which also serves a
 | 2026-10-10 | 1.10: milestone 1 complete (analyser, pipeline, CLI, F1/F4 met, return-path fix) | Plan 007 executed, reviewed and merged |
 | 2026-10-11 | 1.11 (milestone 4: F8 verifier, F9 profile) | Implemented from the PRD, no plan |
 | 2026-10-11 | 1.12-1.14 (milestones 2, 3, 5), real evaluation numbers, 3 Q&A | Milestone 5: tools/evaluate.py, docs/evaluation/ |
+
+
+## Milestone 6: course-level C and the gcc fallback
+
+- **Why**: the strict subset rejected ordinary student programs (pointers, structs, switch, const, scanf, malloc). Part A grows our compiler to course-level C; Part B adds `src/cea/gcc_fallback.py` so every C program gets diagnostics.
+- **Our compiler**: the lexer reads hex/octal/exponent/suffix numbers, all C operators, `#include` of six headers and object-like `#define` (substituted in the lexer). The parser adds declaration specifiers (`unsigned long`, `const`, `static`), pointers, arrays (multi-dimensional, initialiser lists), `struct`/`union`/`enum`/`typedef` (the parser keeps a set of typedef names), `switch`/`case`/`do`, casts, `sizeof`, `?:`, the comma operator. Semantics add pointer, array-decay, struct and const typing; builtin signatures live in `src/cea/stdlib_decls.py` and become visible when their header is included.
+- **New codes** (15): SEM-DEREF-NON-POINTER, SEM-ADDR-OF-NON-LVALUE, WRN-INCOMPATIBLE-POINTER, SEM-NO-SUCH-MEMBER, SEM-MEMBER-ON-NON-STRUCT, SEM-ARROW-ON-NON-POINTER, SEM-INCOMPLETE-TYPE, SEM-ASSIGN-TO-CONST, SEM-DUPLICATE-CASE, SEM-CASE-NOT-CONSTANT, SEM-SWITCH-NON-INT, SEM-CASE-OUTSIDE-SWITCH, GCC-ERROR, GCC-WARNING, GCC-NOTE.
+- **Still unsupported** (SYN-UNSUPPORTED-FEATURE / LEX-UNSUPPORTED-DIRECTIVE): goto and labels, function pointers, variadic definitions, bit-fields, designated initialisers, register/auto/volatile, function-like macros, `#if`/`#ifdef`/`#pragma`.
+- **Fallback**: `compile_source(engine="auto")` runs gcc (`-std=c99 -Wall -fsyntax-only -fdiagnostics-format=json`) when our compiler reports an unsupported construct, or when asked (`--engine gcc`). Each gcc diagnostic is an ErrorRecord; the phase is guessed from the message (lexical/syntax/semantic by keywords); notes are symptoms (`caused_by` = their parent) and are not counted in the summary.
+- **Invariant**: every program we accept, gcc accepts (`tools/gcc_check.py`, with one documented exception: incompatible pointer types are only a warning in plain gcc).
+- **Likely questions**: Why a warning for incompatible pointers? (gcc does the same.) Why stricter than gcc for int-to-pointer? (gcc only warns; we reject, which keeps the invariant.) Why not use gcc for everything? (The course compiler gives phase-wise records, recovery rules and clustering that the teaching tool is built on.)

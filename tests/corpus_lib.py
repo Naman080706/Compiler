@@ -12,7 +12,7 @@ CORPUS = ROOT / "tests" / "corpus"
 CATALOG = ROOT / "docs" / "error-catalog.md"
 SPLITS = ("dev", "heldout", "valid")
 SIDECAR_SUFFIX = ".expected.json"
-CODE_ROW = re.compile(r"^\| (LEX|SYN|SEM|WRN)-")
+CODE_ROW = re.compile(r"^\| (LEX|SYN|SEM|WRN|GCC)-")
 
 
 def load_catalog():

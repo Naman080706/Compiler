@@ -1,0 +1,15 @@
+{
+  "description": "Declares 'typedef int (*binop)(int, int);' (function pointers are not in the subset) and uses the typedef name.",
+  "split": "dev",
+  "injected_faults": [
+  "line 3: typedef of a function pointer is not supported"
+],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 3}
+  ],
+  "warnings": [],
+  "cascading": false,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "The parser still learns 'binop' as a type name, so the later uses parse as declarations and add no records. gcc accepts the file. Replaces the old switch program: switch is supported now."
+}

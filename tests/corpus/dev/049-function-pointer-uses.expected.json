@@ -1,0 +1,15 @@
+{
+  "description": "main declares a function pointer 'int (*op)(int, int) = add;' (not in the subset) and then calls op twice.",
+  "split": "dev",
+  "injected_faults": [
+  "line 8: function pointer declaration is not supported"
+],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 8}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": false,
+  "gcc_rejects": false,
+  "notes": "raw 5. SYN-UNSUPPORTED-FEATURE 8 (caused_by: none), SEM-UNDECLARED-FUNC 9, 10, 11 and 12 (R5: 'op' follows '*' and precedes ')' so it is a lost declarator name). Panic skips the parenthesised parameter types. gcc accepts the file."
+}

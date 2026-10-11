@@ -13,7 +13,7 @@ from cea.lexer import lex
 
 ROOT = Path(__file__).resolve().parents[2]
 VALID = sorted((ROOT / "tests" / "corpus" / "valid").glob("*.c"))
-FUNC_HEADER = re.compile(r"^(?:int|float|double|char|void)\s+([A-Za-z_]\w*)\s*\(", re.M)
+FUNC_HEADER = re.compile(r"^(?:static\s+)?(?:const\s+)?(?:struct\s+\w+|int|float|double|char|void|bool)[\s*]*?([A-Za-z_]\w*)\s*\(", re.M)
 
 
 @pytest.fixture(autouse=True)

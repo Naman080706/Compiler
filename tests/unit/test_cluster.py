@@ -31,9 +31,8 @@ T4 = ("int main(void) {\n    int total = 0;\n    count = 1;\n    total = total +
 T5 = "int main(void) {\n    int x = 5 @ 2;\n    return x;\n}\n"
 T6 = ("#include <stdio.h>\nint main(void) {\n    int count = 0;\n    printf(\"total\\q\\n\", count);\n"
       "    count = count + 1\n    result = count;\n    return 0;\n}\n")
-T8 = ("int main(void) {\n    int n = 2;\n    switch (n) {\n        case 1:\n            n = 5;\n"
-      "            break;\n        default:\n            n = 0;\n    }\n    return n;\n}\n")
-T9 = "int main(void) {\n    int *p;\n    p = 0;\n    return p;\n}\n"
+T8 = ("int main(void) {\n    int n = 2;\n    volatile (n) {\n        goto a;\n        break;\n        goto b;\n    }\n    return n;\n}\n")
+T9 = "int main(void) {\n    int (*p)(int);\n    p = 0;\n    return p;\n}\n"
 
 
 @pytest.mark.parametrize("source,expected_roots,displayed", [
@@ -45,13 +44,13 @@ T9 = "int main(void) {\n    int *p;\n    p = 0;\n    return p;\n}\n"
     (T9, ["E-0001"] * 3, 1),                                        # R5: rule 1 wins over rule 2
 ], ids=["T2", "T4", "T5", "T6", "T8", "T9"])
 def test_trace_roots(source, expected_roots, displayed):
-    result = compile_source(source, "t.c")
+    result = compile_source(source, "t.c", engine="cea")
     assert root_ids(result.errors) == expected_roots
     assert len(C.roots(result.errors)) == len(result.clusters) == displayed
 
 
 def test_t5_cluster_has_lexical_root_and_syntax_symptom():
-    result = compile_source(T5, "t5.c")
+    result = compile_source(T5, "t5.c", engine="cea")
     (cl,) = result.clusters
     assert cl.root.code == "LEX-INVALID-CHAR" and [s.code for s in cl.symptoms] == ["SYN-MISSING-SEMICOLON"]
 
@@ -62,7 +61,7 @@ SAME_NAME_TWO_FUNCS = ("int f(void) {\n    y = 1;\n    return foo(y);\n}\n"
 
 
 def test_undeclared_same_name_groups_within_one_function_only():
-    result = compile_source(SAME_NAME_TWO_FUNCS, "two.c")
+    result = compile_source(SAME_NAME_TWO_FUNCS, "two.c", engine="cea")
     got = [(r.id, r.code, r.found, r.root_id) for r in result.errors]
     assert got == [
         ("E-0001", "SEM-UNDECLARED-VAR", "y", "E-0001"),      # f: first y
@@ -112,7 +111,7 @@ def test_caused_by_beats_rule2():
 
 
 def test_assign_roots_is_idempotent():
-    result = compile_source(T4, "t4.c")
+    result = compile_source(T4, "t4.c", engine="cea")
     before = root_ids(result.errors)
     C.assign_roots(result.errors, result.program)
     assert root_ids(result.errors) == before

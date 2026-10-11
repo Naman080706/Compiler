@@ -1,0 +1,15 @@
+{
+  "description": "Initialises an int pointer with the address of a double.",
+  "split": "dev",
+  "injected_faults": [
+  "line 5: 'int *p = &price;' with price a double"
+],
+  "roots": [],
+  "warnings": [
+    {"code": "WRN-INCOMPATIBLE-POINTER", "line": 5}
+  ],
+  "cascading": false,
+  "fixable": true,
+  "gcc_rejects": true,
+  "notes": "A warning only, as in plain gcc -std=c99 -Wall. gcc -pedantic-errors turns it into an error, so gcc_rejects is true; tools/gcc_check.py exempts WRN-INCOMPATIBLE-POINTER programs from the 'empty roots => gcc accepts' rule and checks them with plain gcc instead."
+}

@@ -1,0 +1,15 @@
+{
+  "description": "A struct with the bit-field 'int ready : 1;', which the subset does not support, and a variable of that struct.",
+  "split": "dev",
+  "injected_faults": [
+  "line 4: bit-field member is not supported"
+],
+  "roots": [
+    {"code": "SYN-UNSUPPORTED-FEATURE", "line": 4}
+  ],
+  "warnings": [],
+  "cascading": true,
+  "fixable": true,
+  "gcc_rejects": false,
+  "notes": "raw 10. SYN-UNSUPPORTED-FEATURE 4, then SEM-INCOMPLETE-TYPE at every use of f and g (R5: the struct tag was lost with the failed definition). gcc accepts the file."
+}
