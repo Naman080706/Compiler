@@ -51,7 +51,7 @@ def test_explain_prompt_has_system_scope_record_rule_snippet_and_mode(rec):
 
 def test_schemas_are_plain_json_schema():
     for schema in (AG.EXPLAIN_SCHEMA, AG.FIX_SCHEMA, AG.ASK_SCHEMA):
-        assert schema["type"] == "object" and set(schema["required"]) == set(schema["properties"])
+        assert schema["type"] == "object" and set(schema["required"]) <= set(schema["properties"]) <= set(schema["required"]) | {"citations"}
         json.dumps(schema)
 
 
