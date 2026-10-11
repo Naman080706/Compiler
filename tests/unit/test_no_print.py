@@ -18,12 +18,13 @@ def test_foundation_modules_exist():
 
 def test_no_module_except_cli_prints():
     offenders = []
-    for path in sorted(PKG.glob("*.py")):
-        if path.name in ALLOWED:
+    for path in sorted(PKG.rglob("*.py")):                  # subpackages too (cea/llm/, plan 010)
+        rel = path.relative_to(PKG).as_posix()
+        if rel in ALLOWED:
             continue
         for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if FORBIDDEN.search(line):
-                offenders.append(f"{path.name}:{n}: {line.strip()}")
+                offenders.append(f"{rel}:{n}: {line.strip()}")
     assert not offenders, "console output outside cli.py:\n" + "\n".join(offenders)
 
 
