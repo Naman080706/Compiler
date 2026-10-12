@@ -1,19 +1,20 @@
 /* Design language: minimal, deep-charcoal ground.
    Palette: Black #000000, Charcoal #73787C, Gray #C5C6C7, Pale Blue #D7E5F0,
    Beige #C9AD93, Taupe #554940, Soft Green #879A77.
-   - Ground #2B2E30 is Charcoal's hue taken darker (never black); the editor sits one step deeper (#222527).
-   - Pale Blue is the ink (10.8:1), Gray the secondary text (7.6:1), Charcoal the tertiary metadata.
+   - Ground #2E2A27 is Charcoal's depth warmed toward Taupe (never black); the editor sits one step deeper (#262320);
+     the header carries a Taupe tint.
+   - Pale Blue is the ink; secondary text is Pale Blue softened, not grey; Beige marks section headings and hairlines.
    - Beige is the single accent (primary action, active toggle, focus); Taupe tints hover and selection.
    - Meaning is carried by small dots: red = fatal (the only off-palette value), Beige = warning,
      Soft Green = compiles/verified. */
 :root {
   color-scheme: dark;
-  --paper: #2B2E30;
-  --surface: #222527;
+  --paper: #2E2A27;
+  --surface: #262320;
   --ink: #D7E5F0;
-  --muted: #C5C6C7;
-  --faint: #73787C;
-  --hairline: rgba(197, 198, 199, 0.14);
+  --muted: rgba(215, 229, 240, 0.72);
+  --faint: rgba(201, 173, 147, 0.7);
+  --hairline: rgba(201, 173, 147, 0.18);
   --hover: rgba(85, 73, 64, 0.45);
   --accent: #C9AD93;
   --taupe: #554940;
@@ -36,7 +37,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .app { display: flex; flex-direction: column; height: 100vh; }
 .top {
   display: flex; align-items: center; gap: 20px;
-  padding: 12px 20px; border-bottom: 1px solid var(--hairline); background: var(--paper);
+  padding: 12px 20px; border-bottom: 1px solid var(--hairline); background: #3a322c;
 }
 .top h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0; flex: 1; }
 .llm { color: var(--faint); font-size: 12px; font-family: var(--mono); }
@@ -78,7 +79,7 @@ button.primary:disabled { background: var(--hover); border-color: var(--hairline
 /* ---------- phase groups & root causes ---------- */
 .phase-heading {
   font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--muted); margin: 28px 0 0; padding-bottom: 8px; border-bottom: 1px solid var(--hairline);
+  color: var(--accent); margin: 28px 0 0; padding-bottom: 8px; border-bottom: 1px solid var(--hairline);
 }
 .clusters { list-style: none; padding: 0; margin: 0; }
 .card { padding: 16px 0; border-bottom: 1px solid var(--hairline); }
