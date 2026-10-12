@@ -1,24 +1,24 @@
 /* Design language: minimal and dark.
    Palette: Black #000000, Charcoal #73787C, Gray #C5C6C7, Pale Blue #D7E5F0,
    Beige #C9AD93, Taupe #554940, Soft Green #879A77.
-   - Black is the ground; pale blue is the ink; beige is the single accent (primary action, focus).
+   - Taupe is the ground; pale blue is the ink; beige is the single accent (primary action, focus).
    - Colour carries meaning only: beige = warning, soft green = verified/compiles, and one muted
      red (the only off-palette value) for fatal errors, because "fatal" must never read as a warning.
    - Structure comes from hairlines and whitespace, not boxes, fills or shadows. */
 :root {
   color-scheme: dark;
-  --paper: #000000;
-  --surface: #000000;
+  --paper: #554940;
+  --surface: #4a3f37;
   --ink: #D7E5F0;
   --muted: #C5C6C7;
-  --faint: #73787C;
-  --hairline: #26292b;
-  --hover: #1a1714;
+  --faint: #a89b8f;
+  --hairline: rgba(201, 173, 147, 0.22);
+  --hover: #61544a;
   --accent: #C9AD93;
-  --taupe: #554940;
-  --fatal: #D9776A;
+  --taupe: #3d342d;
+  --fatal: #f0948a;
   --warning: #C9AD93;
-  --ok: #879A77;
+  --ok: #a9bb98;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
