@@ -1,24 +1,24 @@
-/* Design language: minimal and dark.
+/* Design language: minimal, charcoal ground.
    Palette: Black #000000, Charcoal #73787C, Gray #C5C6C7, Pale Blue #D7E5F0,
    Beige #C9AD93, Taupe #554940, Soft Green #879A77.
-   - Taupe is the ground; pale blue is the ink; beige is the single accent (primary action, focus).
-   - Colour carries meaning only: beige = warning, soft green = verified/compiles, and one muted
-     red (the only off-palette value) for fatal errors, because "fatal" must never read as a warning.
-   - Structure comes from hairlines and whitespace, not boxes, fills or shadows. */
+   - Charcoal is the ground and black is the ink (4.6:1). Secondary text is black at reduced opacity.
+   - Pale blue is the single accent (primary action, active toggle, focus, explanation rule).
+   - Meaning is carried by small dots, never by coloured text: red = fatal, beige = warning,
+     soft green = compiles/verified. Red is the only off-palette value; "fatal" must not read as warning.
+   - The code editor is black with pale-blue text (see monaco-setup.ts), so code stays high-contrast. */
 :root {
-  color-scheme: dark;
-  --paper: #554940;
-  --surface: #4a3f37;
-  --ink: #D7E5F0;
-  --muted: #C5C6C7;
-  --faint: #a89b8f;
-  --hairline: rgba(201, 173, 147, 0.22);
-  --hover: #61544a;
-  --accent: #C9AD93;
-  --taupe: #3d342d;
-  --fatal: #f0948a;
+  --paper: #73787C;
+  --surface: #000000;
+  --ink: #000000;
+  --muted: rgba(0, 0, 0, 0.72);
+  --faint: rgba(0, 0, 0, 0.55);
+  --hairline: rgba(0, 0, 0, 0.2);
+  --hover: rgba(0, 0, 0, 0.08);
+  --accent: #D7E5F0;
+  --taupe: #554940;
+  --fatal: #d4412f;
   --warning: #C9AD93;
-  --ok: #a9bb98;
+  --ok: #879A77;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
@@ -52,8 +52,8 @@ button {
 button:hover:not(:disabled) { background: var(--hover); }
 button:disabled { color: var(--faint); cursor: default; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; padding: 5px 14px; }
-button.primary:hover:not(:disabled) { background: #d8c0a9; }
-button.primary:disabled { background: var(--taupe); border-color: var(--taupe); color: var(--muted); }
+button.primary:hover:not(:disabled) { background: #e8f0f6; }
+button.primary:disabled { background: var(--hover); border-color: var(--hairline); color: var(--faint); }
 
 .verbosity { display: inline-flex; margin-left: auto; }
 .verbosity button { border-radius: 0; color: var(--muted); }
@@ -66,13 +66,13 @@ button.primary:disabled { background: var(--taupe); border-color: var(--taupe); 
 .summary { display: flex; align-items: baseline; gap: 12px; margin: 0 0 2px; font-size: 15px; font-weight: 600; }
 .status { font-size: 13px; font-weight: 500; }
 .status::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
-.status.ok { color: var(--ok); }
+.status.ok { color: var(--ink); }
 .status.ok::before { background: var(--ok); }
-.status.fail { color: var(--fatal); }
+.status.fail { color: var(--ink); }
 .status.fail::before { background: var(--fatal); }
 .note { color: var(--muted); font-size: 13px; margin: 4px 0; }
-.stale { color: var(--warning); }
-.error { color: var(--fatal); font-size: 13px; margin: 8px 0; padding-left: 10px; border-left: 2px solid var(--fatal); }
+.stale { color: var(--ink); font-weight: 500; }
+.error { color: var(--ink); font-size: 13px; margin: 8px 0; padding-left: 10px; border-left: 2px solid var(--fatal); }
 
 /* ---------- phase groups & root causes ---------- */
 .phase-heading {
@@ -88,14 +88,16 @@ button.primary:disabled { background: var(--taupe); border-color: var(--taupe); 
 
 /* Severity is the only coloured label; phase and engine stay neutral. */
 .badge { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
-.badge.fatal { color: var(--fatal); }
-.badge.warning { color: var(--warning); }
+.badge.fatal, .badge.warning, .badge.verified { color: var(--ink); }
+.badge.fatal::before, .badge.warning::before, .badge.verified::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.badge.fatal::before { background: var(--fatal); }
+.badge.warning::before { background: var(--warning); }
 .badge.phase { color: var(--muted); font-weight: 500; }
 .badge.phase::before { content: "· "; color: var(--faint); }
 .badge.engine { color: var(--faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
-.badge.verified { color: var(--ok); }
+.badge.verified::before { background: var(--ok); }
 
-.related { border: none; padding: 0; color: var(--accent); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hairline); }
+.related { border: none; padding: 0; color: var(--ink); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hairline); }
 .related:hover:not(:disabled) { background: none; color: var(--ink); }
 .symptoms { margin: 6px 0; padding-left: 16px; font-size: 13px; color: var(--muted); }
 
@@ -112,11 +114,13 @@ button.primary:disabled { background: var(--taupe); border-color: var(--taupe); 
 .diff { height: 240px; }
 
 .ask { display: flex; gap: 6px; margin-top: 12px; }
+
+.ask input::placeholder { color: var(--faint); }
 .ask input {
   flex: 1; font: inherit; font-size: 13px; padding: 4px 8px; color: var(--ink);
-  border: 1px solid var(--hairline); border-radius: 4px; background: var(--surface);
+  border: 1px solid var(--hairline); border-radius: 4px; background: rgba(255, 255, 255, 0.12);
 }
-.ask input:focus { outline: none; border-color: var(--accent); }
+.ask input:focus { outline: none; border-color: var(--ink); }
 .thread { list-style: none; margin: 10px 0 0; padding: 0; }
 .thread li { margin-bottom: 8px; }
 .thread p { margin: 2px 0; font-size: 13px; }

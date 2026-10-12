@@ -10,25 +10,25 @@ import { loader } from "@monaco-editor/react";
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 loader.config({ monaco });
 
-// Dark taupe editor theme matching App.css (palette: black, charcoal, gray, pale blue, beige, taupe, soft green).
+// Black editor theme matching App.css (palette: black, charcoal, gray, pale blue, beige, taupe, soft green).
 monaco.editor.defineTheme("cea-dark", {
   base: "vs-dark",
   inherit: true,
   rules: [
-    { token: "comment", foreground: "A89B8F", fontStyle: "italic" },
+    { token: "comment", foreground: "73787C", fontStyle: "italic" },
     { token: "keyword", foreground: "C9AD93" },
-    { token: "string", foreground: "A9BB98" },
+    { token: "string", foreground: "879A77" },
     { token: "number", foreground: "D7E5F0" },
   ],
   colors: {
-    "editor.background": "#4a3f37",
+    "editor.background": "#000000",
     "editor.foreground": "#D7E5F0",
-    "editorLineNumber.foreground": "#8a7d71",
+    "editorLineNumber.foreground": "#73787C",
     "editorLineNumber.activeForeground": "#C5C6C7",
-    "editor.lineHighlightBackground": "#544840",
-    "editor.selectionBackground": "#6e6056",
+    "editor.lineHighlightBackground": "#141414",
+    "editor.selectionBackground": "#554940",
     "editorCursor.foreground": "#C9AD93",
-    "editorGutter.background": "#4a3f37",
+    "editorGutter.background": "#000000",
     "editorBracketMatch.border": "#C9AD93",
     "editorBracketHighlight.foreground1": "#C5C6C7",
     "editorBracketHighlight.foreground2": "#C5C6C7",
