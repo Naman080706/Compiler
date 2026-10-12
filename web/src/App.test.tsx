@@ -74,8 +74,8 @@ describe("App", () => {
 
   it("has phase headings with counts, no empty groups, and a phase summary", async () => {
     await compileSample();
-    expect(screen.getByRole("heading", { name: "Syntax errors (1)" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Semantic errors (2)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Syntax errors — 1 root cause" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Semantic errors — 2 root causes" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Lexical/ })).toBeNull();
     expect(screen.getByTestId("phase-summary")).toHaveTextContent("Syntax 1 · Semantic 6");
   });

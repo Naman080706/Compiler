@@ -19,7 +19,7 @@ export default function ErrorPanel({ views, source, verbosity }: PanelProps) {
       {groupByPhase(views).map((g) => (
         <section key={g.phase} className="phase-group" aria-label={`${PHASE_TITLES[g.phase]} errors`}>
           <h3 className="phase-heading">
-            {PHASE_TITLES[g.phase]} errors ({g.views.length})
+            {PHASE_TITLES[g.phase]} errors — {g.views.length} root {g.views.length === 1 ? "cause" : "causes"}
           </h3>
           <ol className="clusters" aria-label={`${PHASE_TITLES[g.phase]} root causes`}>
             {g.views.map((v) => (

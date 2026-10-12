@@ -93,7 +93,8 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .verbosity { display: inline-flex; margin-left: auto; margin-right: 8px; }
 .verbosity button { font: inherit; font-size: 13px; padding: 4px 10px; border: 1px solid var(--border); background: transparent; cursor: pointer; }
 .verbosity button:first-child { border-radius: 6px 0 0 6px; }
-.verbosity button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+.verbosity button + button { border-left: 0; }
+.verbosity button:last-child { border-radius: 0 6px 6px 0; }
 .verbosity button[aria-pressed="true"] { background: var(--border); font-weight: 600; }
 .citations { font-size: 12px; color: var(--muted); }
 .thread { list-style: none; margin: 8px 0 0; padding: 0; }
