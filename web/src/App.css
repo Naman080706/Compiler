@@ -1,22 +1,23 @@
-/* Design language: minimal, charcoal ground.
+/* Design language: minimal, deep-charcoal ground.
    Palette: Black #000000, Charcoal #73787C, Gray #C5C6C7, Pale Blue #D7E5F0,
    Beige #C9AD93, Taupe #554940, Soft Green #879A77.
-   - Charcoal is the ground and black is the ink (4.6:1). Secondary text is black at reduced opacity.
-   - Pale blue is the single accent (primary action, active toggle, focus, explanation rule).
-   - Meaning is carried by small dots, never by coloured text: red = fatal, beige = warning,
-     soft green = compiles/verified. Red is the only off-palette value; "fatal" must not read as warning.
-   - The code editor is black with pale-blue text (see monaco-setup.ts), so code stays high-contrast. */
+   - Ground #2B2E30 is Charcoal's hue taken darker (never black); the editor sits one step deeper (#222527).
+   - Pale Blue is the ink (10.8:1), Gray the secondary text (7.6:1), Charcoal the tertiary metadata.
+   - Beige is the single accent (primary action, active toggle, focus); Taupe tints hover and selection.
+   - Meaning is carried by small dots: red = fatal (the only off-palette value), Beige = warning,
+     Soft Green = compiles/verified. */
 :root {
-  --paper: #73787C;
-  --surface: #000000;
-  --ink: #000000;
-  --muted: rgba(0, 0, 0, 0.72);
-  --faint: rgba(0, 0, 0, 0.55);
-  --hairline: rgba(0, 0, 0, 0.2);
-  --hover: rgba(0, 0, 0, 0.08);
-  --accent: #D7E5F0;
+  color-scheme: dark;
+  --paper: #2B2E30;
+  --surface: #222527;
+  --ink: #D7E5F0;
+  --muted: #C5C6C7;
+  --faint: #73787C;
+  --hairline: rgba(197, 198, 199, 0.14);
+  --hover: rgba(85, 73, 64, 0.45);
+  --accent: #C9AD93;
   --taupe: #554940;
-  --fatal: #d4412f;
+  --fatal: #E0796B;
   --warning: #C9AD93;
   --ok: #879A77;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
@@ -52,7 +53,7 @@ button {
 button:hover:not(:disabled) { background: var(--hover); }
 button:disabled { color: var(--faint); cursor: default; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; padding: 5px 14px; }
-button.primary:hover:not(:disabled) { background: #e8f0f6; }
+button.primary:hover:not(:disabled) { background: #d6bea8; }
 button.primary:disabled { background: var(--hover); border-color: var(--hairline); color: var(--faint); }
 
 .verbosity { display: inline-flex; margin-left: auto; }
@@ -118,9 +119,9 @@ button.primary:disabled { background: var(--hover); border-color: var(--hairline
 .ask input::placeholder { color: var(--faint); }
 .ask input {
   flex: 1; font: inherit; font-size: 13px; padding: 4px 8px; color: var(--ink);
-  border: 1px solid var(--hairline); border-radius: 4px; background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--hairline); border-radius: 4px; background: var(--surface);
 }
-.ask input:focus { outline: none; border-color: var(--ink); }
+.ask input:focus { outline: none; border-color: var(--accent); }
 .thread { list-style: none; margin: 10px 0 0; padding: 0; }
 .thread li { margin-bottom: 8px; }
 .thread p { margin: 2px 0; font-size: 13px; }
