@@ -30,7 +30,7 @@ export default function FixDiff({ original, fix }: Props) {
           original={original}
           modified={fix.patched_source}
           theme="cea-dark"
-          options={{ readOnly: true, renderSideBySide: false, minimap: { enabled: false }, scrollBeyondLastLine: false }}
+          options={{ automaticLayout: true, readOnly: true, renderSideBySide: false, minimap: { enabled: false }, scrollBeyondLastLine: false }}
         />
       </div>
     </section>

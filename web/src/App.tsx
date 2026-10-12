@@ -1,5 +1,5 @@
 // The demo page: Monaco editor on the left, the F2 error panel on the right.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { compile, health } from "./api";
 import { clusterViews, phaseSummary } from "./clusters";
 import CodeEditor from "./components/CodeEditor";
@@ -7,6 +7,7 @@ import ErrorPanel from "./components/ErrorPanel";
 import { SAMPLE_SOURCE } from "./sample";
 import type { CompileResponse, Health, VerbosityChoice } from "./types";
 import ProfilePanel from "./components/ProfilePanel";
+import Splitter, { useSplit } from "./components/Splitter";
 
 const VERBOSITY_KEY = "cea.verbosity";
 
@@ -67,6 +68,7 @@ export default function App() {
     }
   }
 
+  const [split, setSplit] = useSplit();
   const views = compiled ? clusterViews(compiled.resp) : [];
   const stale = compiled !== null && compiled.source !== source;
   const count = compiled?.resp.records.length ?? 0;
@@ -87,10 +89,11 @@ export default function App() {
           {busy ? "Compiling..." : "Compile"}
         </button>
       </header>
-      <main className="layout">
+      <main className="layout" style={{ "--split": `${split}%` } as CSSProperties}>
         <div className="editor-pane">
           <CodeEditor value={source} onChange={setSource} records={compiled?.resp.records ?? []} />
         </div>
+        <Splitter split={split} onChange={setSplit} />
         <aside className="panel" aria-label="Errors">
           {error && (
             <p className="error" role="alert">

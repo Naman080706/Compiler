@@ -39,7 +39,7 @@ export default function CodeEditor({ value, onChange, records }: Props) {
       onChange={(v) => onChange(v ?? "")}
       onMount={handleMount}
       theme="cea-dark"
-      options={{ minimap: { enabled: false }, fontSize: 14, scrollBeyondLastLine: false, bracketPairColorization: { enabled: false } }}
+      options={{ automaticLayout: true, minimap: { enabled: false }, fontSize: 14, scrollBeyondLastLine: false, bracketPairColorization: { enabled: false } }}
     />
   );
 }
