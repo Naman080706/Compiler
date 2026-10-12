@@ -1,26 +1,25 @@
-/* Design language: minimal, deep-charcoal ground.
-   Palette: Black #000000, Charcoal #73787C, Gray #C5C6C7, Pale Blue #D7E5F0,
-   Beige #C9AD93, Taupe #554940, Soft Green #879A77.
-   - Ground #2E2A27 is Charcoal's depth warmed toward Taupe (never black); the editor sits one step deeper (#262320);
-     the header carries a Taupe tint.
-   - Pale Blue is the ink; secondary text is Pale Blue softened, not grey; Beige marks section headings and hairlines.
-   - Beige is the single accent (primary action, active toggle, focus); Taupe tints hover and selection.
-   - Meaning is carried by small dots: red = fatal (the only off-palette value), Beige = warning,
-     Soft Green = compiles/verified. */
+/* Design language: minimal, three distinct dark zones (never black).
+   - Header #1B1F24 (deep blue-slate), editor #22262B (cool charcoal), error panel #2A2F35 (lifted slate):
+     each zone has its own surface so the screen never reads as one flat grey.
+   - Ink #E6EDF3, secondary #9AA7B4, tertiary #6E7A86 (blue-greys, not neutral grey).
+   - One warm accent, amber #E0B88A (primary action, active toggle, focus, section headings),
+     against the cool slates.
+   - Meaning is carried by small dots: coral = fatal, amber = warning, sage = compiles/verified. */
 :root {
   color-scheme: dark;
-  --paper: #2E2A27;
-  --surface: #262320;
-  --ink: #D7E5F0;
-  --muted: rgba(215, 229, 240, 0.72);
-  --faint: rgba(201, 173, 147, 0.7);
-  --hairline: rgba(201, 173, 147, 0.18);
-  --hover: rgba(85, 73, 64, 0.45);
-  --accent: #C9AD93;
-  --taupe: #554940;
-  --fatal: #E0796B;
-  --warning: #C9AD93;
-  --ok: #879A77;
+  --header: #1B1F24;
+  --paper: #2A2F35;
+  --surface: #22262B;
+  --ink: #E6EDF3;
+  --muted: #9AA7B4;
+  --faint: #6E7A86;
+  --hairline: rgba(230, 237, 243, 0.09);
+  --hover: rgba(230, 237, 243, 0.06);
+  --accent: #E0B88A;
+  --taupe: #3A332D;
+  --fatal: #F07167;
+  --warning: #E0B88A;
+  --ok: #8FBF8A;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
@@ -37,14 +36,14 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .app { display: flex; flex-direction: column; height: 100vh; }
 .top {
   display: flex; align-items: center; gap: 20px;
-  padding: 12px 20px; border-bottom: 1px solid var(--hairline); background: #3a322c;
+  padding: 12px 20px; border-bottom: 1px solid var(--hairline); background: var(--header);
 }
 .top h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0; flex: 1; }
 .llm { color: var(--faint); font-size: 12px; font-family: var(--mono); }
 
 .layout { flex: 1; display: grid; grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr); min-height: 0; }
 .editor-pane { min-height: 0; border-right: 1px solid var(--hairline); background: var(--surface); }
-.panel { overflow-y: auto; padding: 20px 24px 40px; }
+.panel { overflow-y: auto; padding: 20px 24px 40px; background: var(--paper); }
 
 /* ---------- controls ---------- */
 button {
@@ -53,8 +52,8 @@ button {
 }
 button:hover:not(:disabled) { background: var(--hover); }
 button:disabled { color: var(--faint); cursor: default; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; padding: 5px 14px; }
-button.primary:hover:not(:disabled) { background: #d6bea8; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--header); font-weight: 600; padding: 5px 14px; }
+button.primary:hover:not(:disabled) { background: #ebc79e; }
 button.primary:disabled { background: var(--hover); border-color: var(--hairline); color: var(--faint); }
 
 .verbosity { display: inline-flex; margin-left: auto; }
@@ -62,7 +61,7 @@ button.primary:disabled { background: var(--hover); border-color: var(--hairline
 .verbosity button + button { border-left: 0; }
 .verbosity button:first-child { border-radius: 4px 0 0 4px; }
 .verbosity button:last-child { border-radius: 0 4px 4px 0; }
-.verbosity button[aria-pressed="true"] { color: #000; background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.verbosity button[aria-pressed="true"] { color: var(--accent); background: rgba(224, 184, 138, 0.12); font-weight: 600; }
 
 /* ---------- summary ---------- */
 .summary { display: flex; align-items: baseline; gap: 12px; margin: 0 0 2px; font-size: 15px; font-weight: 600; }
