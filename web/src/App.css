@@ -1,18 +1,24 @@
-/* Design language: minimal, ink on paper.
-   - Neutrals carry the whole interface; colour is reserved for meaning (fatal, warning, verified).
-   - Structure comes from hairlines and whitespace, not boxes, fills or shadows.
-   - Monospace marks anything the compiler produced (codes, positions, rule names). */
+/* Design language: minimal and dark.
+   Palette: Black #000000, Charcoal #73787C, Gray #C5C6C7, Pale Blue #D7E5F0,
+   Beige #C9AD93, Taupe #554940, Soft Green #879A77.
+   - Black is the ground; pale blue is the ink; beige is the single accent (primary action, focus).
+   - Colour carries meaning only: beige = warning, soft green = verified/compiles, and one muted
+     red (the only off-palette value) for fatal errors, because "fatal" must never read as a warning.
+   - Structure comes from hairlines and whitespace, not boxes, fills or shadows. */
 :root {
-  --paper: #fbfbfa;
-  --surface: #ffffff;
-  --ink: #18181b;
-  --muted: #71717a;
-  --faint: #a1a1aa;
-  --hairline: #e7e7e4;
-  --hover: #f4f4f2;
-  --fatal: #b42318;
-  --warning: #a15c00;
-  --ok: #2f7a3a;
+  color-scheme: dark;
+  --paper: #000000;
+  --surface: #000000;
+  --ink: #D7E5F0;
+  --muted: #C5C6C7;
+  --faint: #73787C;
+  --hairline: #26292b;
+  --hover: #1a1714;
+  --accent: #C9AD93;
+  --taupe: #554940;
+  --fatal: #D9776A;
+  --warning: #C9AD93;
+  --ok: #879A77;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
@@ -45,16 +51,16 @@ button {
 }
 button:hover:not(:disabled) { background: var(--hover); }
 button:disabled { color: var(--faint); cursor: default; }
-button.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 500; padding: 5px 14px; }
-button.primary:hover:not(:disabled) { background: #000; }
-button.primary:disabled { background: var(--muted); border-color: var(--muted); color: var(--paper); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; padding: 5px 14px; }
+button.primary:hover:not(:disabled) { background: #d8c0a9; }
+button.primary:disabled { background: var(--taupe); border-color: var(--taupe); color: var(--muted); }
 
 .verbosity { display: inline-flex; margin-left: auto; }
 .verbosity button { border-radius: 0; color: var(--muted); }
 .verbosity button + button { border-left: 0; }
 .verbosity button:first-child { border-radius: 4px 0 0 4px; }
 .verbosity button:last-child { border-radius: 0 4px 4px 0; }
-.verbosity button[aria-pressed="true"] { color: var(--ink); background: var(--hover); font-weight: 500; }
+.verbosity button[aria-pressed="true"] { color: #000; background: var(--accent); border-color: var(--accent); font-weight: 600; }
 
 /* ---------- summary ---------- */
 .summary { display: flex; align-items: baseline; gap: 12px; margin: 0 0 2px; font-size: 15px; font-weight: 600; }
@@ -89,14 +95,14 @@ button.primary:disabled { background: var(--muted); border-color: var(--muted); 
 .badge.engine { color: var(--faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
 .badge.verified { color: var(--ok); }
 
-.related { border: none; padding: 0; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hairline); }
+.related { border: none; padding: 0; color: var(--accent); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hairline); }
 .related:hover:not(:disabled) { background: none; color: var(--ink); }
 .symptoms { margin: 6px 0; padding-left: 16px; font-size: 13px; color: var(--muted); }
 
 .actions { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 
 /* ---------- assistant output ---------- */
-.explanation { margin-top: 12px; padding: 2px 0 2px 12px; border-left: 2px solid var(--ink); }
+.explanation { margin-top: 12px; padding: 2px 0 2px 12px; border-left: 2px solid var(--accent); }
 .explanation p { margin: 4px 0; }
 .rule, .citations { color: var(--muted); font-size: 12px; }
 
@@ -110,7 +116,7 @@ button.primary:disabled { background: var(--muted); border-color: var(--muted); 
   flex: 1; font: inherit; font-size: 13px; padding: 4px 8px; color: var(--ink);
   border: 1px solid var(--hairline); border-radius: 4px; background: var(--surface);
 }
-.ask input:focus { outline: none; border-color: var(--muted); }
+.ask input:focus { outline: none; border-color: var(--accent); }
 .thread { list-style: none; margin: 10px 0 0; padding: 0; }
 .thread li { margin-bottom: 8px; }
 .thread p { margin: 2px 0; font-size: 13px; }

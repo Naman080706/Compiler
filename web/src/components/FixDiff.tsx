@@ -29,6 +29,7 @@ export default function FixDiff({ original, fix }: Props) {
           language="c"
           original={original}
           modified={fix.patched_source}
+          theme="cea-dark"
           options={{ readOnly: true, renderSideBySide: false, minimap: { enabled: false }, scrollBeyondLastLine: false }}
         />
       </div>

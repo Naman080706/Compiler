@@ -9,3 +9,27 @@ import { loader } from "@monaco-editor/react";
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 loader.config({ monaco });
+
+// Dark editor theme matching App.css (palette: black, charcoal, gray, pale blue, beige, taupe, soft green).
+monaco.editor.defineTheme("cea-dark", {
+  base: "vs-dark",
+  inherit: true,
+  rules: [
+    { token: "comment", foreground: "73787C", fontStyle: "italic" },
+    { token: "keyword", foreground: "C9AD93" },
+    { token: "string", foreground: "879A77" },
+    { token: "number", foreground: "D7E5F0" },
+  ],
+  colors: {
+    "editor.background": "#000000",
+    "editor.foreground": "#D7E5F0",
+    "editorLineNumber.foreground": "#555A5E",
+    "editorLineNumber.activeForeground": "#C5C6C7",
+    "editor.lineHighlightBackground": "#141414",
+    "editor.selectionBackground": "#554940",
+    "editorCursor.foreground": "#C9AD93",
+    "editorGutter.background": "#000000",
+    "editorBracketMatch.border": "#C9AD93",
+    "editorBracketHighlight.foreground1": "#C5C6C7",
+  },
+});
