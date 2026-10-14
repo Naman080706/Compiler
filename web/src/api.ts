@@ -94,7 +94,7 @@ export const explain = (source: string, recordId: string, mode: ExplainMode, ver
 export const getProfile = () => request<ProfileView>(`/api/profile/${studentId()}`);
 
 export const getAnalytics = (days = 30) =>
-  request<Analytics>(`/api/profile/${studentId()}/analytics?days=${days}`);
+  request<Analytics>(`/api/profile/${studentId()}/analytics?days=${days}&tz=${-new Date().getTimezoneOffset()}`);
 
 export const resetProfile = () => request<ProfileView>(`/api/profile/${studentId()}`, undefined, "DELETE");
 

@@ -42,10 +42,30 @@ export default function ProfilePage({ refreshKey }: Props) {
     <main className="profile-page" aria-label="My profile">
       <div className="profile-inner">
         <h2 className="page-title">My profile</h2>
-        <p className="note">
-          Stored only on this computer under a random id (<code>{studentId()}</code>). Only counts are kept, never your
-          code. A category you hit {profile?.threshold ?? 3} or more times gets fuller explanations with a worked example.
-        </p>
+        <section className="howto" aria-label="How your profile works">
+          <h3 className="phase-heading">How your profile works</h3>
+          <dl>
+            <dt>What is tracked</dt>
+            <dd>
+              Every time you press Compile, the assistant notes whether the program compiled, how many errors and
+              warnings it had, and which kinds of mistakes caused them. Only these counts are kept. Your code is never
+              stored.
+            </dd>
+            <dt>How explanations adapt</dt>
+            <dd>
+              Each error belongs to a category, such as <em>missing-semicolon</em> or <em>undeclared-identifier</em>.
+              When you make the same kind of mistake {profile?.threshold ?? 3} or more times, pressing{" "}
+              <strong>Explain</strong> in Auto mode gives a fuller, beginner-friendly explanation with a short worked
+              example. Kinds of mistakes you rarely make keep short, to-the-point explanations. Choosing Beginner or
+              Expert in the header always overrides this.
+            </dd>
+            <dt>Privacy</dt>
+            <dd>
+              Everything is stored on this computer under a random id (<code>{studentId()}</code>), not your name, and
+              it is never sent to the AI model. Reset clears it all.
+            </dd>
+          </dl>
+        </section>
         {error && (
           <p className="error" role="alert">
             {error}
@@ -63,7 +83,7 @@ export default function ProfilePage({ refreshKey }: Props) {
               <tr>
                 <th>Category</th>
                 <th>Hits</th>
-                <th>Explanations</th>
+                <th>Explanation style</th>
               </tr>
             </thead>
             <tbody>
@@ -71,7 +91,7 @@ export default function ProfilePage({ refreshKey }: Props) {
                 <tr key={c.category}>
                   <td>{c.category}</td>
                   <td>{c.hits}</td>
-                  <td>{c.depth === "full" ? "fuller, with example" : "short"}</td>
+                  <td>{c.depth === "full" ? "Fuller, with a worked example" : `Short (fuller after ${profile.threshold})`}</td>
                 </tr>
               ))}
             </tbody>

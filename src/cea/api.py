@@ -5,7 +5,7 @@ Endpoints (all JSON):
     POST /api/explain  {source, record_id, mode, verbosity?, student_id?} -> Explanation (with citations)
     POST /api/fix      {source, record_id}           -> {diff, patched_source, verified, attempts, reason}
                                                         (F8: a diff only when verified; otherwise diff is "")
-    GET    /api/profile/{id}/analytics?days=30       -> per-student compile analytics (daily series, totals, streak)
+    GET    /api/profile/{id}/analytics?days=30&tz=330 -> per-student compile analytics (local days, today/yesterday)
     GET    /api/profile/{id}                         -> the student's error-category counts (F9)
     DELETE /api/profile/{id}                         -> reset (delete) that profile
     POST /api/ask      {source, record_id, question, history} -> {text, refused}
@@ -249,8 +249,10 @@ def profile_endpoint(student_id: str, profiles: ProfilesDep) -> dict:
 
 
 @app.get("/api/profile/{student_id}/analytics")
-def analytics_endpoint(student_id: str, profiles: ProfilesDep, days: Annotated[int, Query(ge=1, le=365)] = 30) -> dict:
-    return profiles.analytics(_profile_id(student_id), days)
+def analytics_endpoint(student_id: str, profiles: ProfilesDep, days: Annotated[int, Query(ge=1, le=365)] = 30,
+                       tz: Annotated[int, Query(ge=-840, le=840)] = 0) -> dict:
+    """``tz`` = the viewer's offset east of UTC in minutes, so "today" is the student's local day."""
+    return profiles.analytics(_profile_id(student_id), days, tz_offset_minutes=tz)
 
 
 @app.delete("/api/profile/{student_id}")

@@ -1,6 +1,6 @@
 // Compile analytics dashboard: stat tiles, a daily bar chart, errors by phase, top mistakes and
 // recent activity. Charts are plain inline SVG; only counts are shown, never source code.
-import type { Analytics } from "../types";
+import type { Analytics, CompileEntry, DaySummary } from "../types";
 
 const TREND_ARROW = { down: "↓", up: "↑", flat: "→" } as const;
 const TREND_WORD = { down: "improving", up: "rising", flat: "steady" } as const;
@@ -76,9 +76,65 @@ function Ranked({ title, rows, mono }: { title: string; rows: { name: string; co
   );
 }
 
+// Local date and time, e.g. "14 Oct, 14:05".
 function when(ts: string): string {
-  const d = new Date(ts);
-  return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)} UTC`;
+  return new Date(ts).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function clock(ts: string): string {
+  return new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+function CompileRow({ r, time }: { r: CompileEntry; time: string }) {
+  return (
+    <li>
+      <span className={r.ok ? "status ok" : "status fail"}>{r.ok ? "Compiled" : "Failed"}</span>
+      <span className="pos">{time}</span>
+      <span className="note">
+        {r.fatal} {r.fatal === 1 ? "error" : "errors"}, {r.warnings} {r.warnings === 1 ? "warning" : "warnings"}
+      </span>
+    </li>
+  );
+}
+
+function DayCard({ title, day, compare }: { title: string; day: DaySummary; compare?: DaySummary }) {
+  const rate = day.compiles ? Math.round((day.successful / day.compiles) * 100) : 0;
+  let delta = "";
+  if (compare && compare.compiles > 0 && day.compiles > 0) {
+    const now = day.errors / day.compiles;
+    const before = compare.errors / compare.compiles;
+    delta = now < before ? "fewer errors per compile than yesterday" : now > before ? "more errors per compile than yesterday" : "same errors per compile as yesterday";
+  }
+  return (
+    <section className="day-card" aria-label={`${title} activity`}>
+      <h3 className="dash-sub">
+        {title} <span className="pos">{new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</span>
+      </h3>
+      {day.compiles === 0 ? (
+        <p className="note">No compiles.</p>
+      ) : (
+        <>
+          <p className="day-stats">
+            <strong>{day.compiles}</strong> {day.compiles === 1 ? "compile" : "compiles"} · <strong>{rate}%</strong> clean ·{" "}
+            <strong>{day.errors}</strong> {day.errors === 1 ? "error" : "errors"} · <strong>{day.warnings}</strong>{" "}
+            {day.warnings === 1 ? "warning" : "warnings"}
+          </p>
+          {day.top_code && (
+            <p className="note">
+              Most common mistake: <code>{day.top_code.code}</code> ({day.top_code.count}×)
+            </p>
+          )}
+          {delta && <p className="note">{delta}</p>}
+          <ul className="recent" aria-label={`${title} compiles`}>
+            {day.compiles_list.slice(0, 6).map((r, i) => (
+              <CompileRow key={`${r.ts}-${i}`} r={r} time={clock(r.ts)} />
+            ))}
+          </ul>
+          {day.compiles_list.length > 6 && <p className="note">+{day.compiles_list.length - 6} more</p>}
+        </>
+      )}
+    </section>
+  );
 }
 
 export default function Dashboard({ data }: { data: Analytics }) {
@@ -100,6 +156,13 @@ export default function Dashboard({ data }: { data: Analytics }) {
         />
       </div>
 
+      {data.today && data.yesterday && (
+        <div className="day-cols">
+          <DayCard title="Today" day={data.today} compare={data.yesterday} />
+          <DayCard title="Yesterday" day={data.yesterday} />
+        </div>
+      )}
+
       <h3 className="dash-sub">Compiles per day</h3>
       <DailyChart daily={data.daily} />
       <p className="legend">
@@ -118,13 +181,7 @@ export default function Dashboard({ data }: { data: Analytics }) {
       <h3 className="dash-sub">Recent activity</h3>
       <ul className="recent" aria-label="Recent compiles">
         {data.recent.map((r, i) => (
-          <li key={`${r.ts}-${i}`}>
-            <span className={r.ok ? "status ok" : "status fail"}>{r.ok ? "Compiled" : "Failed"}</span>
-            <span className="pos">{when(r.ts)}</span>
-            <span className="note">
-              {r.fatal} {r.fatal === 1 ? "error" : "errors"}, {r.warnings} {r.warnings === 1 ? "warning" : "warnings"}
-            </span>
-          </li>
+          <CompileRow key={`${r.ts}-${i}`} r={r} time={when(r.ts)} />
         ))}
       </ul>
     </div>

@@ -129,9 +129,15 @@ class ProfileStore:
             finally:
                 conn.close()
 
-    def analytics(self, student_id: str, days: int = 30, now: datetime | None = None) -> dict:
-        """Dashboard numbers for the last ``days`` UTC days (today included), zero-filled."""
-        now = (now or datetime.now(UTC)).astimezone(UTC)
+    def analytics(self, student_id: str, days: int = 30, now: datetime | None = None,
+                  tz_offset_minutes: int = 0) -> dict:
+        """Dashboard numbers for the last ``days`` local days (today included), zero-filled.
+
+        ``tz_offset_minutes`` is the viewer's offset east of UTC (IST = +330), so days and times
+        follow the student's own calendar. Timestamps are still stored in UTC.
+        """
+        shift = timedelta(minutes=tz_offset_minutes)
+        now = (now or datetime.now(UTC)).astimezone(UTC) + shift
         today = now.date()
         start = today - timedelta(days=days - 1)
         with self._lock:
@@ -141,7 +147,7 @@ class ProfileStore:
                                     "FROM compile_events WHERE student_id = ? ORDER BY ts, id", (student_id,)).fetchall()
             finally:
                 conn.close()
-        events = [(datetime.fromisoformat(r[0]).astimezone(UTC), *r[1:]) for r in rows]
+        events = [(datetime.fromisoformat(r[0]).astimezone(UTC) + shift, *r[1:]) for r in rows]
         active = {e[0].date() for e in events}
         streak, day = 0, today if today in active else today - timedelta(days=1)
         while day in active:
@@ -186,8 +192,10 @@ class ProfileStore:
             "top_codes": top(codes, "code"),
             "top_categories": top(cats, "category"),
             "trend": {"first_half": avg_first, "second_half": avg_second, "direction": direction},
-            "recent": [{"ts": e[0].isoformat(), "ok": bool(e[1]), "fatal": e[2], "warnings": e[3]}
+            "recent": [{"ts": (e[0] - shift).isoformat(), "ok": bool(e[1]), "fatal": e[2], "warnings": e[3]}
                        for e in reversed(events[-10:])],
+            "today": _day_summary(events, today, shift),
+            "yesterday": _day_summary(events, today - timedelta(days=1), shift),
         }
 
     def counts(self, student_id: str) -> dict[str, int]:
@@ -220,3 +228,22 @@ class ProfileStore:
                     conn.execute("DELETE FROM compile_events WHERE student_id = ?", (student_id,))
             finally:
                 conn.close()
+
+
+def _day_summary(events: list, day, shift: timedelta) -> dict:
+    """One local day: totals, the most common mistake, and that day's compiles (newest first)."""
+    todays = [e for e in events if e[0].date() == day]
+    codes: Counter = Counter()
+    for e in todays:
+        codes.update(json.loads(e[6]))
+    top = sorted(codes.items(), key=lambda kv: (-kv[1], kv[0]))
+    return {
+        "date": day.isoformat(),
+        "compiles": len(todays),
+        "successful": sum(e[1] for e in todays),
+        "errors": sum(e[2] for e in todays),
+        "warnings": sum(e[3] for e in todays),
+        "top_code": {"code": top[0][0], "count": top[0][1]} if top else None,
+        "compiles_list": [{"ts": (e[0] - shift).isoformat(), "ok": bool(e[1]), "fatal": e[2], "warnings": e[3]}
+                          for e in reversed(todays)],
+    }

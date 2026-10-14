@@ -26,7 +26,7 @@ def store(tmp_path):
 def client(store, monkeypatch):
     api.app.dependency_overrides[api.get_profiles] = lambda: store
     real = store.analytics
-    monkeypatch.setattr(store, "analytics", lambda sid, days=30, now=None: real(sid, days, NOW))
+    monkeypatch.setattr(store, "analytics", lambda sid, days=30, now=None, tz_offset_minutes=0: real(sid, days, NOW, tz_offset_minutes))
     yield TestClient(api.app)
     api.app.dependency_overrides.clear()
 
@@ -91,3 +91,39 @@ def test_compile_records_event_without_source_and_reset_clears(client, store):
 def test_bad_inputs(client):
     assert client.get("/api/profile/bad/analytics").status_code == 422
     assert client.get(f"/api/profile/{SID}/analytics?days=0").status_code == 422
+
+
+def test_today_and_yesterday_summaries(store):
+    log(store, BAD)
+    log(store, GOOD)
+    log(store, BAD, days_ago=1)
+    a = store.analytics(SID, 30, NOW)
+    assert a["today"]["date"] == "2026-10-14"
+    assert (a["today"]["compiles"], a["today"]["successful"]) == (2, 1)
+    assert a["today"]["top_code"]["count"] >= 1
+    assert len(a["today"]["compiles_list"]) == 2
+    assert a["yesterday"]["date"] == "2026-10-13" and a["yesterday"]["compiles"] == 1
+    assert a["yesterday"]["successful"] == 0
+
+
+def test_empty_day_summary(store):
+    a = store.analytics(SID, 30, NOW)
+    assert a["today"] == {"date": "2026-10-14", "compiles": 0, "successful": 0, "errors": 0, "warnings": 0,
+                          "top_code": None, "compiles_list": []}
+
+
+def test_days_follow_the_viewers_timezone(store):
+    late = NOW.replace(hour=20)                       # 20:00 UTC = 01:30 next day in IST (+330)
+    res = compile_source(GOOD, "main.c")
+    store.record_event(SID, res.errors, [c.root for c in res.clusters], res.engine, late)
+    utc = store.analytics(SID, 30, late)
+    ist = store.analytics(SID, 30, late, tz_offset_minutes=330)
+    assert utc["today"]["date"] == "2026-10-14" and utc["today"]["compiles"] == 1
+    assert ist["today"]["date"] == "2026-10-15" and ist["today"]["compiles"] == 1
+    assert ist["recent"][0]["ts"].startswith("2026-10-14T20:00")   # stored and returned in UTC
+
+
+def test_endpoint_passes_timezone(client, store):
+    log(store, GOOD)
+    body = client.get(f"/api/profile/{SID}/analytics?days=30&tz=330").json()
+    assert body["today"]["compiles"] == 1

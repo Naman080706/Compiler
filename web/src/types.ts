@@ -93,7 +93,26 @@ export interface Analytics {
   top_codes: { code: string; count: number }[];
   top_categories: { category: string; count: number }[];
   trend: { first_half: number | null; second_half: number | null; direction: "up" | "down" | "flat" };
-  recent: { ts: string; ok: boolean; fatal: number; warnings: number }[];
+  recent: CompileEntry[];
+  today?: DaySummary;
+  yesterday?: DaySummary;
+}
+
+export interface CompileEntry {
+  ts: string;
+  ok: boolean;
+  fatal: number;
+  warnings: number;
+}
+
+export interface DaySummary {
+  date: string;
+  compiles: number;
+  successful: number;
+  errors: number;
+  warnings: number;
+  top_code: { code: string; count: number } | null;
+  compiles_list: CompileEntry[];
 }
 
 export interface Answer {

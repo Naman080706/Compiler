@@ -25,7 +25,7 @@ function routes(extra: Routes = {}): Routes {
     "POST /api/explain": (b) => ({ json: { text: `${b.verbosity ?? "auto"} ${b.mode} text for ${b.record_id}`, rule_ref: "sem.declare_before_use", cited_rule: null, mode: b.mode, verbosity: b.verbosity ?? "beginner", citations: ["rule:sem.declare_before_use", "fix:SEM-UNDECLARED-VAR"] } }),
     "POST /api/fix": () => ({ json: { diff: "--- a\n+++ b\n", patched_source: PATCHED, verified: true, attempts: 1, reason: "verified" } }),
     [`GET /api/profile/${studentId()}`]: () => ({ json: PROFILE }),
-    [`GET /api/profile/${studentId()}/analytics?days=30`]: () => ({ json: EMPTY_ANALYTICS }),
+    [`GET /api/profile/${studentId()}/analytics?days=30&tz=${-new Date().getTimezoneOffset()}`]: () => ({ json: EMPTY_ANALYTICS }),
     [`DELETE /api/profile/${studentId()}`]: () => ({ json: { student_id: studentId(), threshold: 3, categories: [] } }),
     "POST /api/ask": () => ({ json: { text: "I only answer questions about your compiler errors.", refused: true } }),
     ...extra,
@@ -321,7 +321,7 @@ describe("F9 profile view", () => {
     await user.click(screen.getByRole("button", { name: "Profile" }));
     const table = await screen.findByRole("table", { name: "Error categories" });
     expect(within(table).getByText("missing-semicolon")).toBeInTheDocument();
-    expect(within(table).getByText("fuller, with example")).toBeInTheDocument();
+    expect(within(table).getByText("Fuller, with a worked example")).toBeInTheDocument();
     expect(within(table).getByText("undeclared-identifier")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Reset my profile" }));
     expect(await screen.findByText("No errors recorded yet.")).toBeInTheDocument();

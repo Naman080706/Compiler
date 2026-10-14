@@ -173,3 +173,12 @@ button.primary:disabled { background: var(--hover); border-color: var(--hairline
   .editor-pane { border-bottom: 1px solid var(--hairline); }
   .splitter { display: none; }
 }
+
+/* ---------- profile: how it works, today / yesterday ---------- */
+.howto dl { margin: 10px 0 0; }
+.howto dt { font-weight: 600; margin-top: 12px; }
+.howto dd { margin: 2px 0 0; color: var(--muted); max-width: 72ch; }
+.day-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0 4px; }
+.day-card { border-top: 1px solid var(--hairline); padding-top: 4px; }
+.day-stats { margin: 6px 0; }
+@media (max-width: 800px) { .day-cols { grid-template-columns: 1fr; } }

@@ -28,7 +28,7 @@ function routes(analytics: unknown): Routes {
   return {
     "GET /api/health": () => ({ json: { status: "ok", llm: "none" } }),
     [`GET /api/profile/${studentId()}`]: () => ({ json: PROFILE }),
-    [`GET /api/profile/${studentId()}/analytics?days=30`]: () => ({ json: analytics }),
+    [`GET /api/profile/${studentId()}/analytics?days=30&tz=${-new Date().getTimezoneOffset()}`]: () => ({ json: analytics }),
   };
 }
 
