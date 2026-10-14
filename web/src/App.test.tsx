@@ -9,6 +9,13 @@ import { SAMPLE_COMPILE } from "./test/fixtures";
 import { monacoMock } from "./test/monaco-mock";
 
 const PROFILE = {"student_id": "x", "threshold": 3, "categories": [{"category": "missing-semicolon", "hits": 3, "depth": "full"}, {"category": "undeclared-identifier", "hits": 1, "depth": "terse"}]};
+const EMPTY_ANALYTICS = {
+  days: 30,
+  daily: Array.from({ length: 30 }, (_, i) => ({ date: `2026-09-${String(i + 1).padStart(2, "0")}`, compiles: 0, successful: 0, errors: 0 })),
+  totals: { compiles: 0, successful: 0, success_rate: 0, errors: 0, avg_errors: 0 },
+  streak: 0, phases: [], top_codes: [], top_categories: [],
+  trend: { first_half: null, second_half: null, direction: "flat" }, recent: [],
+};
 const PATCHED = SAMPLE_SOURCE.replace("total)\n", "total);\n");
 
 function routes(extra: Routes = {}): Routes {
@@ -18,6 +25,7 @@ function routes(extra: Routes = {}): Routes {
     "POST /api/explain": (b) => ({ json: { text: `${b.verbosity ?? "auto"} ${b.mode} text for ${b.record_id}`, rule_ref: "sem.declare_before_use", cited_rule: null, mode: b.mode, verbosity: b.verbosity ?? "beginner", citations: ["rule:sem.declare_before_use", "fix:SEM-UNDECLARED-VAR"] } }),
     "POST /api/fix": () => ({ json: { diff: "--- a\n+++ b\n", patched_source: PATCHED, verified: true, attempts: 1, reason: "verified" } }),
     [`GET /api/profile/${studentId()}`]: () => ({ json: PROFILE }),
+    [`GET /api/profile/${studentId()}/analytics?days=30`]: () => ({ json: EMPTY_ANALYTICS }),
     [`DELETE /api/profile/${studentId()}`]: () => ({ json: { student_id: studentId(), threshold: 3, categories: [] } }),
     "POST /api/ask": () => ({ json: { text: "I only answer questions about your compiler errors.", refused: true } }),
     ...extra,
@@ -302,8 +310,15 @@ describe("App", () => {
 
 describe("F9 profile view", () => {
   it("shows the stored category counts and resets them", async () => {
-    const { fetchFn, user } = await compileSample();
-    await user.click(screen.getByRole("button", { name: "My profile" }));
+    let deleted = false;
+    const { fetchFn, user } = await compileSample({
+      [`GET /api/profile/${studentId()}`]: () => ({ json: deleted ? { ...PROFILE, categories: [] } : PROFILE }),
+      [`DELETE /api/profile/${studentId()}`]: () => {
+        deleted = true;
+        return { json: { ...PROFILE, categories: [] } };
+      },
+    });
+    await user.click(screen.getByRole("button", { name: "Profile" }));
     const table = await screen.findByRole("table", { name: "Error categories" });
     expect(within(table).getByText("missing-semicolon")).toBeInTheDocument();
     expect(within(table).getByText("fuller, with example")).toBeInTheDocument();

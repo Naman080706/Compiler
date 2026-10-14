@@ -367,7 +367,8 @@ def test_exactly_the_contract_routes(client):
     paths = client.get("/openapi.json").json()["paths"]
     assert {(p, m) for p, ops in paths.items() for m in ops} == {
         ("/api/compile", "post"), ("/api/explain", "post"), ("/api/fix", "post"), ("/api/ask", "post"),
-        ("/api/health", "get"), ("/api/profile/{student_id}", "get"), ("/api/profile/{student_id}", "delete")}
+        ("/api/health", "get"), ("/api/profile/{student_id}", "get"), ("/api/profile/{student_id}", "delete"),
+        ("/api/profile/{student_id}/analytics", "get")}
 
 
 # ---------------------------------------------------------------- engine / gcc fallback

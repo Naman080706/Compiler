@@ -8,6 +8,7 @@ vi.mock("@monaco-editor/react", () => import("./monaco-mock"));
 
 afterEach(() => {
   cleanup();
+  window.location.hash = "";
   window.sessionStorage.clear();
   window.localStorage.clear();
   monacoMock.setModelMarkers.mockReset();
