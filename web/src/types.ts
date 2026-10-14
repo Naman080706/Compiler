@@ -76,6 +76,26 @@ export interface ProfileView {
   categories: ProfileCategory[];
 }
 
+// Compile analytics (GET /api/profile/{id}/analytics).
+export interface DailyPoint {
+  date: string; // YYYY-MM-DD (UTC)
+  compiles: number;
+  successful: number;
+  errors: number;
+}
+
+export interface Analytics {
+  days: number;
+  daily: DailyPoint[];
+  totals: { compiles: number; successful: number; success_rate: number; errors: number; avg_errors: number };
+  streak: number;
+  phases: { phase: string; count: number }[];
+  top_codes: { code: string; count: number }[];
+  top_categories: { category: string; count: number }[];
+  trend: { first_half: number | null; second_half: number | null; direction: "up" | "down" | "flat" };
+  recent: { ts: string; ok: boolean; fatal: number; warnings: number }[];
+}
+
 export interface Answer {
   text: string;
   refused: boolean;

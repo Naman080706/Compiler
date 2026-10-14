@@ -12,6 +12,7 @@ import type {
   FixSuggestion,
   Health,
   ProfileView,
+  Analytics,
   Verbosity,
 } from "./types";
 
@@ -91,6 +92,9 @@ export const explain = (source: string, recordId: string, mode: ExplainMode, ver
   });
 
 export const getProfile = () => request<ProfileView>(`/api/profile/${studentId()}`);
+
+export const getAnalytics = (days = 30) =>
+  request<Analytics>(`/api/profile/${studentId()}/analytics?days=${days}`);
 
 export const resetProfile = () => request<ProfileView>(`/api/profile/${studentId()}`, undefined, "DELETE");
 

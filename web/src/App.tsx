@@ -6,7 +6,7 @@ import CodeEditor from "./components/CodeEditor";
 import ErrorPanel from "./components/ErrorPanel";
 import { SAMPLE_SOURCE } from "./sample";
 import type { CompileResponse, Health, VerbosityChoice } from "./types";
-import ProfilePanel from "./components/ProfilePanel";
+import ProfilePage from "./components/ProfilePage";
 import Splitter, { useSplit } from "./components/Splitter";
 
 const VERBOSITY_KEY = "cea.verbosity";
@@ -30,6 +30,23 @@ function saveVerbosity(v: VerbosityChoice) {
   }
 }
 
+// Hash routing without a router library: "#/" is the editor, "#/profile" the student's own page.
+export type Route = "editor" | "profile";
+
+export function routeFromHash(hash: string): Route {
+  return hash.replace(/^#\/?/, "").split(/[/?]/)[0] === "profile" ? "profile" : "editor";
+}
+
+function useRoute(): [Route, (r: Route) => void] {
+  const [route, setRoute] = useState<Route>(() => routeFromHash(window.location.hash));
+  useEffect(() => {
+    const onChange = () => setRoute(routeFromHash(window.location.hash));
+    window.addEventListener("hashchange", onChange);
+    return () => window.removeEventListener("hashchange", onChange);
+  }, []);
+  return [route, (r) => { window.location.hash = r === "profile" ? "#/profile" : "#/"; }];
+}
+
 interface Compiled {
   source: string;
   resp: CompileResponse;
@@ -42,6 +59,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [llm, setLlm] = useState<Health["llm"] | "offline" | null>(null);
+  const [route, goTo] = useRoute();
   const [verbosity, setVerbosity] = useState<VerbosityChoice>(loadVerbosity);
 
   function chooseVerbosity(v: VerbosityChoice) {
@@ -78,6 +96,8 @@ export default function App() {
       <header className="top">
         <h1>Compiler Error Assistant</h1>
         <span className="llm">AI: {llm ?? "..."}</span>
+        {route === "editor" && (
+        <>
         <div className="verbosity" role="group" aria-label="Explanation style">
           {(["auto", "beginner", "expert"] as const).map((v) => (
             <button key={v} type="button" aria-pressed={verbosity === v} onClick={() => chooseVerbosity(v)}>
@@ -88,8 +108,14 @@ export default function App() {
         <button type="button" className="primary" onClick={onCompile} disabled={busy}>
           {busy ? "Compiling..." : "Compile"}
         </button>
+        </>
+        )}
+        <button type="button" className="nav" onClick={() => goTo(route === "profile" ? "editor" : "profile")}>
+          {route === "profile" ? "Back to editor" : "Profile"}
+        </button>
       </header>
-      <main className="layout" style={{ "--split": `${split}%` } as CSSProperties}>
+      {route === "profile" && <ProfilePage refreshKey={compiled?.run ?? 0} />}
+      <main className="layout" hidden={route !== "editor"} style={{ "--split": `${split}%` } as CSSProperties}>
         <div className="editor-pane">
           <CodeEditor value={source} onChange={setSource} records={compiled?.resp.records ?? []} />
         </div>
@@ -100,7 +126,6 @@ export default function App() {
               {error}
             </p>
           )}
-          <ProfilePanel refreshKey={compiled?.run ?? 0} />
           {!compiled && !error && <p className="note">Press Compile to check your program.</p>}
           {compiled && (
             <>
