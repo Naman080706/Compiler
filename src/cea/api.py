@@ -5,6 +5,7 @@ Endpoints (all JSON):
     POST /api/explain  {source, record_id, mode, verbosity?, student_id?} -> Explanation (with citations)
     POST /api/fix      {source, record_id}           -> {diff, patched_source, verified, attempts, reason}
                                                         (F8: a diff only when verified; otherwise diff is "")
+    GET    /api/profile/{id}/analytics?days=30       -> per-student compile analytics (daily series, totals, streak)
     GET    /api/profile/{id}                         -> the student's error-category counts (F9)
     DELETE /api/profile/{id}                         -> reset (delete) that profile
     POST /api/ask      {source, record_id, question, history} -> {text, refused}
@@ -32,7 +33,7 @@ from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated, Literal, TypeVar
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -191,7 +192,9 @@ def _profile_id(student_id: str) -> str:
 def compile_endpoint(req: CompileRequest, profiles: ProfilesDep) -> dict:
     result = _compile(req.source, req.engine)
     if req.student_id:
-        profiles.record_compile(req.student_id, req.session_id, [c.root for c in result.clusters])
+        roots = [c.root for c in result.clusters]
+        profiles.record_compile(req.student_id, req.session_id, roots)
+        profiles.record_event(req.student_id, result.errors, roots, result.engine)
     return {"ok": result.ok, "summary": result.summary(), "engine": result.engine,
             "engine_note": result.engine_note,
             "records": [r.to_dict() for r in result.errors],
@@ -243,6 +246,11 @@ def ask_endpoint(req: AskRequest, agent: AgentDep) -> dict:
 @app.get("/api/profile/{student_id}")
 def profile_endpoint(student_id: str, profiles: ProfilesDep) -> dict:
     return profiles.view(_profile_id(student_id))
+
+
+@app.get("/api/profile/{student_id}/analytics")
+def analytics_endpoint(student_id: str, profiles: ProfilesDep, days: Annotated[int, Query(ge=1, le=365)] = 30) -> dict:
+    return profiles.analytics(_profile_id(student_id), days)
 
 
 @app.delete("/api/profile/{student_id}")
