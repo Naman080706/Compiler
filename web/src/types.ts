@@ -60,6 +60,31 @@ export interface PipelineView {
   symbols: { name: string; type: string; kind: string; line: number }[];
 }
 
+// Lab tools (POST /api/format, /api/fold, /api/astdiff) — all AST-driven, our compiler only.
+export interface FormatResult {
+  ok: boolean;
+  formatted: string;
+  reason: string; // why formatting was refused (when ok is false)
+}
+
+export interface Fold {
+  line: number;
+  text: string; // the constant expression, as written
+  value: string; // the value the compiler can pre-compute
+}
+export interface FoldResult {
+  folds: Fold[];
+}
+
+export interface AstDiffRow {
+  tag: "same" | "add" | "remove";
+  text: string;
+}
+export interface AstDiffResult {
+  rows: AstDiffRow[];
+  changed: boolean;
+}
+
 export type ExplainMode = "short" | "expand";
 export type Verbosity = "beginner" | "expert";
 export type VerbosityChoice = Verbosity | "auto"; // F5 toggle; "auto" lets the F9 profile choose the depth

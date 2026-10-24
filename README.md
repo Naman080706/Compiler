@@ -2,7 +2,7 @@
 
 An AI-assisted error layer for a course compiler. It compiles one language, a **subset of C**, and the compiler is written in **Python**. The system captures every compiler error with structured metadata and groups cascading errors under one root cause. It explains each error in plain language and proposes a fix that is **re-compiled and checked before the student sees it**.
 
-> **Status:** design stage. The PRD (`cd project prd.docx`) is complete. The language specification and error catalog are planned in `plans/001-define-c-subset-and-error-catalog.md`. No compiler code exists yet.
+> **Status:** built. All five milestones are complete — the compiler, the AI error layer (F1–F9) and the web UI are implemented and tested (**1529 backend + 83 web tests** passing). The own compiler covers course-level C, with a gcc fallback for anything outside that subset, so every valid C99 program still compiles and runs. The web UI adds an in-browser editor, program execution and several compiler-internals tools (see §7).
 
 ---
 
@@ -62,18 +62,9 @@ The AI layer **only reads** the structured error records. It never sees compiler
 
 We chose C because its error behaviour is exactly what the project is about. Missing semicolons, unbalanced braces, undeclared variables and type mismatches cascade badly in C, and C is the language most students meet first in systems courses.
 
-**Design rule: every program our compiler accepts is also valid C99.** We may reject valid C (features we didn't implement), but we never accept code that real C would reject.
+**Design rule: every program our compiler accepts is also valid C99.** We never accept code that real C would reject. When a program uses a feature outside our own front end's subset, it is handed to a **gcc fallback** so it still compiles and runs — the own compiler is where the structured phase-wise diagnostics (F1–F9) come from.
 
-| Supported | Not supported (clear "not supported" error) |
-|---|---|
-| `int`, `char`, `float`, `double`, `void` | pointers (`*`, `&`, `->`) |
-| global and local variables, `int a, b = 2;` | `struct`, `union`, `enum`, `typedef` |
-| 1-D arrays with literal size | array initialiser lists, array parameters |
-| functions, prototypes, recursion | `switch`, `do-while`, `goto` |
-| `if/else`, `while`, `for`, `break`, `continue` | `long`, `unsigned`, `const`, `static`, … |
-| `+ - * / %`, comparisons, `&& \|\| !` | bitwise operators, `?:`, `sizeof` |
-| `= += -= *= /= %=`, `++`, `--` | preprocessor except `#include <stdio.h>` |
-| `printf` (after `#include <stdio.h>`) | `scanf` (needs pointers) |
+Our own front end covers **course-level C**: the base types, global and local variables, 1-D and 2-D arrays with initialiser lists, functions / prototypes / recursion, the full control flow (`if/else`, `while`, `for`, `do-while`, `switch`, `break`, `continue`, `return`), pointers (`*`, `&`, `->`), `struct` / `union` / `enum` / `typedef`, casts, `sizeof`, the ternary and bitwise operators, and `#include`. Anything beyond that (for example `goto` or the wider preprocessor) is compiled by the gcc fallback, labelled as such in the UI.
 
 The error catalog has **37 error codes** across the three phases: 7 lexical, 8 syntax, 17 semantic errors and 5 warnings. They are grouped into 10 categories such as *missing-semicolon*, *undeclared-identifier* and *type-mismatch*.
 
@@ -92,7 +83,20 @@ Only this one language is supported. Supporting several languages is a non-goal 
 
 Measured on a folder of faulty C programs with known injected faults, which doubles as the pytest suite.
 
-## 6. Repository layout (planned)
+## 6. Web UI features
+
+Beyond the nine core features, the React UI makes the compiler interactive and exposes its internals — things possible only because we own the compiler:
+
+- **In-browser editor** with multiple file tabs, open-from-disk, double-click rename, and C keyword autocomplete (Monaco).
+- **Run** (`POST /api/run`) — gcc builds and executes the program and the terminal-style OUTPUT panel shows its real stdout / exit code (5 s timeout, no stdin, 64 KB output cap).
+- **Correct whole program** (`POST /api/correct`) — rewrites the file so it compiles, with a list of what changed; the rewrite is re-compiled and only shown as *verified* when no fatal error remains.
+- **Pipeline view** (`#/pipeline`, `POST /api/analyze`) — the token stream, parse tree and symbol table for the current program, with a **live phase animation** (tokens → tree → symbols), a **collapsible SVG AST diagram**, and **token↔source highlighting** (click a token to light up the text it came from).
+- **Lab** (`#/lab`) — three AST tools: **Format** (`/api/format`, pretty-prints the program by unparsing our AST), **Constant folding** (`/api/fold`, pre-computes constant sub-expressions like `2 * 60 * 60 → 7200`), and **Structural diff** (`/api/astdiff`, diffs two parse trees so reformatting and comments don't count).
+- **Practice** (`#/practice`) — buggy drills ordered by the student's most-missed error categories.
+- **Predictive hint** — a pre-compile banner combining the student's top repeated category (F9) with a live brace/paren balance check.
+- **Profile** (`#/profile`) — the F9 error-category model plus per-student compile analytics.
+
+## 7. Repository layout
 
 ```
 cd project prd.docx          product requirements
@@ -112,7 +116,7 @@ The FastAPI backend (`src/cea/api.py`, plan 012) serves the compiler and the AI 
     .venv/Scripts/python -m pip install -r requirements-dev.txt
     .venv/Scripts/python -m uvicorn cea.api:app --reload --app-dir src
 
-It listens on `http://127.0.0.1:8000`. Endpoints: `POST /api/compile`, `/api/explain`, `/api/fix`, `/api/ask`, and `GET /api/health`; interactive docs at `http://127.0.0.1:8000/docs`. Sources above 64 KB are rejected (HTTP 413). The AI endpoints need the `CEA_LLM_*` settings described in `.env.example`; without them they answer HTTP 503 and `/api/compile` still works.
+It listens on `http://127.0.0.1:8000`. Endpoints: `POST /api/compile`, `/api/explain`, `/api/fix`, `/api/correct`, `/api/ask`, `/api/run`, `/api/analyze`, `/api/format`, `/api/fold`, `/api/astdiff`, `GET /api/profile/{id}` (+ `/analytics`), and `GET /api/health`; interactive docs at `http://127.0.0.1:8000/docs`. Sources above 64 KB are rejected (HTTP 413). The AI endpoints need the `CEA_LLM_*` settings described in `.env.example`; without them they answer HTTP 503 and `/api/compile` still works. The Vite dev server proxies `/api` to this backend (override the target with `CEA_API_URL`).
 
 ## Run the web UI (milestone 2)
 

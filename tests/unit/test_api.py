@@ -445,6 +445,7 @@ def test_exactly_the_contract_routes(client):
     assert {(p, m) for p, ops in paths.items() for m in ops} == {
         ("/api/compile", "post"), ("/api/explain", "post"), ("/api/fix", "post"), ("/api/ask", "post"),
         ("/api/correct", "post"), ("/api/run", "post"), ("/api/analyze", "post"),
+        ("/api/format", "post"), ("/api/fold", "post"), ("/api/astdiff", "post"),
         ("/api/health", "get"), ("/api/profile/{student_id}", "get"), ("/api/profile/{student_id}", "delete"),
         ("/api/profile/{student_id}/analytics", "get")}
 

@@ -34,6 +34,9 @@ function routes(extra: Routes = {}): Routes {
       treeNodes: { label: "Program", children: [{ label: "FunctionDecl(name='main', ret_type='int')", children: [] }] },
       symbols: [{ name: "main", type: "int", kind: "function", line: 1 }],
     } }),
+    "POST /api/fold": () => ({ json: { folds: [{ line: 1, text: "2 * 3", value: "6" }] } }),
+    "POST /api/format": () => ({ json: { ok: true, formatted: "int main(void) {\n    return 0;\n}\n", reason: "" } }),
+    "POST /api/astdiff": () => ({ json: { rows: [{ tag: "same", text: "Program" }], changed: false } }),
     ...extra,
   };
 }
@@ -399,6 +402,16 @@ describe("Pipeline and Practice pages", () => {
     expect(screen.getByLabelText("Abstract syntax tree")).toHaveTextContent("FunctionDecl"); // SVG diagram (default)
     await user.click(screen.getByRole("button", { name: "Indented" }));
     expect(screen.getByLabelText("Parse tree")).toHaveTextContent("FunctionDecl"); // text view
+  });
+
+  it("Lab lists constant folds and formats the program", async () => {
+    mockFetch(routes());
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Lab" }));
+    expect(await screen.findByText("2 * 3")).toBeInTheDocument(); // fold table (loads on mount)
+    await user.click(screen.getByRole("button", { name: "Format program" }));
+    expect(await screen.findByLabelText("Formatted code")).toHaveTextContent("return 0");
   });
 
   it("Practice shows a drill and marks it solved when it compiles", async () => {

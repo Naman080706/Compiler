@@ -16,6 +16,9 @@ import type {
   ProfileView,
   Analytics,
   RunResult,
+  FormatResult,
+  FoldResult,
+  AstDiffResult,
   Verbosity,
 } from "./types";
 
@@ -89,6 +92,12 @@ export const run = (source: string) => request<RunResult>("/api/run", { source }
 
 // Pipeline view: tokens, parse tree and symbol table of the source (our compiler only).
 export const analyze = (source: string) => request<PipelineView>("/api/analyze", { source });
+
+// Lab tools (our compiler only): pretty-print, constant-fold, and structural diff of two programs.
+export const formatCode = (source: string) => request<FormatResult>("/api/format", { source });
+export const fold = (source: string) => request<FoldResult>("/api/fold", { source });
+export const astdiff = (sourceA: string, sourceB: string) =>
+  request<AstDiffResult>("/api/astdiff", { source_a: sourceA, source_b: sourceB });
 
 // verbosity undefined = automatic: the F9 profile picks the depth. An explicit value is the F5 toggle and always wins.
 export const explain = (source: string, recordId: string, mode: ExplainMode, verbosity?: Verbosity) =>

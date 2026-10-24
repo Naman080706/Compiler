@@ -12,6 +12,7 @@ import type { CompileResponse, Correction, Health, RunResult, VerbosityChoice } 
 import ProfilePage from "./components/ProfilePage";
 import PipelinePage from "./components/PipelinePage";
 import PracticePage from "./components/PracticePage";
+import LabPage from "./components/LabPage";
 import PredictiveHint from "./components/PredictiveHint";
 import Splitter, { useSplit, VSplitter, useTerminalHeight } from "./components/Splitter";
 
@@ -37,11 +38,11 @@ function saveVerbosity(v: VerbosityChoice) {
 }
 
 // Hash routing without a router library: "#/" is the editor, "#/profile" the student's own page.
-export type Route = "editor" | "profile" | "pipeline" | "practice";
+export type Route = "editor" | "profile" | "pipeline" | "practice" | "lab";
 
 export function routeFromHash(hash: string): Route {
   const first = hash.replace(/^#\/?/, "").split(/[/?]/)[0];
-  return first === "profile" || first === "pipeline" || first === "practice" ? first : "editor";
+  return first === "profile" || first === "pipeline" || first === "practice" || first === "lab" ? first : "editor";
 }
 
 function useRoute(): [Route, (r: Route) => void] {
@@ -249,6 +250,7 @@ export default function App() {
         {route === "editor" ? (
           <>
             <button type="button" className="nav" onClick={() => goTo("pipeline")}>Pipeline</button>
+            <button type="button" className="nav" onClick={() => goTo("lab")}>Lab</button>
             <button type="button" className="nav" onClick={() => goTo("practice")}>Practice</button>
             <button type="button" className="nav" onClick={() => goTo("profile")}>Profile</button>
           </>
@@ -258,6 +260,7 @@ export default function App() {
       </header>
       {route === "profile" && <ProfilePage refreshKey={compiles} />}
       {route === "pipeline" && <PipelinePage source={active.source} />}
+      {route === "lab" && <LabPage source={active.source} onApply={(s) => (setSource(s), goTo("editor"))} />}
       {route === "practice" && <PracticePage />}
       <main className="layout" hidden={route !== "editor"} style={{ "--split": `${split}%` } as CSSProperties}>
         <div className="editor-pane">

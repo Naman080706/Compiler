@@ -325,6 +325,14 @@ button.primary:disabled { background: var(--hover); border-color: var(--hairline
 .tok-sel { border-color: var(--accent); }
 .tok-pick { outline: 2px solid var(--accent); }
 
+/* ---------- Lab: format / fold / structural diff ---------- */
+.lab-textarea { width: 100%; min-height: 150px; box-sizing: border-box; background: var(--surface); color: var(--ink); border: 1px solid var(--hairline); border-radius: 6px; padding: 10px 12px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; resize: vertical; margin: 4px 0; }
+.lab-textarea:focus { outline: none; border-color: var(--accent); }
+.diff-view .diff-row { white-space: pre; }
+.diff-add { color: #7FB069; }
+.diff-remove { color: #D88; }
+.diff-same { color: var(--muted); }
+
 /* ---------- AST diagram (feature #2) ---------- */
 .tree-toggle { margin: 6px 0; }
 .ast-wrap { background: var(--surface); border: 1px solid var(--hairline); border-radius: 6px; overflow: auto; max-height: 460px; margin: 4px 0; }

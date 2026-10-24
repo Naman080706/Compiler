@@ -49,6 +49,7 @@ from cea.profile import STUDENT_ID_RE, ProfileStore, category_of, choose_depth
 from cea.records import ErrorRecord
 from cea.introspect import analyze as analyze_pipeline
 from cea.runner import run_program
+from cea.transform import ast_diff, fold_constants, format_source
 from cea.verifier import DEFAULT_TIMEOUT, verify_correction, verify_fix
 
 MAX_SOURCE_BYTES = 64 * 1024          # contract section 3: "The source is size-limited (64 KB)"
@@ -80,6 +81,12 @@ class CompileRequest(BaseModel):
 
 class FixRequest(CompileRequest):
     record_id: str
+
+
+class DiffRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    source_a: str
+    source_b: str
 
 
 class ExplainRequest(FixRequest):
@@ -260,6 +267,33 @@ def run_endpoint(req: CompileRequest) -> dict:
     if len(req.source.encode("utf-8", errors="surrogatepass")) > MAX_SOURCE_BYTES:
         raise HTTPException(status_code=413, detail=f"Source is larger than {MAX_SOURCE_BYTES} bytes.")
     return run_program(req.source).to_dict()
+
+
+def _guard_size(*sources: str) -> None:
+    for s in sources:
+        if len(s.encode("utf-8", errors="surrogatepass")) > MAX_SOURCE_BYTES:
+            raise HTTPException(status_code=413, detail=f"Source is larger than {MAX_SOURCE_BYTES} bytes.")
+
+
+@app.post("/api/format")
+def format_endpoint(req: CompileRequest) -> dict:
+    """Pretty-print the program back to tidy C (our parser's unparser). Our compiler only."""
+    _guard_size(req.source)
+    return format_source(req.source)
+
+
+@app.post("/api/fold")
+def fold_endpoint(req: CompileRequest) -> dict:
+    """The constant sub-expressions our compiler can pre-compute (``2 * 60 * 60`` -> ``7200``)."""
+    _guard_size(req.source)
+    return fold_constants(req.source)
+
+
+@app.post("/api/astdiff")
+def astdiff_endpoint(req: DiffRequest) -> dict:
+    """Structural diff of two programs' parse trees (formatting-only edits show no change)."""
+    _guard_size(req.source_a, req.source_b)
+    return ast_diff(req.source_a, req.source_b)
 
 
 @app.post("/api/correct")
