@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS compile_events (
     ok INTEGER NOT NULL, fatal INTEGER NOT NULL, warnings INTEGER NOT NULL,
     phases TEXT NOT NULL, categories TEXT NOT NULL, codes TEXT NOT NULL, engine TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS compile_events_student ON compile_events (student_id, ts);
+CREATE TABLE IF NOT EXISTS action_counts (
+    student_id TEXT NOT NULL, action TEXT NOT NULL, count INTEGER NOT NULL,
+    PRIMARY KEY (student_id, action));
 """
 
 
@@ -145,8 +148,11 @@ class ProfileStore:
             try:
                 rows = conn.execute("SELECT ts, ok, fatal, warnings, phases, categories, codes, engine "
                                     "FROM compile_events WHERE student_id = ? ORDER BY ts, id", (student_id,)).fetchall()
+                corr_row = conn.execute("SELECT count FROM action_counts WHERE student_id = ? AND action = 'correct'",
+                                        (student_id,)).fetchone()
             finally:
                 conn.close()
+        corrections = corr_row[0] if corr_row else 0
         events = [(datetime.fromisoformat(r[0]).astimezone(UTC) + shift, *r[1:]) for r in rows]
         active = {e[0].date() for e in events}
         streak, day = 0, today if today in active else today - timedelta(days=1)
@@ -188,6 +194,7 @@ class ProfileStore:
                        "success_rate": round(sum(e[1] for e in window) / total, 4) if total else 0.0,
                        "errors": errors, "avg_errors": round(errors / total, 2) if total else 0.0},
             "streak": streak,
+            "corrections": corrections,       # times the "Correct whole program" button was used (F8 whole-file)
             "phases": [{"phase": p, "count": phases.get(p, 0)} for p in ("lexical", "syntax", "semantic")],
             "top_codes": top(codes, "code"),
             "top_categories": top(cats, "category"),
@@ -197,6 +204,28 @@ class ProfileStore:
             "today": _day_summary(events, today, shift),
             "yesterday": _day_summary(events, today - timedelta(days=1), shift),
         }
+
+    def record_action(self, student_id: str, action: str) -> None:
+        """Count one use of a UI action (e.g. the whole-program ``correct`` button), per student."""
+        with self._lock:
+            conn = self._connect()
+            try:
+                with conn:
+                    conn.execute(
+                        "INSERT INTO action_counts VALUES (?, ?, 1) ON CONFLICT(student_id, action) "
+                        "DO UPDATE SET count = count + 1", (student_id, action))
+            finally:
+                conn.close()
+
+    def action_count(self, student_id: str, action: str) -> int:
+        with self._lock:
+            conn = self._connect()
+            try:
+                row = conn.execute("SELECT count FROM action_counts WHERE student_id = ? AND action = ?",
+                                   (student_id, action)).fetchone()
+            finally:
+                conn.close()
+        return row[0] if row else 0
 
     def counts(self, student_id: str) -> dict[str, int]:
         with self._lock:
@@ -226,6 +255,7 @@ class ProfileStore:
                     conn.execute("DELETE FROM category_counts WHERE student_id = ?", (student_id,))
                     conn.execute("DELETE FROM seen WHERE student_id = ?", (student_id,))
                     conn.execute("DELETE FROM compile_events WHERE student_id = ?", (student_id,))
+                    conn.execute("DELETE FROM action_counts WHERE student_id = ?", (student_id,))
             finally:
                 conn.close()
 

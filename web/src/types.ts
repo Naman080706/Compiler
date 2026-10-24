@@ -33,6 +33,33 @@ export interface CompileResponse {
   clusters: ClusterRef[];
 }
 
+// The result of gcc-building and running the program (POST /api/run) — the OUTPUT panel's
+// "Run" shows this: the program's actual stdout/stderr, not the compiler's diagnostics.
+export interface RunResult {
+  gcc_available: boolean;
+  compiled: boolean;
+  compile_output: string; // gcc's message when the build failed
+  stdout: string;
+  stderr: string;
+  exit_code: number | null;
+  timed_out: boolean;
+  truncated: boolean;
+}
+
+// One node of the parse tree (for the diagram view); pre-order matches the indented `tree` text.
+export interface TreeNode {
+  label: string;
+  children: TreeNode[];
+}
+
+// Pipeline view (POST /api/analyze): what the three phases built for one program.
+export interface PipelineView {
+  tokens: { kind: string; text: string; line: number; col: number }[];
+  tree: string; // the parse tree as indented text
+  treeNodes?: TreeNode; // the same tree, nested, for the SVG diagram (absent on older responses)
+  symbols: { name: string; type: string; kind: string; line: number }[];
+}
+
 export type ExplainMode = "short" | "expand";
 export type Verbosity = "beginner" | "expert";
 export type VerbosityChoice = Verbosity | "auto"; // F5 toggle; "auto" lets the F9 profile choose the depth
@@ -52,6 +79,21 @@ export interface FixSuggestion {
   diff: string;
   patched_source: string;
   verified: boolean;
+  attempts: number;
+  reason: string;
+}
+
+// F8 whole-program: the "Correct" button rewrites the entire file and re-compiles it.
+// `verified` is true only when the rewrite has no fatal error; a partial rewrite that merely
+// reduces the errors is still returned (verified false, remaining_fatal > 0).
+export interface Correction {
+  corrected_source: string;
+  diff: string;
+  changes: string[]; // one short sentence per fix (the explanation of what was corrected)
+  verified: boolean;
+  before_summary: string;
+  after_summary: string;
+  remaining_fatal: number;
   attempts: number;
   reason: string;
 }
@@ -89,6 +131,7 @@ export interface Analytics {
   daily: DailyPoint[];
   totals: { compiles: number; successful: number; success_rate: number; errors: number; avg_errors: number };
   streak: number;
+  corrections?: number; // times the "Correct whole program" button was used (F8 whole-file)
   phases: { phase: string; count: number }[];
   top_codes: { code: string; count: number }[];
   top_categories: { category: string; count: number }[];

@@ -102,6 +102,17 @@ def test_students_are_separate_and_reset_deletes_everything(store):
     assert store.hits(SID, CATEGORY) == 1 and store.hits(OTHER, "undeclared-identifier") == 1
 
 
+def test_record_action_counts_per_student_and_shows_in_analytics(store):
+    store.record_action(SID, "correct")
+    store.record_action(SID, "correct")
+    store.record_action(OTHER, "correct")
+    assert store.action_count(SID, "correct") == 2 and store.action_count(OTHER, "correct") == 1
+    assert store.analytics(SID)["corrections"] == 2
+    assert store.action_count(SID, "never-used") == 0
+    store.reset(SID)                                            # reset clears the action counts too
+    assert store.action_count(SID, "correct") == 0 and store.action_count(OTHER, "correct") == 1
+
+
 def test_choose_depth_manual_toggle_always_overrides():
     assert choose_depth(None, 0) == ("expert", False)
     assert choose_depth(None, THRESHOLD - 1) == ("expert", False)

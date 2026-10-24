@@ -154,6 +154,11 @@ export default function Dashboard({ data }: { data: Analytics }) {
           value={`${t.avg_errors.toFixed(1)} ${TREND_ARROW[trend.direction]}`}
           sub={TREND_WORD[trend.direction]}
         />
+        <Tile
+          label="Corrections used"
+          value={String(data.corrections ?? 0)}
+          sub="whole-program fixes"
+        />
       </div>
 
       {data.today && data.yesterday && (

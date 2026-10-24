@@ -104,7 +104,27 @@ EXPERT_TASKS = {
 BEGINNER_NOTE = (" Beginner mode: use plain language, add a short everyday analogy where it helps, and name "
                  "the rule that was violated. Put the ids of the reference chunks you used in \"citations\": "
                  'e.g. {"explanation": "...", "citations": ["<chunk id>"]}.')
-MAX_TOKENS = {"short": 300, "expand": 900, "fix": 900, "ask": 500}
+MAX_TOKENS = {"short": 300, "expand": 900, "fix": 900, "ask": 500, "correct": 2000}
+
+# Whole-program correction (the "Correct" button): rewrite the entire file so it compiles.
+CORRECT_SYSTEM_PROMPT = (
+    "You are the error assistant of a teaching compiler for a small subset of C99. "
+    "You are given a C program and the list of compiler errors it produced. "
+    "Rewrite the whole program so that it compiles under the course's C99 subset, fixing every error, "
+    "keeping the student's intent and changing as little as possible. "
+    "Do not add features outside the subset and do not invent behaviour. "
+    "Reply with one JSON object that matches the requested schema and nothing else."
+)
+CORRECT_TASK = (
+    "Return the full corrected program and a short list of the changes you made. "
+    'Reply as JSON: {"corrected": "<the whole corrected program as one string, with real newlines>", '
+    '"changes": ["one short sentence per fix, e.g. \'Added the missing semicolon on line 9.\'"]}'
+)
+CORRECT_SCHEMA = {
+    "type": "object",
+    "properties": {"corrected": {"type": "string"}, "changes": {"type": "array", "items": {"type": "string"}}},
+    "required": ["corrected"],
+}
 
 
 @dataclass
@@ -132,6 +152,20 @@ class FixSuggestion:
 class Answer:
     text: str
     refused: bool
+
+
+@dataclass
+class Correction:
+    """A whole-program correction (the "Correct" button). ``verified`` only when re-compiled clean."""
+    corrected_source: str
+    changes: list[str] = field(default_factory=list)
+    diff: str = ""
+    verified: bool = False       # True only when the corrected program re-compiled with no fatal error
+    attempts: int = 0
+    before_summary: str = ""
+    after_summary: str = ""
+    remaining_fatal: int = 0
+    reason: str = ""
 
 
 def clip_history(history: list[dict] | None) -> list[dict]:
@@ -439,6 +473,36 @@ class Agent:
             start, end, replacement = fix.edit
             self.cache.put(self._fix_sig(record, source), "fix",
                            {"start_line": start, "end_line": end, "replacement": replacement})
+
+    # -- correct the whole program at once
+    @staticmethod
+    def _errors_block(records: list[ErrorRecord]) -> str:
+        """A compact, numbered list of the errors to fix (no filename), for the correction prompt."""
+        lines = ["Compiler errors to fix:"]
+        for rec in records[:40]:
+            lines.append(f"  - {rec.code} at line {rec.line}, column {rec.column} ({rec.severity}): {rec.message}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _match_newlines(text: str, source: str) -> str:
+        """Give ``text`` the source's newline style and trailing newline, so the diff is minimal."""
+        body = "\n".join(text.splitlines())
+        newline = "\r\n" if "\r\n" in source else "\n"
+        out = body.replace("\n", newline) if newline != "\n" else body
+        return out + newline if source.endswith(("\n", "\r")) and body else out
+
+    def correct(self, source: str, records: list[ErrorRecord], feedback: str | None = None) -> Correction:
+        """One raw whole-program rewrite (never verified). ``cea.verifier.verify_correction`` re-compiles it."""
+        user = (self._errors_block(records) + "\n\nProgram (whole file):\n" + self._numbered(source, 1)
+                + "\nTask: " + CORRECT_TASK + (("\n" + feedback) if feedback else ""))
+        messages = [{"role": "system", "content": CORRECT_SYSTEM_PROMPT}, {"role": "user", "content": user}]
+        obj = self._call_json(messages, CORRECT_SCHEMA, "correct",
+                              check=lambda o: bool(o["corrected"].strip()))
+        if obj is None:
+            return Correction(corrected_source=source, reason="no correction was proposed")
+        corrected = self._match_newlines(obj["corrected"], source)
+        changes = [c.strip() for c in obj.get("changes", []) if isinstance(c, str) and c.strip()]
+        return Correction(corrected_source=corrected, changes=changes)
 
     # -- ask
     def ask(self, record: ErrorRecord, source: str, question: str, history: list[dict] | None = None) -> Answer:

@@ -48,8 +48,8 @@ export default function ProfilePage({ refreshKey }: Props) {
             <dt>What is tracked</dt>
             <dd>
               Every time you press Compile, the assistant notes whether the program compiled, how many errors and
-              warnings it had, and which kinds of mistakes caused them. Only these counts are kept. Your code is never
-              stored.
+              warnings it had, and which kinds of mistakes caused them. It also counts how many times you used the{" "}
+              <strong>Correct</strong> button. Only these counts are kept. Your code is never stored.
             </dd>
             <dt>How explanations adapt</dt>
             <dd>

@@ -28,6 +28,12 @@ function routes(extra: Routes = {}): Routes {
     [`GET /api/profile/${studentId()}/analytics?days=30&tz=${-new Date().getTimezoneOffset()}`]: () => ({ json: EMPTY_ANALYTICS }),
     [`DELETE /api/profile/${studentId()}`]: () => ({ json: { student_id: studentId(), threshold: 3, categories: [] } }),
     "POST /api/ask": () => ({ json: { text: "I only answer questions about your compiler errors.", refused: true } }),
+    "POST /api/analyze": () => ({ json: {
+      tokens: [{ kind: "KEYWORD", text: "int", line: 1, col: 1 }],
+      tree: "Program\n  FunctionDecl(name='main', ret_type='int')",
+      treeNodes: { label: "Program", children: [{ label: "FunctionDecl(name='main', ret_type='int')", children: [] }] },
+      symbols: [{ name: "main", type: "int", kind: "function", line: 1 }],
+    } }),
     ...extra,
   };
 }
@@ -308,6 +314,175 @@ describe("App", () => {
   });
 });
 
+describe("multiple files", () => {
+  it("opens a blank tab with New and keeps each file's own text", async () => {
+    mockFetch(routes());
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByTestId("editor")).toHaveValue(SAMPLE_SOURCE);
+    await user.click(screen.getByRole("button", { name: "+ New" }));
+    expect(screen.getByTestId("editor")).toHaveValue("");
+    await user.type(screen.getByTestId("editor"), "int x;");
+    await user.click(screen.getByRole("tab", { name: /program\.c/ }));
+    expect(screen.getByTestId("editor")).toHaveValue(SAMPLE_SOURCE);
+    await user.click(screen.getByRole("tab", { name: /untitled-1\.c/ }));
+    expect(screen.getByTestId("editor")).toHaveValue("int x;");
+  });
+
+  it("opens a .c file from the computer and makes it the active tab", async () => {
+    mockFetch(routes());
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File(["int main(void){ return 0; }\n"], "factorial.c", { type: "text/plain" }));
+    expect(await screen.findByRole("tab", { name: /factorial\.c/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("editor")).toHaveValue("int main(void){ return 0; }\n");
+  });
+
+  it("renames a tab by double-clicking its name", async () => {
+    mockFetch(routes());
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "+ New" }));
+    await user.dblClick(screen.getByText("untitled-1.c"));
+    const box = screen.getByRole("textbox", { name: "Rename untitled-1.c" });
+    await user.clear(box);
+    await user.type(box, "factorial.c{Enter}");
+    expect(screen.getByRole("tab", { name: /factorial\.c/ })).toBeInTheDocument();
+    expect(screen.queryByText("untitled-1.c")).toBeNull();
+  });
+
+  it("keeps the old name when a rename is cancelled with Escape", async () => {
+    mockFetch(routes());
+    const user = userEvent.setup();
+    render(<App />);
+    await user.dblClick(screen.getByText("program.c"));
+    const box = screen.getByRole("textbox", { name: "Rename program.c" });
+    await user.clear(box);
+    await user.type(box, "nope.c{Escape}");
+    expect(screen.getByRole("tab", { name: /program\.c/ })).toBeInTheDocument();
+    expect(screen.queryByText("nope.c")).toBeNull();
+  });
+
+  it("closing the active tab falls back to a neighbour", async () => {
+    mockFetch(routes());
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "+ New" }));
+    expect(screen.getByTestId("editor")).toHaveValue("");
+    await user.click(screen.getByRole("button", { name: "Close untitled-1.c" }));
+    expect(screen.getByTestId("editor")).toHaveValue(SAMPLE_SOURCE);
+    expect(screen.queryByRole("tab", { name: /untitled-1\.c/ })).toBeNull();
+  });
+
+  it("compiles the active file only, and switching tabs swaps the result", async () => {
+    const { user } = await compileSample();
+    expect(screen.getByTestId("summary")).toHaveTextContent("6 fatal, 1 warning");
+    await user.click(screen.getByRole("button", { name: "+ New" }));
+    // the blank file has no result yet
+    expect(screen.getByText("Press Compile to check your program.")).toBeInTheDocument();
+    // going back to program.c restores its compiled result
+    await user.click(screen.getByRole("tab", { name: /program\.c/ }));
+    expect(screen.getByTestId("summary")).toHaveTextContent("6 fatal, 1 warning");
+  });
+});
+
+describe("Pipeline and Practice pages", () => {
+  it("Pipeline shows the tokens, parse tree and symbols for the current program", async () => {
+    mockFetch(routes());
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Pipeline" }));
+    expect(await screen.findByRole("heading", { name: /Lexer — tokens/ })).toBeInTheDocument();
+    const symbols = screen.getByRole("table", { name: "Symbol table" });
+    expect(within(symbols).getByText("main")).toBeInTheDocument();
+    expect(screen.getByLabelText("Abstract syntax tree")).toHaveTextContent("FunctionDecl"); // SVG diagram (default)
+    await user.click(screen.getByRole("button", { name: "Indented" }));
+    expect(screen.getByLabelText("Parse tree")).toHaveTextContent("FunctionDecl"); // text view
+  });
+
+  it("Practice shows a drill and marks it solved when it compiles", async () => {
+    mockFetch(routes({ "POST /api/compile": () => ({ json: { ok: true, summary: "0 fatal, 0 warnings", records: [], clusters: [] } }) }));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Practice" }));
+    expect(await screen.findByRole("heading", { name: "Practice" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Check" }));
+    expect(await screen.findByText(/Solved/)).toBeInTheDocument();
+  });
+});
+
+describe("Run the program", () => {
+  const RUN_OK = { gcc_available: true, compiled: true, compile_output: "", stdout: "sum = 15\n", stderr: "", exit_code: 0, timed_out: false, truncated: false };
+
+  it("runs the program and shows its actual output in the OUTPUT panel", async () => {
+    const fetchFn = mockFetch(routes({ "POST /api/run": () => ({ json: RUN_OK }) }));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "▶ Run" }));
+    const term = await screen.findByLabelText("Compiler output");
+    expect(await within(term).findByText("sum = 15")).toBeInTheDocument();
+    expect(within(term).getByText("[program exited with code 0]")).toBeInTheDocument();
+    expect(bodiesFor(fetchFn, "/api/run")).toEqual([{ source: SAMPLE_SOURCE }]); // no id sent
+  });
+
+  it("shows the build error when the program does not compile", async () => {
+    const failed = { ...RUN_OK, compiled: false, stdout: "", compile_output: "input.c:9: error: expected ';'" };
+    const user = userEvent.setup();
+    mockFetch(routes({ "POST /api/run": () => ({ json: failed }) }));
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "▶ Run" }));
+    const term = await screen.findByLabelText("Compiler output");
+    expect(await within(term).findByText("the program did not compile, so it was not run:")).toBeInTheDocument();
+    expect(within(term).getByText(/expected ';'/)).toBeInTheDocument();
+  });
+});
+
+describe("Correct whole program (F8)", () => {
+  const CORRECTED = SAMPLE_SOURCE.replace("total)\n", "total);\n");
+  const verified = {
+    corrected_source: CORRECTED,
+    diff: "--- original\n+++ suggested\n",
+    changes: ["Added the missing semicolon after the printf call on line 9."],
+    verified: true,
+    before_summary: "6 fatal, 1 warning",
+    after_summary: "0 fatal, 1 warning",
+    remaining_fatal: 0,
+    attempts: 1,
+    reason: "all errors fixed: the program now compiles",
+  };
+  const correctRoute = (body: object = verified): Routes => ({ "POST /api/correct": () => ({ json: body }) });
+
+  it("corrects the whole program and applies the rewrite to the editor", async () => {
+    const { fetchFn, user } = await compileSample(correctRoute());
+    await user.click(screen.getByRole("button", { name: "Correct whole program" }));
+    const dialog = await screen.findByRole("dialog", { name: "Correct whole program" });
+    expect(within(dialog).getByText("Now compiles")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Added the missing semicolon/)).toBeInTheDocument();
+    expect(within(dialog).getByText("6 fatal, 1 warning → 0 fatal, 1 warning")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Unified diff of the correction")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Apply to editor" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("editor")).toHaveValue(CORRECTED);
+    expect(bodiesFor(fetchFn, "/api/correct")).toEqual([
+      { source: SAMPLE_SOURCE, student_id: studentId(), session_id: sessionId() },
+    ]);
+  });
+
+  it("shows a partial rewrite that still has errors, without claiming it compiles", async () => {
+    const partial = { ...verified, verified: false, after_summary: "1 fatal, 0 warnings", remaining_fatal: 1,
+      reason: "reduced the errors from 6 to 1" };
+    const { user } = await compileSample(correctRoute(partial));
+    await user.click(screen.getByRole("button", { name: "Correct whole program" }));
+    const dialog = await screen.findByRole("dialog", { name: "Correct whole program" });
+    expect(within(dialog).getByText("1 error remain")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Now compiles")).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("editor")).toHaveValue(SAMPLE_SOURCE); // close does not apply
+  });
+});
+
 describe("F9 profile view", () => {
   it("shows the stored category counts and resets them", async () => {
     let deleted = false;
@@ -346,6 +521,19 @@ describe("F9 profile view", () => {
       const carries = String(init?.body ?? "").includes(id) || String(url).includes(id);
       expect(carries).toBe(["/api/compile", "/api/explain"].includes(String(url)) || String(url).startsWith("/api/profile/"));
     }
+  });
+
+  it("shows how many times Correct was used in the dashboard", async () => {
+    const analytics = {
+      ...EMPTY_ANALYTICS, corrections: 3, streak: 1,
+      totals: { compiles: 2, successful: 1, success_rate: 0.5, errors: 4, avg_errors: 2 },
+    };
+    const { user } = await compileSample({
+      [`GET /api/profile/${studentId()}/analytics?days=30&tz=${-new Date().getTimezoneOffset()}`]: () => ({ json: analytics }),
+    });
+    await user.click(screen.getByRole("button", { name: "Profile" }));
+    const label = await screen.findByText("Corrections used");
+    expect(within(label.closest(".tile") as HTMLElement).getByText("3")).toBeInTheDocument();
   });
 
   it("shows a note when the profile earned a fuller explanation", async () => {

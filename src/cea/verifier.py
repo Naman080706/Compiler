@@ -24,7 +24,7 @@ import threading
 import time
 from collections.abc import Callable
 
-from cea.agent import Agent, FixSuggestion
+from cea.agent import Agent, Correction, FixSuggestion
 from cea.diagnostics import ErrorSink
 from cea.lexer import lex
 from cea.pipeline import CompileResult, compile_source
@@ -170,6 +170,61 @@ def _call_with_deadline(fn: Callable[[], FixSuggestion], seconds: float) -> FixS
     if isinstance(box[0], BaseException):
         raise box[0]
     return box[0]
+
+
+def _fatal(result: CompileResult) -> int:
+    return sum(1 for r in result.errors if r.severity == "fatal")
+
+
+def verify_correction(agent: Agent, source: str, records: list[ErrorRecord], *, max_attempts: int = 2,
+                      timeout: float = DEFAULT_TIMEOUT,
+                      compile_fn: Callable[[str, str], CompileResult] = compile_source) -> Correction:
+    """Whole-program correction (the "Correct" button).
+
+    The agent rewrites the whole file; the result is re-compiled on a COPY. It is
+    ``verified`` only when the rewrite has no fatal error. Otherwise the rewrite that
+    removes the most fatal errors is returned as a partial correction (``verified``
+    False, with ``remaining_fatal`` set); if nothing improves, the original is returned.
+    """
+    deadline = time.monotonic() + timeout
+    base = compile_fn(source, DISPLAY_NAME)
+    before = _fatal(base)
+    before_summary = base.summary()
+    feedback: str | None = None
+    best: Correction | None = None
+    reason = "no correction was proposed"
+    for attempt in range(1, max_attempts + 1):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        proposal = _call_with_deadline(lambda: agent.correct(source, records, feedback), remaining)
+        if proposal is None:
+            reason = f"timed out after {timeout:g}s"
+            break
+        corrected = proposal.corrected_source
+        if not corrected.strip() or corrected == source:
+            reason, feedback = "no correction was proposed", None
+            continue
+        result = compile_fn(corrected, DISPLAY_NAME)
+        after = _fatal(result)
+        candidate = Correction(
+            corrected_source=corrected, changes=proposal.changes,
+            diff=Agent.unified_diff(source, corrected), attempts=attempt,
+            before_summary=before_summary, after_summary=result.summary(), remaining_fatal=after)
+        if after == 0:
+            candidate.verified = True
+            candidate.reason = "all errors fixed: the program now compiles"
+            return candidate
+        if best is None or after < best.remaining_fatal:
+            best = candidate
+        reason = f"{after} error(s) still remain"
+        feedback = ("The rewrite still has errors: " + _describe(result.errors)
+                    + ". Fix those too and keep everything else working.")
+    if best is not None and best.remaining_fatal < before:
+        best.reason = f"reduced the errors from {before} to {best.remaining_fatal}"
+        return best
+    return Correction(corrected_source=source, before_summary=before_summary, after_summary=before_summary,
+                      remaining_fatal=before, attempts=max_attempts, reason=reason)
 
 
 def verify_fix(agent: Agent, record: ErrorRecord, source: str, *, max_attempts: int = MAX_ATTEMPTS,

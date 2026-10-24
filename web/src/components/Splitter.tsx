@@ -4,8 +4,8 @@ import { useCallback, useState, type KeyboardEvent, type PointerEvent } from "re
 
 const SPLIT_KEY = "cea.split";
 export const SPLIT_MIN = 25;
-export const SPLIT_MAX = 80;
-const SPLIT_DEFAULT = 60;
+export const SPLIT_MAX = 82;
+const SPLIT_DEFAULT = 68;        // editor gets the larger share by default; the error panel is narrower
 
 const clamp = (v: number) => Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, v));
 
@@ -79,6 +79,85 @@ export default function Splitter({ split, onChange }: Props) {
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
       onDoubleClick={() => onChange(SPLIT_DEFAULT)}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Vertical splitter: the terminal output panel's height, in pixels, dragged up
+// or down between the editor and the terminal. Height is kept in localStorage.
+const TERM_KEY = "cea.terminal";
+export const TERM_MIN = 72;
+export const TERM_DEFAULT = 176;
+// Leave at least this much room for the editor above the terminal.
+const EDITOR_MIN = 120;
+
+function loadTermHeight(): number {
+  try {
+    const v = Number(window.localStorage.getItem(TERM_KEY));
+    return Number.isFinite(v) && v >= TERM_MIN ? v : TERM_DEFAULT;
+  } catch {
+    return TERM_DEFAULT;
+  }
+}
+
+/** The terminal's height in px, and a setter that enforces the lower bound and persists it. */
+export function useTerminalHeight(): [number, (v: number) => void] {
+  const [height, setHeightState] = useState(loadTermHeight);
+  const setHeight = useCallback((v: number) => {
+    const c = Math.max(TERM_MIN, Math.round(v));
+    setHeightState(c);
+    try {
+      window.localStorage.setItem(TERM_KEY, String(c));
+    } catch {
+      // storage blocked: the height still works for this page load
+    }
+  }, []);
+  return [height, setHeight];
+}
+
+interface VProps {
+  height: number;
+  onChange: (v: number) => void;
+}
+
+/** Row divider between the editor and the terminal; drag or arrow-key to resize. */
+export function VSplitter({ height, onChange }: VProps) {
+  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    const container = e.currentTarget.parentElement;
+    if (!container) return;
+    e.preventDefault();
+    const rect = container.getBoundingClientRect();
+    const max = rect.height - EDITOR_MIN;
+    const move = (ev: globalThis.PointerEvent) =>
+      onChange(Math.min(max, rect.bottom - ev.clientY));
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.classList.remove("resizing-v");
+    };
+    document.body.classList.add("resizing-v");
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "ArrowUp") onChange(height + 24);
+    else if (e.key === "ArrowDown") onChange(height - 24);
+    else return;
+    e.preventDefault();
+  }
+
+  return (
+    <div
+      className="vsplitter"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize the output terminal"
+      tabIndex={0}
+      onPointerDown={onPointerDown}
+      onKeyDown={onKeyDown}
+      onDoubleClick={() => onChange(TERM_DEFAULT)}
     />
   );
 }

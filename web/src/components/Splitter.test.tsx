@@ -24,6 +24,6 @@ describe("Splitter", () => {
     render(<Harness start={30} />);
     const sep = screen.getByRole("separator");
     fireEvent.doubleClick(sep);
-    expect(sep).toHaveAttribute("aria-valuenow", "60");
+    expect(sep).toHaveAttribute("aria-valuenow", "68");
   });
 });

@@ -5,6 +5,11 @@ Endpoints (all JSON):
     POST /api/explain  {source, record_id, mode, verbosity?, student_id?} -> Explanation (with citations)
     POST /api/fix      {source, record_id}           -> {diff, patched_source, verified, attempts, reason}
                                                         (F8: a diff only when verified; otherwise diff is "")
+    POST /api/correct  {source, student_id?}          -> {corrected_source, diff, changes, verified,
+                                                        before_summary, after_summary, remaining_fatal, attempts, reason}
+                                                        (F8 whole-file: rewrite the whole program; counts the click)
+    POST /api/run      {source}                        -> {gcc_available, compiled, compile_output, stdout, stderr,
+                                                        exit_code, timed_out, truncated}  (gcc-builds and RUNS the program)
     GET    /api/profile/{id}/analytics?days=30&tz=330 -> per-student compile analytics (local days, today/yesterday)
     GET    /api/profile/{id}                         -> the student's error-category counts (F9)
     DELETE /api/profile/{id}                         -> reset (delete) that profile
@@ -42,7 +47,9 @@ from cea.llm import ExplanationCache, FallbackClient, client_from_env
 from cea.pipeline import CompileResult, compile_source
 from cea.profile import STUDENT_ID_RE, ProfileStore, category_of, choose_depth
 from cea.records import ErrorRecord
-from cea.verifier import DEFAULT_TIMEOUT, verify_fix
+from cea.introspect import analyze as analyze_pipeline
+from cea.runner import run_program
+from cea.verifier import DEFAULT_TIMEOUT, verify_correction, verify_fix
 
 MAX_SOURCE_BYTES = 64 * 1024          # contract section 3: "The source is size-limited (64 KB)"
 MAX_QUESTION_CHARS = 1000
@@ -233,6 +240,49 @@ def fix_endpoint(req: FixRequest, agent: AgentDep) -> dict:
                 "reason": fix.reason}
     return {"diff": fix.diff, "patched_source": fix.patched_source, "verified": True, "attempts": fix.attempts,
             "reason": fix.reason}
+
+
+@app.post("/api/analyze")
+def analyze_endpoint(req: CompileRequest) -> dict:
+    """Pipeline view: the token stream, parse tree and symbol table of the source (our compiler only)."""
+    if len(req.source.encode("utf-8", errors="surrogatepass")) > MAX_SOURCE_BYTES:
+        raise HTTPException(status_code=413, detail=f"Source is larger than {MAX_SOURCE_BYTES} bytes.")
+    return analyze_pipeline(req.source)
+
+
+@app.post("/api/run")
+def run_endpoint(req: CompileRequest) -> dict:
+    """Compile the source with gcc and run it, returning the program's actual output.
+
+    This executes the student's program (see ``cea.runner`` for the timeout, no-stdin and
+    output-cap safeguards). No LLM and no profile id are involved.
+    """
+    if len(req.source.encode("utf-8", errors="surrogatepass")) > MAX_SOURCE_BYTES:
+        raise HTTPException(status_code=413, detail=f"Source is larger than {MAX_SOURCE_BYTES} bytes.")
+    return run_program(req.source).to_dict()
+
+
+@app.post("/api/correct")
+def correct_endpoint(req: CompileRequest, agent: AgentDep, profiles: ProfilesDep) -> dict:
+    """F8 whole-program: rewrite the whole file so it compiles, with a list of what changed.
+
+    Every call with a ``student_id`` is counted in the profile (the "Correct" button use),
+    whatever the outcome; the id is never passed to the LLM.
+    """
+    result = _compile(req.source, req.engine)
+    if req.student_id:
+        profiles.record_action(req.student_id, "correct")
+    if result.ok or not result.errors:
+        return {"corrected_source": req.source, "diff": "", "changes": [], "verified": True,
+                "before_summary": result.summary(), "after_summary": result.summary(),
+                "remaining_fatal": 0, "attempts": 0, "reason": "the program already compiles"}
+    roots = [c.root for c in result.clusters]
+    corr = _call_agent(lambda: verify_correction(agent, req.source, roots, timeout=fix_timeout(),
+                                                 compile_fn=lambda s, n: compile_source(s, n, engine=req.engine)))
+    return {"corrected_source": corr.corrected_source, "diff": corr.diff, "changes": list(corr.changes),
+            "verified": bool(corr.verified), "before_summary": corr.before_summary,
+            "after_summary": corr.after_summary, "remaining_fatal": corr.remaining_fatal,
+            "attempts": corr.attempts, "reason": corr.reason}
 
 
 @app.post("/api/ask")

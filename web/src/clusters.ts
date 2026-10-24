@@ -1,7 +1,7 @@
 // Pure helpers: turn the /api/compile response into the error-panel view (PRD F2:
 // one root per cluster with a collapsed count of related symptoms) and into
 // Monaco marker data (inline errors). No React, no Monaco import: unit-testable.
-import type { CompileResponse, ErrorRecord } from "./types";
+import type { CompileResponse, ErrorRecord, RunResult } from "./types";
 
 export interface ClusterView {
   root: ErrorRecord;
@@ -19,6 +19,76 @@ export function clusterViews(resp: CompileResponse): ClusterView[] {
     views.push({ root, symptoms });
   }
   return views;
+}
+
+/** One line of the terminal output panel, with a kind that selects its colour. */
+export type OutKind = "cmd" | "fatal" | "warning" | "ok" | "note" | "plain";
+export interface OutLine {
+  text: string;
+  kind: OutKind;
+}
+
+/**
+ * The compiler's textual output, mirroring the `python -m cea <file>` CLI
+ * (`cli.format_cluster`): one line per F2 root cause, a "+N related" count,
+ * then the fatal/warning summary. Pure, so it is unit-tested.
+ */
+export function compilerOutput(resp: CompileResponse, filename = "program.c"): OutLine[] {
+  const lines: OutLine[] = [{ text: `$ cea compile ${filename}`, kind: "cmd" }];
+  const views = clusterViews(resp);
+  if (views.length === 0) {
+    lines.push({ text: `${filename}: no errors found.`, kind: "ok" });
+  } else {
+    for (const v of views) {
+      const r = v.root;
+      const related = v.symptoms.length > 0 ? ` (+${v.symptoms.length} related)` : "";
+      lines.push({
+        text: `${r.id} ${filename}:${r.line}:${r.column}: ${r.severity} [${r.code}] ${r.message}${related}`,
+        kind: r.severity === "fatal" ? "fatal" : "warning",
+      });
+    }
+  }
+  lines.push({ text: "", kind: "plain" });
+  lines.push({ text: resp.summary, kind: resp.ok ? "ok" : "fatal" });
+  lines.push({ text: `exit status ${resp.ok ? 0 : 1}`, kind: "note" });
+  return lines;
+}
+
+/** Body lines of captured output, dropping a single trailing newline so there is no blank last line. */
+function outputBody(text: string): string[] {
+  const trimmed = text.replace(/\n$/, "");
+  return trimmed === "" ? [] : trimmed.split("\n");
+}
+
+/**
+ * The OUTPUT panel's text for a Run: the program's actual stdout/stderr and its exit status —
+ * or the gcc build error if it did not compile. Pure, so it is unit-tested.
+ */
+export function runOutput(r: RunResult, filename = "program.c"): OutLine[] {
+  const prog = filename.replace(/\.[^.]+$/, "") || "program";
+  const lines: OutLine[] = [{ text: `$ ./${prog}`, kind: "cmd" }];
+  if (!r.gcc_available) {
+    lines.push({ text: "gcc is not installed on this machine, so the program cannot be run.", kind: "note" });
+    return lines;
+  }
+  if (!r.compiled) {
+    lines.push({ text: "the program did not compile, so it was not run:", kind: "fatal" });
+    for (const l of outputBody(r.compile_output)) lines.push({ text: l, kind: "plain" });
+    return lines;
+  }
+  const out = outputBody(r.stdout);
+  const err = outputBody(r.stderr);
+  for (const l of out) lines.push({ text: l === "" ? " " : l, kind: "plain" });
+  for (const l of err) lines.push({ text: l === "" ? " " : l, kind: "warning" });
+  if (out.length === 0 && err.length === 0) lines.push({ text: "(the program produced no output)", kind: "note" });
+  if (r.truncated) lines.push({ text: "...(output truncated)", kind: "note" });
+  lines.push({ text: "", kind: "plain" });
+  if (r.timed_out) {
+    lines.push({ text: "[program stopped: it ran too long (over 5s) and was halted]", kind: "fatal" });
+  } else {
+    lines.push({ text: `[program exited with code ${r.exit_code}]`, kind: r.exit_code === 0 ? "ok" : "warning" });
+  }
+  return lines;
 }
 
 export type Phase = ErrorRecord["phase"];

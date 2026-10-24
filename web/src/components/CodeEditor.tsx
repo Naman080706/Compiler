@@ -39,7 +39,19 @@ export default function CodeEditor({ value, onChange, records }: Props) {
       onChange={(v) => onChange(v ?? "")}
       onMount={handleMount}
       theme="cea-dark"
-      options={{ automaticLayout: true, minimap: { enabled: false }, fontSize: 14, scrollBeyondLastLine: false, bracketPairColorization: { enabled: false } }}
+      options={{
+        automaticLayout: true,
+        minimap: { enabled: false },
+        fontSize: 14,
+        scrollBeyondLastLine: false,
+        bracketPairColorization: { enabled: false },
+        // Pop up keyword/function/snippet suggestions automatically after a letter or two.
+        quickSuggestions: { other: true, comments: false, strings: false },
+        quickSuggestionsDelay: 10,
+        suggestOnTriggerCharacters: true,
+        wordBasedSuggestions: "currentDocument",
+        tabCompletion: "on",
+      }}
     />
   );
 }

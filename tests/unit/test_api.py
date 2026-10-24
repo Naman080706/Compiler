@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from cea import api
-from cea.agent import Agent, Answer, Explanation, FixSuggestion
+from cea.agent import Agent, Answer, Correction, Explanation, FixSuggestion
 from cea.llm import FakeLLM
 from cea.llm import client_from_env as real_client_from_env
 from cea.pipeline import compile_source
@@ -46,6 +46,11 @@ class SpyAgent:
     def remember_fix(self, record, source, fix):
         pass
 
+    def correct(self, source, records, feedback=None):
+        self.calls.append(("correct", source, [r.id for r in records]))
+        fixed = source.replace("    x = 1;", "    int x = 1;").replace(" @ ", " * ")
+        return Correction(corrected_source=fixed, changes=["Declared x before using it."])
+
     def ask(self, record, source, question, history=None):
         self.calls.append(("ask", record, source, question, history))
         return Answer(text=f"answer to {question}", refused=False)
@@ -57,7 +62,7 @@ class BrokenAgent:
     def explain(self, *args):
         raise RuntimeError("model unreachable")
 
-    suggest_fix = ask = explain
+    suggest_fix = ask = correct = explain
 
 
 class RecordingLLM:
@@ -271,6 +276,78 @@ def test_ask(client, spy):
     assert spy.calls[0][3] == "Where is x declared?"
 
 
+# ---------------------------------------------------------------- /api/analyze (pipeline view)
+def test_analyze_returns_tokens_tree_and_symbols(client):
+    resp = client.post("/api/analyze", json={"source": "int main(void) {\n    int x = 1;\n    return x;\n}\n"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert set(data) == {"tokens", "tree", "treeNodes", "symbols"}
+    assert {"name": "main", "type": "int", "kind": "function", "line": 1} in data["symbols"]
+    assert {"name": "x", "type": "int", "kind": "local", "line": 2} in data["symbols"]
+    assert data["tokens"][0] == {"kind": "KEYWORD", "text": "int", "line": 1, "col": 1}
+    assert "Program" in data["tree"] and "FunctionDecl" in data["tree"]
+
+
+# ---------------------------------------------------------------- /api/run (compile + execute)
+def test_run_executes_the_program_and_returns_its_output(client, monkeypatch):
+    from cea import runner
+    fake = runner.RunResult(gcc_available=True, compiled=True, compile_output="", stdout="sum = 15\n",
+                            stderr="", exit_code=0, timed_out=False, truncated=False)
+    monkeypatch.setattr(api, "run_program", lambda source: fake)
+    resp = client.post("/api/run", json={"source": "int main(void){return 0;}\n"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert set(data) == {"gcc_available", "compiled", "compile_output", "stdout", "stderr",
+                         "exit_code", "timed_out", "truncated"}
+    assert data["compiled"] is True and data["stdout"] == "sum = 15\n" and data["exit_code"] == 0
+
+
+def test_run_rejects_a_source_over_the_size_limit(client):
+    resp = client.post("/api/run", json={"source": "a" * (64 * 1024 + 1)})
+    assert resp.status_code == 413
+
+
+# ---------------------------------------------------------------- /api/correct (F8 whole program)
+def test_correct_rewrites_the_whole_program_and_counts_the_click(client, spy):
+    sid = "stu_" + "c" * 20
+    resp = client.post("/api/correct", json={"source": SRC_UNDECLARED, "student_id": sid})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert set(data) == {"corrected_source", "diff", "changes", "verified", "before_summary",
+                         "after_summary", "remaining_fatal", "attempts", "reason"}
+    assert data["verified"] is True and data["remaining_fatal"] == 0
+    assert "int x = 1;" in data["corrected_source"] and data["changes"]
+    assert data["diff"] and data["before_summary"] and data["after_summary"].startswith("0 fatal")
+    # the agent got the source and the root ids, never the student id
+    assert spy.calls[0][0] == "correct" and sid not in repr(spy.calls)
+    # the click is counted in the profile analytics
+    analytics = client.get(f"/api/profile/{sid}/analytics?days=30&tz=0").json()
+    assert analytics["corrections"] == 1
+
+
+def test_correct_counts_the_click_even_when_already_compiling(client, spy):
+    sid = "stu_" + "d" * 20
+    resp = client.post("/api/correct", json={"source": SRC_OK, "student_id": sid})
+    data = resp.json()
+    assert data["verified"] is True and data["diff"] == "" and data["changes"] == []
+    assert spy.calls == []                                   # the agent is not even called
+    assert client.get(f"/api/profile/{sid}/analytics?days=30&tz=0").json()["corrections"] == 1
+
+
+def test_correct_never_leaks_private_fields_to_the_agent(client, spy):
+    resp = client.post("/api/correct", json={"source": SRC_UNDECLARED, **PRIVATE})
+    assert resp.status_code == 200
+    seen = repr(spy.calls)
+    for value in PRIVATE.values():
+        assert value not in seen
+
+
+def test_correct_agent_failure_is_502(client):
+    api.app.dependency_overrides[api.get_agent] = BrokenAgent
+    resp = client.post("/api/correct", json={"source": SRC_UNDECLARED})
+    assert resp.status_code == 502 and "model unreachable" not in resp.text
+
+
 @pytest.mark.parametrize("path", AGENT_PATHS)
 def test_agent_failure_is_502(client, path):
     api.app.dependency_overrides[api.get_agent] = BrokenAgent
@@ -367,6 +444,7 @@ def test_exactly_the_contract_routes(client):
     paths = client.get("/openapi.json").json()["paths"]
     assert {(p, m) for p, ops in paths.items() for m in ops} == {
         ("/api/compile", "post"), ("/api/explain", "post"), ("/api/fix", "post"), ("/api/ask", "post"),
+        ("/api/correct", "post"), ("/api/run", "post"), ("/api/analyze", "post"),
         ("/api/health", "get"), ("/api/profile/{student_id}", "get"), ("/api/profile/{student_id}", "delete"),
         ("/api/profile/{student_id}/analytics", "get")}
 

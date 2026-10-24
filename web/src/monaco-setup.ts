@@ -4,6 +4,11 @@
 // mock @monaco-editor/react and never load Monaco.
 import * as monaco from "monaco-editor/editor/editor.api";
 import "monaco-editor/languages/definitions/cpp/register";
+// editor.api is the API-only build: it registers no editor contributions, so the
+// autocomplete popup never appears. Pull in the suggest + snippet contributions that
+// drive it (the completion provider below has nothing to render into without them).
+import "monaco-editor/editor/contrib/suggest/browser/suggestController";
+import "monaco-editor/editor/contrib/snippet/browser/snippetController2";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 import { loader } from "@monaco-editor/react";
 
@@ -65,7 +70,10 @@ const C_SNIPPETS: [string, string, string][] = [
   ["include", "#include <${1:stdio.h}>", "include a header"],
 ];
 
-monaco.languages.registerCompletionItemProvider("cpp", {
+// The editor's model language is "c" (CodeEditor uses defaultLanguage="c"); the cpp
+// contribution registers both "c" and "cpp", so register the provider for each or the
+// suggestions never fire for a "c" model.
+const completionProvider: Parameters<typeof monaco.languages.registerCompletionItemProvider>[1] = {
   provideCompletionItems(model, position) {
     const word = model.getWordUntilPosition(position);
     const range = {
@@ -85,4 +93,7 @@ monaco.languages.registerCompletionItemProvider("cpp", {
       ],
     };
   },
-});
+};
+for (const lang of ["c", "cpp"]) {
+  monaco.languages.registerCompletionItemProvider(lang, completionProvider);
+}

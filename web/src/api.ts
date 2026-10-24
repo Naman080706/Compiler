@@ -2,17 +2,20 @@
 // proxy forwards to FastAPI (plan 012). Only the source text and record ids are
 // sent: never a filename or a real identity (PRD privacy note). F9 adds one
 // pseudonymous student id: a random token made here, kept in localStorage, sent
-// only to /api/compile, /api/explain and /api/profile (the server never passes it to the LLM).
+// only to /api/compile, /api/explain, /api/correct and /api/profile (the server never passes it to the LLM).
 import type {
   Answer,
   ChatTurn,
   CompileResponse,
+  Correction,
   Explanation,
   ExplainMode,
   FixSuggestion,
   Health,
+  PipelineView,
   ProfileView,
   Analytics,
+  RunResult,
   Verbosity,
 } from "./types";
 
@@ -81,6 +84,12 @@ async function request<T>(path: string, body?: object, method?: "DELETE"): Promi
 export const compile = (source: string) =>
   request<CompileResponse>("/api/compile", { source, student_id: studentId(), session_id: sessionId() });
 
+// Compile with gcc and RUN the program; returns its actual output. No id is sent (no LLM, no profile).
+export const run = (source: string) => request<RunResult>("/api/run", { source });
+
+// Pipeline view: tokens, parse tree and symbol table of the source (our compiler only).
+export const analyze = (source: string) => request<PipelineView>("/api/analyze", { source });
+
 // verbosity undefined = automatic: the F9 profile picks the depth. An explicit value is the F5 toggle and always wins.
 export const explain = (source: string, recordId: string, mode: ExplainMode, verbosity?: Verbosity) =>
   request<Explanation>("/api/explain", {
@@ -100,6 +109,11 @@ export const resetProfile = () => request<ProfileView>(`/api/profile/${studentId
 
 export const suggestFix = (source: string, recordId: string) =>
   request<FixSuggestion>("/api/fix", { source, record_id: recordId });
+
+// F8 whole-program "Correct": the student id is sent so the server can count the click
+// (profile analytics); it is never passed to the LLM, like compile/explain/profile.
+export const correct = (source: string) =>
+  request<Correction>("/api/correct", { source, student_id: studentId(), session_id: sessionId() });
 
 export const ask = (source: string, recordId: string, question: string, history: ChatTurn[] = []) =>
   request<Answer>("/api/ask", {
