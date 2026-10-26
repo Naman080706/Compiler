@@ -42,6 +42,9 @@ class OpenAICompatClient:
         self._api_key = api_key or None
         self.timeout = timeout
         self.name = name
+        # Gemini 2.5 "thinks" before every reply (several seconds). Our calls are mechanical
+        # JSON rewrites, so disable it via the OpenAI-compat reasoning_effort="none" switch.
+        self._gemini = "generativelanguage.googleapis.com" in base_url
 
     def __repr__(self) -> str:
         key = "set" if self._api_key else "none"
@@ -58,6 +61,8 @@ class OpenAICompatClient:
                  max_tokens: int = 400, temperature: float = 0.2) -> str:
         body: dict = {"model": self.model, "messages": messages,
                       "max_tokens": max_tokens, "temperature": temperature}
+        if self._gemini:
+            body["reasoning_effort"] = "none"
         if json_schema is not None:
             body["response_format"] = {"type": "json_schema",
                                        "json_schema": {"name": SCHEMA_NAME, "schema": json_schema}}

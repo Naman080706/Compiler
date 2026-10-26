@@ -68,6 +68,7 @@ export default function PracticePage() {
           <button type="button" className="primary" onClick={check} disabled={busy}>
             {busy ? "Checking..." : "Check"}
           </button>
+          <button type="button" onClick={() => setIdx((i) => (i - 1 + queue.length) % queue.length)}>← Previous drill</button>
           <button type="button" onClick={() => setIdx((i) => (i + 1) % queue.length)}>Next drill →</button>
           <button type="button" onClick={() => { setSource(drill.code); setRecords([]); setResult(null); }}>Reset</button>
         </div>
